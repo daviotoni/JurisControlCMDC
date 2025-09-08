@@ -1,2681 +1,343 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>JurisControl — Novo Design</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    <style>
-        :root {
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            
-            /* Cores da Marca e Acentos */
-            --brand-50: #f0f9ff;
-            --brand-100: #e0f2fe;
-            --brand-200: #bae6fd;
-            --brand-500: #3b82f6;
-            --brand-600: #2563eb;
-            --brand-700: #1d4ed8;
-            
-            /* Cores Vibrantes para Notificações */
-            --success: #22c55e; --success-bg: #f0fdf4;
-            --warning: #fb923c; --warning-bg: #fff7ed;
-            --danger: #ef4444;  --danger-bg: #fee2e2;
-            --info: #38bdf8;    --info-bg: #e0f2fe;
+<script type="module">
+/* ===== 1) IMPORTS E CONFIG ===== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, query, orderBy, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-            /* Cores Claras */
-            --bg-light: #f8fafc;
-            --sidebar-bg-light: #ffffff;
-            --card-bg-light: #ffffff;
-            --header-bg-light: #ffffff;
-            /* CORREÇÃO APLICADA ABAIXO */
-            --text-primary-light: #1e293b; 
-            --text-secondary-light: #64748b;
-            --text-muted-light: #94a3b8;
-            --border-light: #e2e8f0;
-            --shadow-color-light: rgba(14, 30, 49, 0.05);
+/* Substitua pelos dados do seu projeto */
+const firebaseConfig = {
+  apiKey: "SUA-API-KEY",
+  authDomain: "SEU-PROJETO.firebaseapp.com",
+  projectId: "SEU-PROJETO",
+  storageBucket: "SEU-PROJETO.appspot.com",
+  messagingSenderId: "XXXXXXXXXXXX",
+  appId: "1:XXXXXXXXXXXX:web:YYYYYYYYYYYYYY"
+};
 
-            /* Cores Escuras */
-            --bg-dark: #0f172a;
-            --sidebar-bg-dark: #1e293b;
-            --card-bg-dark: #1e293b;
-            --header-bg-dark: #1e293b;
-            --text-primary-dark: #f8fafc;
-            --text-secondary-dark: #a0aec0;
-            --text-muted-dark: #718096;
-            --border-dark: #334155;
-            --shadow-color-dark: rgba(0, 0, 0, 0.2);
-            
-            /* Transições e Bordas */
-            --radius: 12px;
-            --transition-speed: 0.3s;
-        }
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-        /* Aplicação das variáveis de tema */
-        body {
-            --bg: var(--bg-light);
-            --bg-color-only: var(--bg-light);
-            --sidebar-bg: var(--sidebar-bg-light);
-            --card-bg: var(--card-bg-light);
-            --header-bg: var(--header-bg-light);
-            --text-primary: var(--text-primary-light);
-            --text-secondary: var(--text-secondary-light);
-            --text-muted: var(--text-muted-light);
-            --border-color: var(--border-light);
-            --shadow: 0 4px 12px var(--shadow-color-light);
-            --brand-bg-active: var(--brand-50);
-            --brand-text-active: var(--brand-700);
-        }
+/* ===== 2) LOGIN / LOGOUT ===== */
+const loginOverlay = document.getElementById('loginOverlay');           /* já existe no seu HTML */            /*  */
+const btnEntrar     = document.getElementById('btnEntrar');             /*  */
+const btnSair       = document.getElementById('btnSair');               /*  */
+const userInput     = document.getElementById('loginUser');             /*  */
+const passInput     = document.getElementById('loginPass');             /*  */
+const loginErro     = document.getElementById('loginErro');             /*  */
+const welcomeMsg    = document.getElementById('welcomeMsg');            /* header à direita */                 /*  */
 
-        body[data-theme="dark"] {
-            --bg: var(--bg-dark);
-            --bg-color-only: var(--bg-dark);
-            --sidebar-bg: var(--sidebar-bg-dark);
-            --card-bg: var(--card-bg-dark);
-            --header-bg: var(--header-bg-dark);
-            --text-primary: var(--text-primary-dark);
-            --text-secondary: var(--text-secondary-dark);
-            --text-muted: var(--text-muted-dark);
-            --border-color: var(--border-dark);
-            --shadow: 0 4px 12px var(--shadow-color-dark);
-            --brand-bg-active: rgba(59, 130, 246, 0.15);
-            --brand-text-active: #fff;
-        }
+setPersistence(auth, browserLocalPersistence);
 
-        /* Reset Básico e Estilos Globais */
-        *, *::before, *::after {
-            box-sizing: border-box;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        
-        /* MELHORIA: Prefers Reduced Motion */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-                scroll-behavior: auto !important;
-            }
-            .btn:hover, .kpi:hover, .notification-item:hover {
-                transform: none;
-            }
-        }
-
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text-secondary);
-            font-family: var(--font-sans);
-            font-size: 14px;
-            line-height: 1.5;
-            transition: background-color var(--transition-speed), color var(--transition-speed);
-        }
-        
-        h1, h2, h3, h4, h5, h6 {
-            margin: 0;
-            color: var(--text-primary);
-            font-weight: 700;
-        }
-        h1 { font-size: 1.875rem; }
-        h2 { font-size: 1.5rem; margin-bottom: 1.5rem; }
-        h3 { font-size: 1.25rem; margin-bottom: 1rem; }
-
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border-width: 0;
-        }
-
-        .app-layout {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            flex-grow: 1;
-        }
-
-        /* ===== MELHORIA: Header com Efeito "Glass" e Transição para Compacto ===== */
-        .app-header {
-            backdrop-filter: saturate(180%) blur(12px);
-            -webkit-backdrop-filter: saturate(180%) blur(12px);
-            background: color-mix(in srgb, var(--header-bg) 85%, transparent);
-            border-bottom: 1px solid var(--border-color);
-            padding: 0 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            height: 65px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            transition: background-color var(--transition-speed), border-color var(--transition-speed), height 0.3s ease, padding 0.3s ease, box-shadow 0.3s ease;
-        }
-        .app-header.header-compact {
-            height: 56px;
-            padding: 0 1.5rem;
-            box-shadow: 0 6px 20px var(--shadow-color-light);
-        }
-        body[data-theme="dark"] .app-header.header-compact {
-            box-shadow: 0 6px 20px var(--shadow-color-dark);
-        }
-
-        .header-left { display: flex; align-items: center; gap: 1rem; }
-        .header-right { display: flex; align-items: center; gap: 1rem; }
-        
-        .header-logo h1 { font-size: 1.25rem; color: var(--brand-600); cursor: default; }
-        .header-logo p { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
-        
-        #welcomeMsg { font-weight: 600; color: var(--text-primary); }
-        .icon-btn {
-            background: none; border: none; cursor: pointer; padding: 0.25rem; border-radius: 50%;
-            display: inline-flex; align-items: center; justify-content: center;
-            transition: background-color var(--transition-speed); color: var(--text-muted);
-        }
-        .icon-btn:hover { background-color: var(--brand-bg-active); color: var(--brand-600); }
-        .icon-btn svg { width: 20px; height: 20px; }
-        
-        /* MELHORIA: Acessibilidade de Foco Visível */
-        .icon-btn:focus-visible, .top-nav a:focus-visible, .theme-menu-btn:focus-visible {
-            outline: 2px solid var(--brand-500);
-            outline-offset: 2px;
-            border-radius: 4px;
-        }
-
-        /* ===== MELHORIA: Navegação Superior com Indicador Ativo Animado ===== */
-        .top-nav { display: flex; align-items: center; height: 100%; }
-        .top-nav ul { list-style: none; padding: 0; margin: 0; display: flex; height: 100%; }
-        .top-nav a {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0 1rem;
-            height: 100%;
-            text-decoration: none;
-            color: var(--text-secondary);
-            font-weight: 600;
-            transition: color var(--transition-speed), background-color var(--transition-speed);
-            position: relative; /* Necessário para o ::after */
-        }
-        .top-nav a::after {
-            content: "";
-            position: absolute;
-            left: 1rem;
-            right: 1rem;
-            bottom: -8px;
-            height: 3px;
-            background: var(--brand-600);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform .25s ease;
-        }
-        .top-nav a:hover {
-            color: var(--brand-600);
-            background-color: var(--brand-bg-active);
-        }
-        .top-nav a:hover::after,
-        .top-nav a.active::after {
-            transform: scaleX(1);
-        }
-        .top-nav a.active {
-            color: var(--brand-600);
-        }
-        .top-nav a.active svg { color: var(--brand-600); }
-        .top-nav a svg { width: 20px; height: 20px; }
-
-        #mobile-menu-toggle { display: none; }
-
-        /* Conteúdo Principal */
-        main {
-            padding: 2rem;
-            flex-grow: 1;
-        }
-
-        /* Componentes de UI Genéricos */
-        .card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            padding: 1.5rem;
-            transition: background-color var(--transition-speed), border-color var(--transition-speed);
-        }
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 0.625rem 1rem;
-            border-radius: 10px;
-            font-weight: 700;
-            cursor: pointer;
-            border: 1px solid transparent;
-            text-decoration: none;
-            transition: transform var(--transition-speed), box-shadow var(--transition-speed), background-color var(--transition-speed), color var(--transition-speed), border-color var(--transition-speed);
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .btn.primary { background-color: var(--brand-600); color: #fff; border-color: var(--brand-600); }
-        .btn.primary:hover { background-color: var(--brand-700); }
-        .btn.secondary { background-color: var(--card-bg); color: var(--text-secondary); border-color: var(--border-color); }
-        .btn.secondary:hover { border-color: var(--brand-600); color: var(--brand-600); background-color: var(--brand-50); }
-        body[data-theme="dark"] .btn.secondary:hover { background-color: rgba(255,255,255,0.06); border-color: var(--brand-200); color: var(--brand-200); }
-        .btn.danger { background-color: var(--danger-bg); color: var(--danger); border-color: transparent; }
-        .btn.danger:hover { background-color: var(--danger); color: #fff; }
-        .input, .select, textarea {
-            width: 100%; background-color: var(--card-bg); color: var(--text-primary); border: 1px solid var(--border-color);
-            border-radius: 10px; padding: 0.625rem 0.75rem; outline: none;
-            transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
-        }
-        .input:focus, .select:focus, textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
-        body[data-theme="dark"] .input, body[data-theme="dark"] .select, body[data-theme="dark"] textarea { background-color: var(--sidebar-bg-dark); }
-
-        /* NOVO: Estilos para o menu de temas */
-        .theme-switch-wrapper {
-            position: relative;
-        }
-        .theme-menu {
-            position: absolute;
-            top: calc(100% + 1rem);
-            right: 0;
-            width: 220px;
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            z-index: 1000;
-            padding: 0.5rem;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
-        }
-        .theme-menu.active {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-        .theme-menu-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            width: 100%;
-            padding: 0.5rem 0.75rem;
-            border-radius: 8px;
-            border: none;
-            background-color: transparent;
-            color: var(--text-secondary);
-            font-family: var(--font-sans);
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-        }
-        .theme-menu-btn:hover {
-            background-color: var(--brand-bg-active);
-            color: var(--brand-600);
-        }
-        .theme-menu-btn.active {
-            background-color: var(--brand-bg-active);
-            color: var(--brand-700);
-        }
-        .theme-menu-btn svg {
-            width: 20px;
-            height: 20px;
-        }
-        .theme-menu-divider {
-            height: 1px;
-            background-color: var(--border-color);
-            margin: 0.5rem 0;
-        }
-
-        /* Tela de Login */
-        .login-overlay {
-            position: fixed; inset: 0; background: linear-gradient(145deg, var(--brand-500), var(--brand-700));
-            display: flex; align-items: center; justify-content: center; z-index: 2001;
-        }
-        .login-card {
-            width: 92%; max-width: 400px; background: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 16px; padding: 2rem; box-shadow: var(--shadow); text-align: center;
-        }
-        .login-card h2 { color: var(--text-primary); margin-bottom: 1.5rem; }
-        .login-card .grupo { margin-bottom: 1rem; text-align: left;}
-        .login-card label { display: block; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; }
-        .login-erro { color: var(--danger); font-weight: 600; margin-top: 1rem; min-height: 1.2em; text-align: center; }
-        .login-acoes { margin-top: 1.5rem; }
-        .login-acoes .btn { width: 100%; }
-        .lembrar-me { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem; justify-content: flex-start; }
-
-        /* Dashboard */
-        .dash-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; }
-        .dash-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; }
-        .kpi {
-            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius);
-            padding: 1.25rem; box-shadow: var(--shadow); cursor: pointer; transition: transform var(--transition-speed), box-shadow var(--transition-speed);
-            border-left: 4px solid var(--brand-200);
-        }
-        .kpi:hover { transform: translateY(-4px); box-shadow: 0 8px 20px var(--shadow-color-light); border-left-color: var(--brand-600); }
-        body[data-theme="dark"] .kpi:hover { box-shadow: 0 8px 20px var(--shadow-color-dark); }
-        .kpi h4 { margin: 0 0 0.5rem; color: var(--text-secondary); font-weight: 600; font-size: 0.9rem; }
-        .kpi .v { font-size: 2.25rem; font-weight: 800; color: var(--text-primary); }
-        
-        .dash-left-col { grid-column: 1 / span 8; display: grid; gap: 1.5rem; }
-        .dash-right-col { grid-column: 9 / -1; display: grid; gap: 1.5rem; align-content: start; }
-        
-        .prazos-list, .alert-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; }
-        .prazos-list li, .alert-list li { display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem 0.25rem; border-bottom: 1px solid var(--border-color); }
-        .prazos-list li:last-child, .alert-list li:last-child { border-bottom: none; }
-        .prazo-date { display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; background-color: var(--brand-bg-active); color: var(--brand-600); border-radius: 8px; width: 50px; height: 50px; flex-shrink: 0;}
-        .prazo-date .month { font-size: 0.75rem; text-transform: uppercase; }
-        .prazo-date .day { font-size: 1.5rem; line-height: 1; }
-        .prazo-info .type, .alert-info .type { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
-        .prazo-info .desc, .alert-info .desc { font-weight: 600; color: var(--text-primary); }
-
-        .chart-container { position: relative; width: 100%; height: 300px; }
-
-        /* Seção de Processos e Leis */
-        .toolbar { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
-        .toolbar .input { max-width: 350px; flex-grow: 1;}
-        .toolbar .select { max-width: 200px;}
-        .toolbar .actions-group { margin-left: auto; display: flex; gap: 1rem; flex-wrap: wrap; } /* Gap aumentado */
-        
-        .table-wrap { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; }
-        thead th { position: sticky; top: 0; background-color: var(--brand-50); color: var(--text-secondary); text-align: left; font-weight: 600; font-size: 0.8rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); text-transform: uppercase; letter-spacing: 0.5px; }
-        body[data-theme="dark"] thead th { background-color: #2a3a52; }
-        tbody td { padding: 1rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; color: var(--text-secondary); }
-        tbody tr:last-child td { border-bottom: none; }
-        tbody tr:nth-child(even) { background-color: var(--brand-50); }
-        tbody tr:hover { background-color: var(--brand-100); }
-        body[data-theme="dark"] tbody tr:nth-child(even) { background-color: rgba(255,255,255,0.03); }
-        body[data-theme="dark"] tbody tr:hover { background-color: rgba(255,255,255,0.07); }
-        .status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; font-weight: 600; font-size: 0.75rem; color: #fff; }
-        .status.em-analise{background:#f59e0b;} .status.pendente{background:#ef4444;} .status.finalizado{background:#22c55e;}
-        .status.aguardando-documentacao{background:#3b82f6;} .status.em-diligencia{background:#8b5cf6;} .status.arquivado{background:#64748b;}
-        
-        .leis-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
-        .lei-card { display: flex; flex-direction: column; }
-        .lei-card-header { font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; font-size: 1.1rem; }
-        .lei-card-ementa { flex-grow: 1; font-size: 0.9rem; margin-bottom: 1rem; }
-        .lei-card-actions { display: flex; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); }
-
-        /* Paginação */
-        .pagination-container { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1.5rem; }
-        .page-link { border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-secondary); font-weight: 600; border-radius: 8px; padding: 0.5rem 0.8rem; cursor: pointer; transition: all var(--transition-speed); }
-        .page-link:hover { border-color: var(--brand-500); color: var(--brand-600); background-color: var(--brand-50); }
-        .page-link.active { background-color: var(--brand-600); border-color: var(--brand-600); color: #fff; }
-        .page-link.disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* Cards Responsivos para Processos */
-        .mobile-cards-container { display: none; gap: 1rem; flex-direction: column; }
-        .proc-card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
-        .proc-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
-        .proc-card-header .num { font-weight: 700; color: var(--text-primary); }
-        .proc-card-body .item { font-size: 0.9rem; }
-        .proc-card-body .item strong { color: var(--text-muted); }
-        .proc-card-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); }
-        
-        /* MELHORIA: Overlay do menu mobile */
-        .mobile-menu-overlay {
-            position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.4); z-index: 90;
-            opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        .mobile-menu-overlay.active { opacity: 1; visibility: visible; }
-
-        /* ===== MELHORIAS: Media Queries para Responsividade e Menu Mobile ===== */
-        @media (max-width: 1200px) {
-            .nav-text { display: none; }
-            .top-nav a { gap: 0; justify-content: center; width: 60px; }
-        }
-
-        @media (max-width: 992px) {
-            .table-wrap { display: none; }
-            .mobile-cards-container { display: flex; }
-
-            .top-nav {
-                position: absolute;
-                top: 65px; /* Altura do header padrão */
-                left: 0; width: 100%;
-                background-color: var(--header-bg); border-bottom: 1px solid var(--border-color); box-shadow: var(--shadow);
-                transform: translateY(-100%); opacity: 0; visibility: hidden;
-                transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease, top 0.3s ease;
-            }
-            .app-header.header-compact .top-nav {
-                top: 56px; /* Ajusta a posição do menu quando o header está compacto */
-            }
-            .top-nav.mobile-open {
-                transform: translateY(0); opacity: 1; visibility: visible;
-            }
-            .top-nav ul { flex-direction: column; width: 100%; height: auto; }
-            .top-nav a { justify-content: flex-start; width: 100%; height: auto; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); }
-            .top-nav a::after { left: 1.5rem; right: auto; width: 3px; height: 1.5rem; top: 50%; bottom: auto; transform: translateY(-50%) scaleY(0); transform-origin: center; } /* Adapta indicador para menu vertical */
-            .top-nav a:hover::after, .top-nav a.active::after { transform: translateY(-50%) scaleY(1); }
-            .top-nav li:last-child a { border-bottom: none; }
-
-            #mobile-menu-toggle { display: inline-flex; }
-            .app-header { padding: 0 1.5rem; }
-            main { padding: 1.5rem; }
-        }
-
-        /* Calendário */
-        .cal-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
-        .cal-title { margin: 0 auto; font-weight: 700; font-size: 1.25rem; color: var(--text-primary); }
-        .cal-zone { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; min-height: 70vh; }
-        .cal-left { background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color); display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
-        .cal-body { overflow: auto; padding: 0.5rem; }
-        .grid-month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); }
-        .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); }
-        .wd { background-color: var(--bg-color-only); color: var(--text-secondary); font-weight: 600; text-align: center; padding: 0.5rem; }
-        .cell { background-color: var(--card-bg); padding: 0.5rem; display: flex; flex-direction: column; height: 140px; }
-        .dnum { font-weight: 600; text-align: right; color: var(--text-primary); flex-shrink: 0; }
-        .dnum .today { background: var(--brand-600); color: #fff; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; }
-        
-        .events-wrapper { flex-grow: 1; overflow: hidden; position: relative; }
-        .event-dots-container { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-        .event-dot {
-            width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 0.7rem; font-weight: 700; cursor: pointer; flex-shrink: 0; text-transform: uppercase;
-            transition: transform 0.15s ease;
-        }
-        .event-dot:hover { transform: scale(1.1); }
-        .event-dot.g{background:var(--info)} .event-dot.a{background:#a855f7} .event-dot.r{background:#16a34a} 
-        .event-dot.p{background:#dc2626} .event-dot.u{background:#f97316} .event-dot.e{background:#475569} .event-dot.o{background:#facc15;color:#444}
-
-        .side { display: flex; flex-direction: column; gap: 1.5rem; }
-        .side .row { display:flex; align-items:center; gap:8px; margin:6px 0 }
-        .tag-pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; color:#fff; font-weight:900 }
-        .tag-pill.g{background:var(--info)} .tag-pill.a{background:#a855f7} .tag-pill.r{background:#16a34a} .tag-pill.p{background:#dc2626} .tag-pill.u{background:#f97316} .tag-pill.e{background:#475569} .tag-pill.o{background:#facc15;color:#444}
-
-        /* Modais */
-        .modal { 
-            position: fixed; inset: 0; background: rgba(16, 24, 40, .6); display: none; 
-            align-items: flex-start; justify-content: center; z-index: 1001; overflow-y: auto; padding: 4rem 1rem; 
-        }
-        .dialog { width: 100%; max-width: 640px; background-color: var(--card-bg); border-radius: 16px; box-shadow: var(--shadow); margin: auto; display: flex; flex-direction: column; }
-        .dialog-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
-        .dialog-body { padding: 1.5rem; flex-grow: 1; }
-        .dialog-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.75rem; background-color: var(--bg-color-only); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; flex-wrap: wrap; }
-        
-        .form-grid { display: grid; gap: 1rem; }
-        .form-grid.two-cols { grid-template-columns: 1fr 1fr; }
-        .form-grid.three-cols { grid-template-columns: repeat(3, 1fr); }
-        .full-width { grid-column: 1 / -1; }
-        .form-group label { font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; display: block; }
-        .view-section { border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
-        .view-section h4 { color: var(--brand-600); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
-        .view-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-        .view-item strong { display: block; font-size: 0.8rem; color: var(--text-muted); }
-        .view-item p { margin: 0; word-break: break-word; }
-        
-        /* Notificações */
-        .notification-bell { position: relative; cursor: pointer; color: var(--text-secondary); }
-        .notification-bell:hover { color: var(--text-primary); }
-        .notification-bell svg { width: 24px; height: 24px; fill: currentColor; }
-        .notification-count { position: absolute; top: -5px; right: -8px; background-color: var(--danger); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-        .notification-panel { position: absolute; top: calc(100% + 1rem); right: 0; width: 380px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow); z-index: 1000; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: opacity 0.2s ease, transform 0.2s ease; }
-        .notification-panel.active { opacity: 1; visibility: visible; transform: translateY(0); }
-        .notification-header { padding: 1rem; border-bottom: 1px solid var(--border-color); }
-        .notification-filters { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); }
-        .notification-filter-btn { border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
-        .notification-filter-btn.active { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
-        .notification-panel ul { list-style: none; padding: 0; margin: 0; max-height: 350px; overflow-y: auto; }
-        .notification-item { position: relative; display: flex; align-items: center; gap: 1rem; padding: 1rem; transition: transform 0.2s, box-shadow 0.2s; border-bottom: 1px solid var(--border-color); }
-        .notification-item:last-child { border-bottom: none; }
-        .notification-item:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
-        .notification-item .icon-wrapper { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .notification-item .icon-wrapper svg { width: 20px; height: 20px; fill: currentColor; }
-        .notification-item .notification-content { flex-grow: 1; cursor: pointer; }
-        .notification-item .title { font-weight: 700; color: var(--text-primary); }
-        .notification-item .subtitle { font-size: 0.85rem; color: var(--text-secondary); }
-        .notification-close-btn { position: absolute; top: 8px; right: 8px; border: none; background: transparent; cursor: pointer; opacity: 0.6; }
-        .notification-close-btn:hover { opacity: 1; }
-        .notification-close-btn svg { width: 16px; height: 16px; fill: var(--text-muted); }
-        .notification-item.type-prazo { background-color: var(--danger-bg); }
-        .notification-item.type-prazo .icon-wrapper { color: var(--danger); }
-        .notification-item.type-evento { background-color: var(--info-bg); }
-        .notification-item.type-evento .icon-wrapper { color: var(--info); }
-        .notification-item.type-alerta { background-color: var(--warning-bg); }
-        .notification-item.type-alerta .icon-wrapper { color: var(--warning); }
-
-        .list .user-item, .list .version-item, .list .emissor-item { display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
-        .list .user-item:last-child, .list .version-item:last-child, .list .emissor-item:last-child { border-bottom: none; }
-        .doc-list .doc-item {border:1px solid var(--border-color);border-radius:10px;padding:8px;display:flex;justify-content:space-between;align-items:center;background:var(--card-bg); gap: 8px;}
-
-        /* Notificações Toast */
-        #toast-container { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 350px; }
-        .toast { background-color: var(--card-bg); color: var(--text-primary); border-radius: 10px; box-shadow: var(--shadow); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; border-left: 4px solid; opacity: 0; transform: translateX(2rem); animation: toast-slide-in 0.4s ease-out forwards, toast-fade-out 0.4s ease-in 3.5s forwards; }
-        .toast .icon { flex-shrink: 0; width: 20px; height: 20px; }
-        .toast.success { border-color: var(--success); } .toast.success .icon { color: var(--success); }
-        .toast.danger { border-color: var(--danger); } .toast.danger .icon { color: var(--danger); }
-        .toast.info { border-color: var(--info); } .toast.info .icon { color: var(--info); }
-        @keyframes toast-slide-in { to { opacity: 1; transform: translateX(0); } }
-        @keyframes toast-fade-out { from { opacity: 1; } to { opacity: 0; transform: translateY(1rem); height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; } }
-    </style>
-</head>
-<body data-theme="light">
-
-    <div id="mobile-menu-overlay" class="mobile-menu-overlay"></div>
-
-    <div id="loginOverlay" class="login-overlay">
-        <div class="login-card">
-            <h2>JurisControl</h2>
-            <p style="color: var(--text-muted); margin-top: -1.5rem; margin-bottom: 2rem;">Acesso ao sistema</p>
-            <div class="grupo">
-                <label for="loginUser">Usuário</label>
-                <input id="loginUser" type="text" class="input" autocomplete="username" placeholder="Digite seu usuário">
-            </div>
-            <div class="grupo">
-                <label for="loginPass">Senha</label>
-                <input id="loginPass" type="password" class="input" autocomplete="current-password" placeholder="Digite sua senha">
-            </div>
-            <div class="lembrar-me">
-                <input type="checkbox" id="lembrarUser" style="width: auto;">
-                <label for="lembrarUser" style="margin:0;">Lembrar-me</label>
-            </div>
-            <div class="login-acoes">
-                <button id="btnEntrar" class="btn primary">Entrar</button>
-            </div>
-            <div id="loginErro" class="login-erro"></div>
-        </div>
-    </div>
-    
-    <div class="app-layout">
-        <header class="app-header">
-            <div class="header-left">
-                <div class="header-logo">
-                    <h1>JurisControl</h1>
-                    <p>Procuradoria Geral CMDC</p>
-                </div>
-                
-                <button id="mobile-menu-toggle" class="icon-btn" title="Abrir menu" aria-controls="top-nav" aria-expanded="false">
-                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                </button>
-                
-                <nav class="top-nav" id="top-nav">
-                    <ul>
-                        <li><a href="#" class="tab active" data-tab="dashboard" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg><span class="nav-text">Dashboard</span></a></li>
-                        <li><a href="#" class="tab" data-tab="proc"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path><path d="M8 10v4"></path><path d="M12 10v2"></path><path d="M16 10v6"></path></svg><span class="nav-text">Processos</span></a></li>
-                        <li><a href="#" class="tab" data-tab="cal"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path><path d="M16 18h.01"></path></svg><span class="nav-text">Calendário</span></a></li>
-                        <li><a href="#" class="tab" data-tab="docs"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg><span class="nav-text">Documentos</span></a></li>
-                        <li><a href="#" class="tab" data-tab="leis"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"></path><path d="m2 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"></path></svg><span class="nav-text">Leis</span></a></li>
-                        <li><a href="#" class="tab" data-tab="cfg"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"></path><path d="M14 17H4"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg><span class="nav-text">Configurações</span></a></li>
-                    </ul>
-                </nav>
-            </div>
-            <div class="header-right">
-                <span id="welcomeMsg"></span>
-                <!-- NOVO: Wrapper e Menu de Tema -->
-                <div class="theme-switch-wrapper">
-                    <button class="icon-btn" id="theme-toggle-btn" aria-haspopup="true" aria-expanded="false" aria-label="Alterar tema">
-                        <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                        <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                    </button>
-                    <div id="theme-menu" class="theme-menu">
-                        <button class="theme-menu-btn" data-theme-value="light">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                            <span>Tema claro</span>
-                        </button>
-                        <button class="theme-menu-btn" data-theme-value="dark">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                            <span>Tema escuro</span>
-                        </button>
-                        <div class="theme-menu-divider"></div>
-                        <button class="theme-menu-btn" data-theme-value="system">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                            <span>Padrão do dispositivo</span>
-                        </button>
-                    </div>
-                </div>
-                <div id="notification-bell" class="notification-bell">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
-                    <span id="notification-count" class="notification-count" style="display: none;">0</span>
-                    <div id="notification-panel" class="notification-panel">
-                        <div class="notification-header"><h3>Notificações</h3></div>
-                        <div id="notification-filters" class="notification-filters">
-                            <button class="notification-filter-btn active" data-filter="all">Todas</button>
-                            <button class="notification-filter-btn" data-filter="prazo">Prazos</button>
-                            <button class="notification-filter-btn" data-filter="evento">Eventos</button>
-                            <button class="notification-filter-btn" data-filter="alerta">Alertas</button>
-                        </div>
-                        <ul id="notification-list"></ul>
-                    </div>
-                </div>
-                <button id="btnSair" class="btn secondary">Sair</button>
-            </div>
-        </header>
-
-        <div class="main-content">
-            <main>
-                 <section id="secDashboard" style="display:block;">
-                    <div class="dash-grid">
-                        <div id="dashboard-kpis" class="dash-kpis"></div>
-                        <div class="dash-left-col">
-                            <div class="card">
-                                <h3>Entradas por Mês</h3>
-                                <div class="chart-container"><canvas id="chartEntradasDashboard"></canvas></div>
-                            </div>
-                            <div class="card">
-                                <h3>Distribuição por Status</h3>
-                                <div class="chart-container" style="height: 250px;"><canvas id="chartStatusDashboard"></canvas></div>
-                            </div>
-                             <div class="card" style="grid-column: 1 / -1;">
-                                <h3>Pareceres Emitidos por Mês</h3>
-                                <div class="chart-container" style="height: 250px;"><canvas id="chartPareceresMes"></canvas></div>
-                            </div>
-                        </div>
-                        <div class="dash-right-col">
-                            <div class="card"><h3>Próximos Prazos (15 dias)</h3><ul class="prazos-list" id="dashboard-prazos"></ul></div>
-                            <div class="card"><h3>Alertas Inteligentes</h3><ul class="alert-list" id="dashboard-alertas"></ul></div>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="secProc" style="display:none;">
-                  <h2>Gerenciamento de Processos</h2>
-                  <div class="toolbar">
-                    <input id="q" class="input" placeholder="Buscar por nº, interessado, objeto…">
-                    <select id="ord" class="select">
-                      <option value="entrada">Ordenar por Entrada</option><option value="prazo">Ordenar por Prazo</option><option value="status">Ordenar por Status</option>
-                    </select>
-                    <div class="actions-group">
-                        <button id="exportCsv" class="btn secondary">Exportar CSV</button>
-                        <button id="exportXlsx" class="btn secondary">Exportar Excel</button>
-                        <button id="add" class="btn primary">Adicionar Processo</button>
-                    </div>
-                  </div>
-                  <div class="table-wrap">
-                    <table id="tbl">
-                      <thead><tr><th>Nº Processo / Interessado</th><th>Objeto</th><th style="text-align:center">Status</th><th style="text-align:center">Prazo</th><th style="text-align:center">Ações</th></tr></thead>
-                      <tbody id="tbl-body"></tbody>
-                    </table>
-                  </div>
-                  <div id="mobile-cards-container" class="mobile-cards-container"></div>
-                  <div id="pagination-container" class="pagination-container"></div>
-                </section>
-                
-                <section id="secDoc" style="display:none">
-                  <h2>Gestão de Documentos</h2>
-                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem">
-                    <div class="card">
-                        <h3>Modelos de Documento</h3>
-                        <p style="font-size: 0.9em; color: var(--text-muted); margin-top: -0.5rem; margin-bottom: 1rem;">Documentos padrão (.docx) para usar como base.</p>
-                        <button id="modeloAdd" class="btn primary" type="button">Adicionar Modelo</button>
-                        <input id="modeloFile" type="file" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="sr-only">
-                        <div id="modeloList" class="doc-list" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                        <div id="modeloPagination" class="pagination-container" style="margin-top: 1rem;"></div>
-                    </div>
-                    <div class="card">
-                        <h3>Pareceres Emitidos</h3>
-                        <p style="font-size: 0.9em; color: var(--text-muted); margin-top: -0.5rem; margin-bottom: 1rem;">Arquivo de todos os pareceres finalizados e vinculados a processos.</p>
-                        <input id="buscaConteudo" class="input" placeholder="Buscar no conteúdo dos pareceres..." style="width:100%; margin-bottom: 1rem;">
-                        <div id="parecerList" class="doc-list" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                        <div id="parecerPagination" class="pagination-container" style="margin-top: 1rem;"></div>
-                    </div>
-                  </div>
-                </section>
-                
-                <section id="secLeis" style="display:none;">
-                  <h2>Banco de Leis</h2>
-                  <div class="toolbar">
-                    <input id="qLeis" class="input" placeholder="Buscar por tipo, número, ano, ementa…">
-                    <div class="actions-group"><button id="btnAddLei" class="btn primary">Adicionar Lei</button></div>
-                  </div>
-                  <div id="leisGrid" class="leis-grid"></div>
-                </section>
-                
-                <section id="secCal" style="display:none">
-                  <div class="cal-header">
-                    <button id="c_today" class="btn secondary">Hoje</button>
-                    <button id="c_prev" class="btn secondary">◀</button>
-                    <div id="c_title" class="cal-title">Mês Ano</div>
-                    <button id="c_next" class="btn secondary">▶</button>
-                    <button id="new_evt" class="btn primary">Novo Compromisso</button>
-                  </div>
-                  <div class="cal-zone">
-                    <div class="cal-left card" style="padding:0">
-                       <div id="calBody" class="cal-body"></div>
-                    </div>
-                    <aside class="side">
-                      <div class="card">
-                        <h4>Filtros de Visualização</h4>
-                        <div class="row"><input id="f_g" type="checkbox" checked> <label for="f_g"><span class="tag-pill g">Geral</span></label></div>
-                        <div class="row"><input id="f_a" type="checkbox" checked> <label for="f_a"><span class="tag-pill a">AUDIÊNCIA</span></label></div>
-                        <div class="row"><input id="f_e" type="checkbox" checked> <label for="f_e"><span class="tag-pill e">ESCRITÓRIO</span></label></div>
-                        <div class="row"><input id="f_o" type="checkbox" checked> <label for="f_o"><span class="tag-pill o">OAB</span></label></div>
-                        <div class="row"><input id="f_r" type="checkbox" checked> <label for="f_r"><span class="tag-pill r">REUNIÃO</span></label></div>
-                        <div class="row"><input id="f_p" type="checkbox" checked> <label for="f_p"><span class="tag-pill p">Término de prazos</span></label></div>
-                        <div class="row"><input id="f_u" type="checkbox" checked> <label for="f_u"><span class="tag-pill u">URGENTE</span></label></div>
-                        <div class="row"><input id="f_sync" type="checkbox" checked> <label for="f_sync">Mostrar prazos dos processos</label></div>
-                      </div>
-                    </aside>
-                  </div>
-                </section>
-                
-                <section id="secCfg" style="display:none">
-                  <h2>Configurações</h2>
-                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem">
-                     <div class="card">
-                        <h3>Gerenciamento de Usuários</h3>
-                        <div id="userList" class="list"></div>
-                        <div style="margin-top: 1rem;"><button id="btnAddUser" class="btn primary">Adicionar Usuário</button></div>
-                    </div>
-                     <div class="card">
-                        <h3>Gerenciamento de Emissores</h3>
-                        <div id="emissorList" class="list"></div>
-                        <div style="margin-top: 1rem;"><button id="btnAddEmissor" class="btn primary">Adicionar Emissor</button></div>
-                    </div>
-                    <div class="card">
-                        <h3>Backup e Restauração</h3>
-                         <div style="display:flex;flex-wrap:wrap;gap:0.75rem">
-                           <button id="bk_csv" class="btn secondary">Exportar Processos (CSV)</button>
-                           <button id="bk_down" class="btn secondary">Baixar Backup (.json)</button>
-                           <button id="bk_up" class="btn secondary">Restaurar Backup</button>
-                           <input id="bk_file" type="file" accept=".json" class="sr-only">
-                         </div>
-                    </div>
-                    <div class="card" style="grid-column: 1 / -1; border-color: var(--danger)">
-                        <h3>Ações Avançadas</h3>
-                        <p class="small">Use com cuidado. Ações aqui não podem ser desfeitas.</p>
-                        <button id="btnHardReset" class="btn danger">Limpar Dados Locais (Hard Reset)</button>
-                    </div>
-                  </div>
-                </section>
-            </main>
-        </div>
-    </div>
-    
-    <div id="m_proc" class="modal">
-        <div class="dialog" style="max-width: 800px;">
-            <div class="dialog-header"><h3 id="m_proc_t"></h3></div>
-            <form id="f_proc">
-                <div class="dialog-body">
-                    <div class="form-grid two-cols">
-                        <div class="form-group"><label for="fp_num">Nº do Processo</label><input id="fp_num" name="num" class="input" required></div>
-                        <div class="form-group"><label for="fp_tipo">Tipo</label><select id="fp_tipo" name="tipo" class="select"><option value="administrativo">Administrativo</option><option value="judicial">Judicial</option></select></div>
-                        <div class="form-group full-width"><label for="fp_int">Interessado</label><input id="fp_int" name="int" class="input" required></div>
-                        <div class="form-group full-width"><label for="fp_origem">Setor de Origem</label><select id="fp_origem" name="setorOrigem" class="select"></select></div>
-                        <div class="form-group full-width"><label for="fp_obj">Objeto</label><textarea id="fp_obj" name="obj" class="input" required></textarea></div>
-                        <div class="form-group full-width"><label for="fp_acao">Ação Tomada</label><textarea id="fp_acao" name="acao" class="input"></textarea></div>
-                        <fieldset class="full-width" style="border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem; margin-top: 1rem;">
-                            <legend style="padding: 0 0.5rem; font-weight: 600;">Status e Prazos</legend>
-                            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
-                                <div class="form-group"><label for="fp_ent">Entrada</label><input id="fp_ent" name="ent" type="date" class="input" required></div>
-                                <div class="form-group"><label for="fp_prazo">Prazo Final</label><input id="fp_prazo" name="prazo" type="date" class="input"></div>
-                                <div class="form-group"><label for="fp_saida">Saída</label><input id="fp_saida" name="saida" type="date" class="input"></div>
-                                <div class="form-group"><label for="fp_stat">Status</label><select id="fp_stat" name="stat" class="select"><option value="pendente">Pendente</option><option value="em-analise">Em Análise</option><option value="aguardando-documentacao">Aguardando Documentação</option><option value="em-diligencia">Em Diligência</option><option value="finalizado">Finalizado</option><option value="arquivado">Arquivado</option></select></div>
-                                <div class="form-group full-width" id="fp_dest_group" style="display:none"><label for="fp_dest">Destino</label><select id="fp_dest" name="dest" class="select"></select></div>
-                                <!-- O campo de vincular modelo foi removido daqui para dar lugar ao novo fluxo -->
-                                <div class="form-group"><label for="fp_emissor">Emissor da Ficha</label><select id="fp_emissor" name="emissorId" class="select"><option value="">Usuário Logado</option></select></div>
-                            </div>
-                        </fieldset>
-                    </div>
-                </div>
-                <div class="dialog-footer">
-                    <button type="button" class="btn danger" id="fp_del" style="display: none; margin-right: auto;">Excluir</button>
-                    <button type="button" class="btn secondary" data-close-proc>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
-                </div>
-                <input type="hidden" id="fp_id" name="id">
-            </form>
-        </div>
-    </div>
-    <div id="m_proc_view" class="modal">
-        <div class="dialog" style="max-width: 800px;">
-            <div class="dialog-header"><h3 id="view_proc_title">Detalhes do Processo</h3></div>
-            <div class="dialog-body"><div id="view-details-content"></div></div>
-            <div class="dialog-footer">
-                 <div class="form-group" style="flex-grow: 1;">
-                    <label for="pdf_emissor_select_view" style="margin-bottom: 0.25rem;">Emissor da Ficha</label>
-                    <select id="pdf_emissor_select_view" class="select">
-                        <option value="">Usuário Logado</option>
-                    </select>
-                </div>
-                <button id="btnGerarPdf" class="btn primary" style="align-self: flex-end;">Gerar Ficha (PDF)</button>
-                <button type="button" class="btn secondary" data-close-view style="align-self: flex-end;">Fechar</button>
-            </div>
-        </div>
-    </div>
-     <div id="m_evt" class="modal">
-         <div class="dialog">
-            <div class="dialog-header"><h3 id="m_evt_t">Novo Compromisso</h3></div>
-            <form id="f_evt">
-                <div class="dialog-body">
-                    <div class="form-grid two-cols">
-                        <div class="form-group"><label for="fe_data">Data</label><input id="fe_data" name="data" type="date" class="input" required></div>
-                        <div class="form-group"><label for="fe_hora">Hora (opcional)</label><input id="fe_hora" name="hora" type="time" class="input"></div>
-                        <div class="form-group full-width"><label for="fe_desc">Descrição</label><textarea id="fe_desc" name="desc" class="input" required></textarea></div>
-                        <div class="form-group full-width"><label for="fe_cat">Categoria</label><select id="fe_cat" name="cat" class="select"><option value="g">Geral</option><option value="a">Audiência</option><option value="r">Reunião</option><option value="p">Término de prazo</option><option value="u">Urgente</option><option value="e">Escritório</option><option value="o">OAB</option></select></div>
-                    </div>
-                </div>
-                <div class="dialog-footer">
-                    <button id="fe_del" type="button" class="btn danger" style="display:none; margin-right: auto;">Excluir</button>
-                    <button type="button" class="btn secondary" data-close-evt>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
-                </div>
-                <input type="hidden" id="fe_id" name="id">
-            </form>
-        </div>
-     </div>
-     <div id="m_lei" class="modal">
-        <div class="dialog" style="max-width: 720px">
-            <div class="dialog-header"><h3 id="m_lei_t">Adicionar Lei</h3></div>
-            <form id="f_lei">
-                <div class="dialog-body">
-                    <div class="form-grid three-cols">
-                        <div class="form-group"><label for="fl_tipo">Tipo</label><select id="fl_tipo" name="tipo" class="select"><option value="Lei Federal">Lei Federal</option><option value="Lei Estadual">Lei Estadual</option><option value="Lei Municipal">Lei Municipal</option><option value="Decreto">Decreto</option><option value="Portaria">Portaria</option><option value="Outro">Outro</option></select></div>
-                        <div class="form-group"><label for="fl_numero">Número</label><input id="fl_numero" name="numero" class="input" required></div>
-                        <div class="form-group"><label for="fl_ano">Ano</label><input id="fl_ano" name="ano" type="number" class="input" required></div>
-                    </div>
-                    <div class="form-group full-width"><label for="fl_ementa">Ementa/Descrição</label><textarea id="fl_ementa" name="ementa" class="input" required></textarea></div>
-                    <div class="form-group full-width"><label for="fl_link">Link (URL)</label><input id="fl_link" name="link" type="url" class="input" placeholder="https://..."></div>
-                    <div class="form-group full-width"><label for="fl_arquivo">Anexar Arquivo (Opcional)</label><input id="fl_arquivo" name="arquivo" type="file" class="input"></div>
-                </div>
-                <div class="dialog-footer">
-                    <button id="fl_del" type="button" class="btn danger" style="display:none; margin-right: auto;">Excluir</button>
-                    <button type="button" class="btn secondary" data-close-lei>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
-                </div>
-                <input type="hidden" id="fl_id" name="id">
-            </form>
-        </div>
-    </div>
-    <div id="m_versoes" class="modal">
-        <div class="dialog" style="max-width: 720px;">
-            <div class="dialog-header"><h3 id="m_versoes_t">Histórico de Versões</h3></div>
-            <div class="dialog-body">
-                <div id="lista_versoes" class="list"></div>
-            </div>
-            <div class="dialog-footer">
-                <button id="btnNovaVersao" class="btn primary" style="margin-right: auto;">Adicionar Nova Versão</button>
-                <input type="file" id="novaVersaoFile" class="sr-only" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
-                <button type="button" class="btn secondary" data-close-versoes>Fechar</button>
-            </div>
-        </div>
-    </div>
-    <div id="m_user" class="modal">
-        <div class="dialog">
-            <div class="dialog-header"><h3 id="m_user_t">Adicionar Usuário</h3></div>
-            <form id="f_user">
-                <div class="dialog-body">
-                    <div class="form-grid">
-                        <div class="form-group full-width"><label for="fu_name">Nome Completo</label><input id="fu_name" name="name" class="input" required></div>
-                        <div class="form-group"><label for="fu_login">Login</label><input id="fu_login" name="login" class="input" required></div>
-                        <div class="form-group"><label for="fu_pass">Senha</label><input id="fu_pass" name="pass" type="password" class="input" placeholder="Deixe em branco para não alterar"></div>
-                        <div class="form-group"><label for="fu_role">Cargo</label><select id="fu_role" name="role" class="select"><option value="user">Usuário</option><option value="admin">Admin</option></select></div>
-                    </div>
-                </div>
-                <div class="dialog-footer">
-                    <button type="button" class="btn danger" id="fu_del" style="display:none; margin-right: auto;">Excluir</button>
-                    <button type="button" class="btn secondary" data-close-user>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
-                </div>
-                <input type="hidden" id="fu_id" name="id">
-            </form>
-        </div>
-    </div>
-    <div id="m_emissor" class="modal">
-        <div class="dialog" style="max-width: 500px;">
-            <div class="dialog-header"><h3 id="m_emissor_t">Adicionar Emissor</h3></div>
-            <form id="f_emissor">
-                <div class="dialog-body">
-                    <div class="form-group"><label for="fe_name">Nome do Emissor</label><input id="fe_name" name="name" class="input" required></div>
-                </div>
-                <div class="dialog-footer">
-                     <button type="button" class="btn danger" id="fe_del" style="display:none; margin-right: auto;">Excluir</button>
-                    <button type="button" class="btn secondary" data-close-emissor>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
-                </div>
-                <input type="hidden" id="fe_id" name="id">
-            </form>
-        </div>
-    </div>
-
-    <div id="toast-container"></div>
-
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-
-  // ===== Helpers =====
-  const $=(s,sc=document)=>sc.querySelector(s);
-  const $$=(s,sc=document)=>Array.from(sc.querySelectorAll(s));
-  const fmtBR=(d)=>{ if(!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('pt-BR',{timeZone:'UTC'}); };
-  const parse=(d)=>{ if(!d) return null; const [y,m,dd]=d.split('-').map(Number); return new Date(Date.UTC(y,(m||1)-1,(dd||1))); };
-  const todayUTC=()=>{ const d=new Date(); return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())); };
-  const diffDays=(a,b)=> Math.ceil((b-a)/86400000);
-  function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
-  
-  // ===== Lógica para Notificações Toast =====
-  const TOAST_ICONS = {
-      success: `<svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>`,
-      danger: `<svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>`,
-      info: `<svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path></svg>`
-  };
-
-  function showToast(message, type = 'success') {
-      const container = $('#toast-container');
-      if (!container) return;
-
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.innerHTML = `${TOAST_ICONS[type] || ''} <p>${message}</p>`;
-      
-      container.appendChild(toast);
-
-      toast.addEventListener('animationend', (e) => {
-          if (e.animationName === 'toast-fade-out') {
-              toast.remove();
-          }
-      });
+btnEntrar?.addEventListener('click', async () => {
+  loginErro.textContent = "";
+  try {
+    const email = userInput.value.trim();
+    const pass  = passInput.value;
+    if (!email || !pass) throw new Error("Preencha e-mail e senha.");
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch (e) {
+    loginErro.textContent = e.message || "Falha no login.";
   }
+});
 
-  // ===== INÍCIO: Lógica do IndexedDB =====
-  const DB_NAME = 'JurisControlDB_v1';
-  const DB_VERSION = 1;
-  const STORES = ['users', 'processos', 'calendario', 'documentos', 'versoes', 'modelos', 'emissores', 'leis', 'config'];
-  let db;
+btnSair?.addEventListener('click', async () => {
+  await signOut(auth);
+});
 
-  const dbHelper = {
-      async init() {
-          return new Promise((resolve, reject) => {
-              const request = indexedDB.open(DB_NAME, DB_VERSION);
-              request.onerror = (event) => reject("Erro ao abrir o IndexedDB");
-              request.onsuccess = (event) => {
-                  db = event.target.result;
-                  resolve(db);
-              };
-              request.onupgradeneeded = (event) => {
-                  const db = event.target.result;
-                  STORES.forEach(storeName => {
-                      if (!db.objectStoreNames.contains(storeName)) {
-                          db.createObjectStore(storeName, { keyPath: 'id' });
-                      }
-                  });
-                  if(db.objectStoreNames.contains('config')) db.deleteObjectStore('config');
-                  db.createObjectStore('config', { keyPath: 'key' });
-              };
-          });
-      },
-      async get(storeName, key) {
-          return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readonly');
-              const store = transaction.objectStore(storeName);
-              const request = store.get(key);
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => reject(request.error);
-          });
-      },
-      async getAll(storeName) {
-          return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readonly');
-              const store = transaction.objectStore(storeName);
-              const request = store.getAll();
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => reject(request.error);
-          });
-      },
-      async put(storeName, item) {
-          return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readwrite');
-              const store = transaction.objectStore(storeName);
-              const request = store.put(item);
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => reject(request.error);
-          });
-      },
-      async delete(storeName, key) {
-          return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readwrite');
-              const store = transaction.objectStore(storeName);
-              const request = store.delete(key);
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => reject(request.error);
-          });
-      },
-      async clear(storeName) {
-           return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readwrite');
-              const store = transaction.objectStore(storeName);
-              const request = store.clear();
-              request.onsuccess = () => resolve();
-              request.onerror = () => reject(request.error);
-          });
-      }
-  };
-  // ===== FIM: Lógica do IndexedDB =====
-
-  // Variáveis de dados em memória
-  let DB_USERS = [], DB = [], CAL = [], DB_DOCS = [], DB_VERSOES = [], DB_MODELOS = [], DB_EMISSORES = [], DB_LEIS = [];
-  let CFG;
-  let allNotifications = [];
-  
-  let parecerCurrentPage = 1;
-  let modeloCurrentPage = 1;
-  const itemsPerPageDocs = 5;
-  let currentlyDisplayedPareceres = [];
-  
-  async function saveCFG() {
-      await dbHelper.put('config', { key: 'main_cfg', value: CFG });
-  }
-  
-  async function loadAllData() {
-      const defaultConfig = { 
-          sync: true, 
-          rowH: 140, 
-          theme: 'system', // Alterado para 'system' como padrão
-          readNotifications: [], 
-          dismissedNotifications: [], 
-          sidebarCollapsed: false 
-      };
-      
-      DB_USERS = await dbHelper.getAll('users');
-      DB = await dbHelper.getAll('processos');
-      CAL = await dbHelper.getAll('calendario');
-      DB_DOCS = await dbHelper.getAll('documentos');
-      DB_VERSOES = await dbHelper.getAll('versoes');
-      DB_MODELOS = await dbHelper.getAll('modelos');
-      DB_EMISSORES = await dbHelper.getAll('emissores');
-      DB_LEIS = await dbHelper.getAll('leis');
-      
-      const loadedCfg = await dbHelper.get('config', 'main_cfg');
-      CFG = loadedCfg ? { ...defaultConfig, ...loadedCfg.value } : defaultConfig;
-  }
-
-  // ===== Lógica de Login & Usuários =====
-  function simpleHash(str) {
-    let hash = 0;
-    if (typeof str !== 'string' || str.length === 0) return hash;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = (hash << 5) - hash + char;
-        hash |= 0;
-    }
-    return 'h' + Math.abs(hash).toString(36);
-  }
-
-  async function initializeUsers() {
-      if (DB_USERS.length === 0) {
-          const defaultUsers = [
-              { id: Date.now(), name: 'Administrador', login: 'admin', hashedPassword: simpleHash('admin'), role: 'admin' }
-          ];
-          for (const user of defaultUsers) {
-              await dbHelper.put('users', user);
-          }
-          DB_USERS = defaultUsers;
-      }
-  }
-
-  const loginOverlay = $('#loginOverlay');
-  const loginUser = $('#loginUser');
-  const loginPass = $('#loginPass');
-  const btnEntrar = $('#btnEntrar');
-  const loginErro = $('#loginErro');
-  const btnSair = $('#btnSair');
-  const appLayout = $('.app-layout');
-  const welcomeMsg = $('#welcomeMsg');
-
-  function showApp(user) {
+onAuthStateChanged(auth, (user) => {
+  if (user) {
     loginOverlay.style.display = 'none';
-    appLayout.style.display = 'flex';
-    welcomeMsg.textContent = `Bem-vindo, ${user.name}`;
-    renderDashboard();
-    showTab('dashboard');
-  }
-
-  function showLogin() {
+    welcomeMsg.textContent = `Olá, ${user.email}`;
+    // Carregar dados iniciais
+    renderProcessos();
+  } else {
+    welcomeMsg.textContent = "";
     loginOverlay.style.display = 'flex';
-    loginErro.textContent = '';
-    loginPass.value = '';
-    appLayout.style.display = 'none';
-    welcomeMsg.textContent = '';
-    sessionStorage.removeItem('loggedInUser');
-    loginUser.focus();
+    clearProcessosUI();
   }
+});
 
-  function tentarEntrar() {
-    const login = loginUser.value.trim();
-    const pass = loginPass.value;
-    const user = DB_USERS.find(u => u.login === login);
+/* ===== 3) FIRESTORE: COLEÇÕES ===== */
+const colProcessos  = collection(db, 'processos');
+const colComentarios= collection(db, 'comentarios');
 
-    if (user && simpleHash(pass) === user.hashedPassword) {
-      sessionStorage.setItem('loggedInUser', JSON.stringify(user));
-      showApp(user);
-    } else {
-      loginErro.textContent = 'Login ou senha inválidos';
-      loginPass.select();
-      loginPass.focus();
-    }
-  }
+/* ===== 4) CRIAR/EDITAR PROCESSO (usa seu #f_proc) ===== */
+const fProc     = document.getElementById('f_proc');                    /*  */
+const tabelaTbody = document.getElementById('tbl-body');                /*  */
+const mobileCards = document.getElementById('mobile-cards-container');  /*  */
 
-  function checkLoginState() {
-      const loggedInUser = sessionStorage.getItem('loggedInUser');
-      if (loggedInUser) {
-          showApp(JSON.parse(loggedInUser));
-      } else {
-          showLogin();
-      }
-  }
-  
-  const getDoc = (docId) => DB_DOCS.find(d => d.id === docId);
-  const getVersion = (versionId) => DB_VERSOES.find(v => v.id === versionId);
-  const getModelo = (modeloId) => DB_MODELOS.find(m => m.id === modeloId);
-  const getVersionsOfDoc = (docId) => DB_VERSOES.filter(v => v.idDocumento === docId).sort((a,b) => b.versao - a.versao);
-  const getCurrentVersion = (docId) => {
-      const doc = getDoc(docId);
-      if (!doc) return null;
-      return getVersion(doc.idVersaoAtual);
-  };
-  
-  function base64ToArrayBuffer(base64) {
-      const binaryString = window.atob(base64.split(',')[1]);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); }
-      return bytes.buffer;
-  }
-  
-  function getMimeType(filename) {
-      const extension = filename.split('.').pop().toLowerCase();
-      switch (extension) {
-        case 'doc': return 'application/msword';
-        case 'pdf': return 'application/pdf';
-        default: return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      }
-  }
-
-  function handleDownload(base64Data, filename) {
-      try {
-          const buffer = base64ToArrayBuffer(base64Data);
-          const mimeType = getMimeType(filename);
-          const blob = new Blob([buffer], { type: mimeType });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-      } catch (e) {
-          console.error("Erro ao baixar:", e);
-          showToast("Ocorreu um erro ao preparar o arquivo para download.", "danger");
-      }
-  }
-    
-  function updateModeloSelect(){
-    // Esta função foi mantida caso seja usada em outro local, mas não é mais usada no formulário de processo
-  }
-
-  function renderPagination(container, totalItems, currentPage, itemsPerPage, onPageChange) {
-        container.innerHTML = '';
-        const totalPages = Math.ceil(totalItems / itemsPerPage);
-        if (totalPages <= 1) return;
-
-        let paginationHTML = `<button class="page-link ${currentPage === 1 ? 'disabled' : ''}" data-page="${currentPage - 1}">Anterior</button>`;
-        for (let i = 1; i <= totalPages; i++) {
-            paginationHTML += `<button class="page-link ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
-        }
-        paginationHTML += `<button class="page-link ${currentPage === totalPages ? 'disabled' : ''}" data-page="${currentPage + 1}">Próximo</button>`;
-        container.innerHTML = paginationHTML;
-
-        container.onclick = (e) => {
-            const pageBtn = e.target.closest('[data-page]');
-            if (pageBtn && !pageBtn.classList.contains('disabled')) {
-                onPageChange(Number(pageBtn.dataset.page));
-            }
-        };
-    }
-    
-  function drawPareceres(resetPage = false) {
-    if (resetPage) parecerCurrentPage = 1;
-    const list = $('#parecerList');
-    const paginationContainer = $('#parecerPagination');
-    if(!list || !paginationContainer) return;
-    
-    list.innerHTML='';
-    paginationContainer.innerHTML = '';
-    
-    if(!currentlyDisplayedPareceres.length){
-        list.innerHTML = `<div style="padding:8px; color:var(--text-muted)">Nenhum parecer encontrado.</div>`;
-        return;
-    }
-
-    const pageItems = currentlyDisplayedPareceres.slice((parecerCurrentPage - 1) * itemsPerPageDocs, parecerCurrentPage * itemsPerPageDocs);
-
-    pageItems.forEach(doc=>{
-        const currentVersion = getCurrentVersion(doc.id);
-        const allVersions = getVersionsOfDoc(doc.id);
-        
-        // NOVO: Encontrar o processo vinculado
-        const processoVinculado = DB.find(proc => String(proc.docId) === String(doc.id));
-        const processoInfo = processoVinculado 
-            ? `<span style="font-size: 0.8em; color: var(--text-muted); display: block; margin-top: 4px;">Proc: ${processoVinculado.num}</span>`
-            : `<span style="font-size: 0.8em; color: var(--text-muted); display: block; margin-top: 4px;">Não vinculado</span>`;
-
-        const item=document.createElement('div');
-        item.className='doc-item';
-        item.innerHTML = `
-        <div>
-          <span class="name" title="${doc.nomePrincipal}">${doc.nomePrincipal}</span>
-          ${processoInfo}
-        </div>
-        <div class="actions">
-          <button class="btn" data-download-version="${currentVersion.id}">Abrir Atual</button> 
-          <button class="btn secondary" data-versions-for="${doc.id}">Versões (${allVersions.length})</button> 
-          <button class="btn danger" data-del-doc="${doc.id}">Excluir</button>
-        </div>`;
-        list.appendChild(item);
-    });
-
-    renderPagination(paginationContainer, currentlyDisplayedPareceres.length, parecerCurrentPage, itemsPerPageDocs, (newPage) => {
-        parecerCurrentPage = newPage;
-        drawPareceres();
-    });
-  }
-    
-  const mVersoes = $('#m_versoes');
-  function openVersionsModal(docId) {
-      const doc = getDoc(docId); if (!doc) return;
-      const versionsList = $('#lista_versoes');
-      $('#m_versoes_t').textContent = `Histórico de: ${doc.nomePrincipal}`;
-      versionsList.innerHTML = '';
-      const versions = getVersionsOfDoc(docId);
-      versions.forEach(v => {
-          const item = document.createElement('div');
-          item.className = 'version-item';
-          const isCurrent = doc.idVersaoAtual === v.id;
-          item.innerHTML = `<div class="version-item-info">
-            <span class="v-name">${isCurrent ? '▶ ' : ''}V${v.versao}: ${v.nomeArquivo} ${isCurrent ? '(Atual)' : ''}</span>
-            <span class="v-date">Adicionado em: ${fmtBR(v.adicionadoEm)}</span>
-          </div> 
-          <button class="btn" data-download-version="${v.id}">Baixar</button>`;
-          versionsList.appendChild(item);
-      });
-      $('#btnNovaVersao').onclick = () => {
-          $('#novaVersaoFile').click();
-          $('#novaVersaoFile').onchange = (e) => {
-              const file = e.target.files[0]; if (!file) return;
-              const reader = new FileReader();
-              reader.onload = async (ev) => {
-                  const newVersionId = Date.now();
-                  const lastVersionNum = versions.length > 0 ? versions[0].versao : 0;
-                  const newVersion = { id: newVersionId, idDocumento: docId, versao: lastVersionNum + 1, nomeArquivo: file.name, data: ev.target.result, adicionadoEm: new Date().toISOString() };
-                  DB_VERSOES.push(newVersion);
-                  doc.idVersaoAtual = newVersionId;
-                  
-                  await dbHelper.put('versoes', newVersion);
-                  await dbHelper.put('documentos', doc);
-
-                  openVersionsModal(docId); 
-                  currentlyDisplayedPareceres = DB_DOCS.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
-                  drawPareceres();
-                  showToast('Nova versão adicionada!');
-              };
-              reader.readAsDataURL(file); e.target.value = ''; $('#novaVersaoFile').onchange = null;
-          };
-      };
-      if(mVersoes) mVersoes.style.display = 'flex';
-  }
-  
-  function renderModelos(resetPage = false) {
-    if (resetPage) modeloCurrentPage = 1;
-    const list = $('#modeloList');
-    const paginationContainer = $('#modeloPagination');
-    if (!list || !paginationContainer) return;
-
-    list.innerHTML = '';
-    paginationContainer.innerHTML = '';
-
-    const sortedModelos = DB_MODELOS.sort((a, b) => a.name.localeCompare(b.name));
-
-    if (!sortedModelos.length) {
-        list.innerHTML = `<div style="padding:8px; color:var(--text-muted)">Nenhum modelo cadastrado.</div>`;
-        return;
-    }
-
-    const pageItems = sortedModelos.slice((modeloCurrentPage - 1) * itemsPerPageDocs, modeloCurrentPage * itemsPerPageDocs);
-
-    pageItems.forEach(modelo => {
-        const item = document.createElement('div');
-        item.className = 'doc-item';
-        item.innerHTML = `<span class="name" title="${modelo.name}">${modelo.name}</span>
-        <div class="actions">
-            <button class="btn" data-download-modelo="${modelo.id}">Baixar</button> 
-            <button class="btn danger" data-del-modelo="${modelo.id}">Excluir</button>
-        </div>`;
-        list.appendChild(item);
-    });
-
-    renderPagination(paginationContainer, sortedModelos.length, modeloCurrentPage, itemsPerPageDocs, (newPage) => {
-        modeloCurrentPage = newPage;
-        renderModelos();
-    });
-  }
-  
-  $('#buscaConteudo').oninput = async () => {
-      const searchTerm = $('#buscaConteudo').value.toLowerCase().trim();
-      if (!searchTerm) { 
-          currentlyDisplayedPareceres = DB_DOCS.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
-          drawPareceres(true);
-          return; 
-      }
-      const matchingDocIds = new Set();
-      for (const version of DB_VERSOES) {
-          try {
-              const buffer = base64ToArrayBuffer(version.data);
-              const result = await mammoth.extractRawText({ arrayBuffer: buffer });
-              const text = result.value || '';
-              if (text.toLowerCase().includes(searchTerm)) matchingDocIds.add(version.idDocumento);
-          } catch (e) { console.warn(`Erro ao ler ${version.nomeArquivo}:`, e); }
-      }
-      currentlyDisplayedPareceres = DB_DOCS.filter(d => matchingDocIds.has(d.id));
-      drawPareceres(true);
-  };
-
-  const sections={dashboard: $('#secDashboard'), proc:$('#secProc'), cal:$('#secCal'), docs:$('#secDoc'), leis: $('#secLeis'), cfg:$('#secCfg')};
-  
-  // Acessa elementos do menu mobile para o JS
-  const mobileMenuToggle = $('#mobile-menu-toggle');
-  const topNav = $('#top-nav');
-  const overlay = $('#mobile-menu-overlay');
-
-  function showTab(key, options = {}){
-    Object.values(sections).forEach(s=> { if(s) s.style.display='none'; });
-    if(sections[key]) sections[key].style.display='block';
-    
-    $$('.tab').forEach(t=> {
-        const isActive = t.dataset.tab === key;
-        t.classList.toggle('active', isActive);
-        if (isActive) {
-            t.setAttribute('aria-current', 'page');
-        } else {
-            t.removeAttribute('aria-current');
-        }
-    });
-    
-    // Fecha o menu mobile ao selecionar uma opção
-    if(topNav.classList.contains('mobile-open')) {
-        closeMobileMenu();
-    }
-    
-    if(key==='dashboard') renderDashboard();
-    if(key==='proc') renderProc(true, options.filterBy);
-    if(key==='cal') drawView();
-    if(key==='docs') { 
-        currentlyDisplayedPareceres = DB_DOCS.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
-        drawPareceres(true); 
-        renderModelos(true); 
-    }
-    if(key==='leis') renderLeis();
-    if(key==='cfg') { renderUsers(); renderEmissores(); }
-  }
-
-  // ===== Lógica de Processos =====
-  const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
-  
-  function renderProc(reset = false, initialFilter = null) {
-    const q = $('#q'), ord = $('#ord'), tbody = $('#tbl-body'), mobileContainer = $('#mobile-cards-container'), paginationProcessesContainer = $('#pagination-container');
-
-    let currentPage = 1;
-    const itemsPerPage = 10;
-
-    if (initialFilter) {
-        q.value = '';
-        if(initialFilter.text) q.value = initialFilter.text;
-    }
-
-    function filterSort() {
-        let L = DB.slice();
-        const t = (q.value || '').toLowerCase().trim();
-        if (t) L = L.filter(p => [p.num, p.int, p.obj, p.setorOrigem, p.acao, statusMap[p.stat]].some(v => String(v || '').toLowerCase().includes(t)));
-        if (initialFilter?.status) L = L.filter(p => p.stat === initialFilter.status);
-        if (initialFilter?.prazo === 'alerta') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) <= 5 && diffDays(todayUTC(), parse(p.prazo)) >= 0);
-        if (initialFilter?.prazo === 'vencido') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) < 0);
-        if (initialFilter?.month !== undefined) L = L.filter(p => p.ent && parse(p.ent).getUTCMonth() === initialFilter.month);
-        if (ord.value === 'prazo') L.sort((a, b) => { const A = parse(a.prazo), B = parse(b.prazo); return (A ? A.getTime() : Infinity) - (B ? B.getTime() : Infinity); });
-        else if (ord.value === 'status') L.sort((a, b) => (a.stat || '').localeCompare(b.stat || ''));
-        else L.sort((a, b) => { const A = parse(a.ent), B = parse(b.ent); return (B ? B.getTime() : 0) - (A ? A.getTime() : 0); });
-        return L;
-    }
-    
-    function draw(resetPage = false) {
-        if (resetPage) currentPage = 1;
-        const L = filterSort();
-        tbody.innerHTML = '';
-        mobileContainer.innerHTML = '';
-
-        if (L.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">Nenhum processo encontrado.</td></tr>`;
-            mobileContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:2rem;">Nenhum processo encontrado.</p>`;
-        } else {
-            const pageItems = L.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-            pageItems.forEach(p => {
-                const sTxt = statusMap[p.stat] || p.stat;
-                // Render Table Row
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>
-                        <div style="font-weight: 700; color: var(--text-primary);">${p.num}</div>
-                        <div>${p.int}</div>
-                    </td>
-                    <td>${p.obj || '—'}</td>
-                    <td style="text-align:center"><span class="status ${p.stat}">${sTxt}</span></td>
-                    <td style="text-align:center">${p.prazo ? fmtBR(p.prazo) : '—'}</td>
-                    <td style="text-align:center">
-                        <div class="action-buttons" style="display:flex; gap: 4px; justify-content:center;">
-                            <button class="icon-btn" data-view-proc="${p.id}" title="Visualizar"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-                            <button class="icon-btn" data-edit-proc="${p.id}" title="Editar"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                            <button class="icon-btn" data-del-proc="${p.id}" title="Excluir"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-
-                // Render Mobile Card
-                const card = document.createElement('div');
-                card.className = 'proc-card';
-                card.innerHTML = `
-                    <div class="proc-card-header">
-                        <span class="num">${p.num}</span>
-                        <span class="status ${p.stat}">${sTxt}</span>
-                    </div>
-                    <div class="proc-card-body">
-                        <div class="item"><strong>Interessado:</strong> ${p.int}</div>
-                        <div class="item"><strong>Objeto:</strong> ${p.obj || '—'}</div>
-                        <div class="item"><strong>Prazo:</strong> ${p.prazo ? fmtBR(p.prazo) : '—'}</div>
-                    </div>
-                    <div class="proc-card-footer">
-                        <button class="btn secondary" data-view-proc="${p.id}">Ver</button>
-                        <button class="btn" data-edit-proc="${p.id}">Editar</button>
-                        <button class="btn danger" data-del-proc="${p.id}">Excluir</button>
-                    </div>
-                `;
-                mobileContainer.appendChild(card);
-            });
-        }
-        renderPagination(paginationProcessesContainer, L.length, currentPage, itemsPerPage, (newPage) => {
-            currentPage = newPage;
-            draw();
-        });
-    }
-    
-    q.oninput = () => draw(true); ord.onchange = () => draw(true);
-    $('#add').onclick = () => openProc('new');
-    $('#exportCsv').onclick = () => exportCSV(filterSort());
-    $('#exportXlsx').onclick = () => exportXLSX(filterSort());
-    
-    const procContainer = $('#secProc');
-    procContainer.onclick = async (e) => {
-        const viewBtn = e.target.closest('[data-view-proc]');
-        const editBtn = e.target.closest('[data-edit-proc]');
-        const delBtn = e.target.closest('[data-del-proc]');
-
-        if (viewBtn) openProcDetails(viewBtn.dataset.viewProc);
-        if (editBtn) openProc('edit', editBtn.dataset.editProc);
-        if (delBtn) {
-            const id = Number(delBtn.dataset.delProc);
-            if (confirm('Tem certeza que deseja excluir este processo?')) {
-                DB = DB.filter(p => p.id != id);
-                await dbHelper.delete('processos', id);
-                draw(true);
-                renderDashboard();
-                showToast('Processo excluído.', 'danger');
-            }
-        }
-    };
-
-    draw(reset);
-  }
-
-  const SETORES = ['Comissões', 'Controladoria', 'CPL', 'Depto. Financeiro', 'Diretoria Geral', 'Gabinete Vereador', 'Presidência', 'Recursos Humanos', 'Secretaria Geral', 'Outros'].sort();
-  function popularSelect(selectElement, optionsArray) {
-      if (!selectElement) return;
-      selectElement.innerHTML = '<option value="">Selecione...</option>';
-      optionsArray.forEach(s => selectElement.innerHTML += `<option value="${s}">${s}</option>`);
-  }
-
-  function openProc(mode, id) {
-    const m = $('#m_proc'); m.style.display = 'flex';
-    $('#m_proc_t').textContent = mode === 'new' ? 'Novo Processo' : 'Editar Processo';
-    $$('[data-close-proc]').forEach(x => x.onclick = () => m.style.display = 'none');
-    
-    popularSelect($('#fp_origem'), SETORES);
-    popularSelect($('#fp_dest'), SETORES);
-    updateEmissorSelect();
-
-    const form = $('#f_proc'), del = $('#fp_del');
-    form.reset();
-
-    if (mode === 'edit') {
-        const p = DB.find(x => x.id == id); if (!p) return;
-        for (const key in p) {
-            if (form.elements[key]) form.elements[key].value = p[key];
-        }
-        del.style.display = 'inline-flex';
-    } else {
-        form.elements.id.value = '';
-        del.style.display = 'none';
-    }
-    
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        const formData = new FormData(form);
-        const idVal = formData.get('id');
-        const isNew = !idVal;
-        const rec = { id: isNew ? Date.now() : Number(idVal) };
-        for (let [key, value] of formData.entries()) {
-            if (key !== 'id') rec[key] = value.trim();
-        }
-        
-        const idx = DB.findIndex(p => p.id == rec.id);
-        if (idx > -1) {
-            rec.docId = DB[idx].docId; // Preserva o docId existente ao editar
-            DB[idx] = rec;
-        }
-        else DB.unshift(rec);
-        
-        await dbHelper.put('processos', rec);
-        m.style.display = 'none';
-        renderProc(true);
-        renderDashboard();
-        showToast('Processo salvo com sucesso!');
-    };
-    del.onclick = async () => {
-        const idVal = Number(form.elements.id.value);
-        if (!idVal) return;
-        if (confirm('Tem certeza?')) {
-            DB = DB.filter(x => x.id != idVal);
-            await dbHelper.delete('processos', idVal);
-            m.style.display = 'none';
-            renderProc(true);
-            renderDashboard();
-            showToast('Processo excluído.', 'danger');
-        }
-    };
-  }
-  function openProcDetails(id) {
-    const p = DB.find(proc => proc.id == id);
-    if (!p) return;
-
-    const modal = $('#m_proc_view');
-    $('#view_proc_title').textContent = `Detalhes do Processo ${p.num}`;
-    const content = $('#view-details-content');
-
-    const diasTramitacao = (p.ent) ? `${diffDays(parse(p.ent), p.saida ? parse(p.saida) : todayUTC())} dia(s)` : '—';
-    
-    content.innerHTML = `
-      <div class="view-section">
-        <h4>Identificação</h4>
-        <div class="view-grid">
-          <div class="view-item"><strong>Nº Processo</strong><p>${p.num || '—'}</p></div>
-          <div class="view-item"><strong>Tipo</strong><p>${p.tipo === 'administrativo' ? 'Administrativo' : 'Judicial'}</p></div>
-          <div class="view-item" style="grid-column: 1 / -1;"><strong>Interessado</strong><p>${p.int || '—'}</p></div>
-          <div class="view-item" style="grid-column: 1 / -1;"><strong>Objeto</strong><p>${p.obj || '—'}</p></div>
-          <div class="view-item" style="grid-column: 1 / -1;"><strong>Ação Tomada</strong><p>${p.acao || '—'}</p></div>
-        </div>
-      </div>
-      <div class="view-section">
-        <h4>Tramitação e Parecer</h4>
-        <div class="view-grid">
-          <div class="view-item"><strong>Status</strong><p><span class="status ${p.stat}">${statusMap[p.stat] || '—'}</span></p></div>
-          <div class="view-item"><strong>Prazo Final</strong><p>${fmtBR(p.prazo)}</p></div>
-          <div class="view-item"><strong>Setor de Origem</strong><p>${p.setorOrigem || '—'}</p></div>
-          <div class="view-item"><strong>Destino Final</strong><p>${p.dest || '—'}</p></div>
-          <div class="view-item"><strong>Data de Entrada</strong><p>${fmtBR(p.ent)}</p></div>
-          <div class="view-item"><strong>Data de Saída</strong><p>${fmtBR(p.saida)}</p></div>
-          <div class="view-item"><strong>Dias de Tramitação</strong><p>${diasTramitacao}</p></div>
-          <div class="view-item" style="grid-column: 1 / -1;">
-            <strong>Parecer Vinculado</strong>
-            <div id="view-parecer-details" style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
-                <!-- O conteúdo será preenchido pelo JavaScript -->
-            </div>
-            <input type="file" id="anexarParecerFile" class="sr-only" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
-          </div>
-        </div>
-      </div>
-    `;
-    
-    // NOVA LÓGICA PARA GERENCIAR O PARECER
-    const parecerContainer = $('#view-parecer-details');
-    if (p.docId) {
-        const parecerDoc = getDoc(p.docId);
-        if (parecerDoc) {
-            const currentVersion = getCurrentVersion(parecerDoc.id);
-            parecerContainer.innerHTML = `
-                <p style="margin:0; font-weight: 600;">${parecerDoc.nomePrincipal}</p>
-                <button class="btn secondary" data-download-version="${currentVersion.id}">Ver Parecer</button>
-                <button class="btn" data-versions-for="${parecerDoc.id}">Histórico</button>
-            `;
-            // Adiciona listeners para os botões recém-criados
-            parecerContainer.querySelector('[data-download-version]').onclick = (e) => { const v = getVersion(Number(e.target.dataset.downloadVersion)); if(v) handleDownload(v.data, v.nomeArquivo); };
-            parecerContainer.querySelector('[data-versions-for]').onclick = (e) => openVersionsModal(Number(e.target.dataset.versionsFor));
-
-        } else {
-            parecerContainer.innerHTML = `<p style="margin:0;">Vinculado, mas não encontrado (ID: ${p.docId}).</p>`;
-        }
-    } else {
-        parecerContainer.innerHTML = `
-            <p style="margin:0;">Nenhum parecer anexado.</p>
-            <button id="btnAnexarParecerView" class="btn primary">Anexar Agora</button>
-        `;
-        $('#btnAnexarParecerView').onclick = () => $('#anexarParecerFile').click();
-    }
-    
-    // LÓGICA PARA O INPUT DE ARQUIVO
-    $('#anexarParecerFile').onchange = async (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            const docId = Date.now();
-            const newDoc = { id: docId, nomePrincipal: file.name, criadoEm: new Date().toISOString(), idVersaoAtual: null };
-            const versionId = Date.now() + 1; // Garante ID único
-            const newVersion = { id: versionId, idDocumento: docId, versao: 1, nomeArquivo: file.name, data: ev.target.result, adicionadoEm: new Date().toISOString() };
-            newDoc.idVersaoAtual = versionId;
-
-            DB_DOCS.push(newDoc); DB_VERSOES.push(newVersion);
-            await dbHelper.put('documentos', newDoc);
-            await dbHelper.put('versoes', newVersion);
-
-            p.docId = docId; await dbHelper.put('processos', p);
-            
-            showToast('Parecer anexado e vinculado com sucesso!', 'success');
-            openProcDetails(id); // Reabre o modal para refletir a mudança
-        };
-        reader.readAsDataURL(file); e.target.value = ''; 
-    };
-    
-    const selectEmissorView = $('#pdf_emissor_select_view');
-    selectEmissorView.innerHTML = '<option value="">Usuário Logado</option>';
-    DB_EMISSORES.forEach(emissor => {
-        const option = document.createElement('option');
-        option.value = emissor.id;
-        option.textContent = emissor.name;
-        selectEmissorView.appendChild(option);
-    });
-    if (p.emissorId) { selectEmissorView.value = p.emissorId; }
-
-    modal.style.display = 'flex';
-    $$('[data-close-view]').forEach(b => b.onclick = () => modal.style.display = 'none');
-
-    $('#btnGerarPdf').onclick = async () => {
-        const selectedEmissorId = $('#pdf_emissor_select_view').value;
-        generateProcessPDF(id, selectedEmissorId);
-    };
-  }
-
-  async function generateProcessPDF(procId, emissorId) {
-      try {
-            const p = DB.find(proc => proc.id == procId); if (!p) { showToast('Processo não encontrado.', 'danger'); return; }
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-            doc.setFont('helvetica'); let y = 15;
-            const pageW = doc.internal.pageSize.getWidth(), margin = 15;
-
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Consultoria Jurídica – Câmara Municipal', pageW / 2, y, { align: 'center' }); y += 7;
-            const timestamp = new Date().toLocaleString('pt-BR');
-            doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(150, 150, 150); doc.text(`Emitido em: ${timestamp}`, pageW - margin, y, { align: 'right' }); y += 8;
-            
-            const drawSection = (title, contentCallback) => {
-                if (y > 250) { doc.addPage(); y = 20; }
-                doc.setFillColor(240, 240, 240); doc.roundedRect(margin, y, pageW - margin * 2, 8, 2, 2, 'F');
-                doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(50, 50, 50); doc.text(title, margin + 3, y + 5.5); y += 12;
-                const startContentY = y; contentCallback(); const endContentY = y;
-                doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.rect(margin, startContentY - 1, pageW - margin * 2, endContentY - startContentY + 2); y += 8;
-            };
-            const drawDataRow = (label, value) => {
-                const valueX = margin + 50, maxWidth = pageW - valueX - margin - 5;
-                doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80); doc.text(label, margin + 5, y + 5);
-                doc.setFont('helvetica', 'normal'); doc.setTextColor(30, 30, 30); const lines = doc.splitTextToSize(String(value || '—'), maxWidth); doc.text(lines, valueX, y + 5);
-                const rowHeight = lines.length * 5 + 4; doc.setDrawColor(230, 230, 230); doc.line(margin, y + rowHeight - 1, pageW - margin, y + rowHeight - 1); y += rowHeight;
-            };
-
-            drawSection('DADOS DO PROCESSO', () => { drawDataRow('Nº DO PROCESSO:', p.num); drawDataRow('TIPO:', p.tipo === 'administrativo' ? 'Administrativo' : 'Judicial'); drawDataRow('SETOR DE ORIGEM:', p.setorOrigem); drawDataRow('DESTINO:', p.dest); drawDataRow('INTERESSADO:', p.int); });
-            drawSection('OBJETO E AÇÃO TOMADA', () => { drawDataRow('OBJETO:', p.obj); drawDataRow('AÇÃO TOMADA:', p.acao); });
-            drawSection('PRAZOS E ANDAMENTO', () => {
-                const diasTramitacaoCalc = p.ent ? `${diffDays(parse(p.ent), p.saida ? parse(p.saida) : todayUTC())} dia(s)` : '—';
-                drawDataRow('ENTRADA:', fmtBR(p.ent)); drawDataRow('SAÍDA:', fmtBR(p.saida)); drawDataRow('PRAZO FINAL:', fmtBR(p.prazo)); drawDataRow('TEMPO DE TRAMITAÇÃO:', diasTramitacaoCalc);
-                const statusText = (statusMap[p.stat] || '—').toUpperCase(), statusColors = { finalizado: [34, 197, 94], arquivado: [100, 116, 139], 'em-analise': [245, 158, 11], pendente: [239, 68, 68], default: [100, 116, 139] }, statusColor = statusColors[p.stat] || statusColors.default;
-                doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80); doc.text('STATUS ATUAL:', margin + 5, y + 5);
-                const textWidth = doc.getTextWidth(statusText); doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]); doc.roundedRect(margin + 49, y + 1.5, textWidth + 6, 6, 2, 2, 'F');
-                doc.setTextColor(255, 255, 255); doc.text(statusText, margin + 52, y + 5.5); y += 9;
-            });
-            
-            const parecerDoc = p.docId ? getDoc(p.docId) : null;
-            const parecerName = parecerDoc ? parecerDoc.nomePrincipal.replace(/\.(docx|doc)$/i, '') : 'Nenhum parecer anexado';
-            drawSection('PARECER', () => { drawDataRow('DOCUMENTO:', parecerName); });
-
-            
-            const pageH = doc.internal.pageSize.getHeight(), footerY = pageH - 25;
-            const emitter = emissorId ? DB_EMISSORES.find(e => e.id == emissorId) : null, loggedInUser = JSON.parse(sessionStorage.getItem('loggedInUser')), emitterName = emitter ? emitter.name : (loggedInUser ? loggedInUser.name : 'Usuário');
-            doc.line(margin + 40, footerY + 5, pageW - margin - 40, footerY + 5); doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.text(emitterName, pageW / 2, footerY + 10, { align: 'center' });
-            
-            doc.save(`ficha-processo_${p.num.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`); showToast('Ficha PDF gerada com sucesso!');
-      } catch (e) { console.error("Erro ao gerar PDF:", e); showToast('Ocorreu um erro ao gerar a ficha.', 'danger'); }
-  }
-
-    function exportCSV(data) {
-        if (data.length === 0) { showToast('Nenhum dado para exportar.', 'info'); return; }
-        const headers = ['Nº Processo', 'Interessado', 'Tipo', 'Status', 'Objeto', 'Ação Tomada', 'Data Entrada', 'Prazo Final', 'Data Saída'];
-        const rows = data.map(p => [ `"${p.num || ''}"`, `"${p.int || ''}"`, `"${p.tipo || ''}"`, `"${statusMap[p.stat] || ''}"`, `"${(p.obj || '').replace(/"/g, '""')}"`, `"${(p.acao || '').replace(/"/g, '""')}"`, `"${p.ent ? fmtBR(p.ent) : ''}"`, `"${p.prazo ? fmtBR(p.prazo) : ''}"`, `"${p.saida ? fmtBR(p.saida) : ''}"` ].join(','));
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
-        const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "processos.csv");
-        document.body.appendChild(link); link.click(); document.body.removeChild(link); showToast('Dados exportados para CSV!');
-    }
-
-    async function exportXLSX(data) {
-        showToast('Iniciando exportação para Excel...', 'info');
-        try {
-            if (typeof XLSX === 'undefined') throw new Error('Biblioteca XLSX não carregada.');
-            const dataForSheet = data.map(p => ({
-                'Nº Processo': p.num || '', 'Interessado': p.int || '', 'Tipo': p.tipo ? (p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)) : '', 'Status': statusMap[p.stat] || '', 'Objeto': p.obj || '', 'Entrada': p.ent ? fmtBR(p.ent) : '', 'Prazo': p.prazo ? fmtBR(p.prazo) : '', 'Saída': p.saida ? fmtBR(p.saida) : '', 'Dias Tramit.': (p.ent && p.saida) ? diffDays(parse(p.ent), parse(p.saida)) : (p.ent ? diffDays(parse(p.ent), todayUTC()) : '')
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Processos');
-            XLSX.writeFile(workbook, 'processos.xlsx');
-            showToast('Exportação para Excel concluída!');
-        } catch (error) { console.error("Erro ao exportar para Excel:", error); showToast(error.message || 'Erro ao exportar para Excel.', 'danger'); }
-    }
-  
-  // ===== Lógica de Leis =====
-  function openLeiModal(mode, id = null) {
-      const m = $('#m_lei'); m.style.display = 'flex';
-      $('#m_lei_t').textContent = mode === 'new' ? 'Adicionar Lei' : 'Editar Lei';
-      const form = $('#f_lei'), del = $('#fl_del'); form.reset(); let fileData = null;
-
-      if (mode === 'edit') {
-          const lei = DB_LEIS.find(l => l.id == id); if (!lei) return;
-          for (const key in lei) { if(key !== 'arquivo' && form.elements[key]) form.elements[key].value = lei[key]; }
-          fileData = lei.arquivo; del.style.display = 'inline-flex';
-      } else { form.elements.id.value = ''; del.style.display = 'none'; }
-
-      form.elements.arquivo.onchange = (e) => {
-          const file = e.target.files[0];
-          if (file) { const reader = new FileReader(); reader.onload = (ev) => { fileData = { name: file.name, data: ev.target.result }; }; reader.readAsDataURL(file); } else { fileData = null; }
-      };
-      form.onsubmit = async (e) => {
-          e.preventDefault(); const formData = new FormData(form); const idVal = formData.get('id'); const isNew = !idVal;
-          const rec = { id: isNew ? Date.now() : Number(idVal) };
-          for (let [key, value] of formData.entries()) { if (key !== 'id' && key !== 'arquivo') rec[key] = value.trim(); }
-          if(fileData) rec.arquivo = fileData;
-
-          const idx = DB_LEIS.findIndex(l => l.id == rec.id); if (idx > -1) DB_LEIS[idx] = rec; else DB_LEIS.unshift(rec);
-          await dbHelper.put('leis', rec); m.style.display = 'none'; renderLeis(); showToast('Lei salva com sucesso!');
-      };
-      del.onclick = async () => {
-          const idVal = Number(form.elements.id.value); if (!idVal) return;
-          if (confirm('Tem certeza?')) {
-              DB_LEIS = DB_LEIS.filter(l => l.id != idVal); await dbHelper.delete('leis', idVal);
-              m.style.display = 'none'; renderLeis(); showToast('Lei excluída.', 'danger');
-          }
-      }; $$('[data-close-lei]').forEach(x => x.onclick = () => m.style.display = 'none');
-  }
-
-  function renderLeis() {
-      const grid = $('#leisGrid'); const q = $('#qLeis').value.toLowerCase().trim(); grid.innerHTML = '';
-      const leisFiltradas = DB_LEIS.filter(lei => !q || [lei.tipo, lei.numero, lei.ano, lei.ementa].some(v => String(v || '').toLowerCase().includes(q)));
-      if (leisFiltradas.length === 0) { grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">Nenhuma lei encontrada.</p>`; return; }
-      leisFiltradas.forEach(lei => {
-          const card = document.createElement('div'); card.className = 'card lei-card';
-          card.innerHTML = `<div class="lei-card-header">${lei.tipo} Nº ${lei.numero}/${lei.ano}</div><p class="lei-card-ementa">${lei.ementa}</p>
-              <div class="lei-card-actions">
-                  ${lei.link ? `<a href="${lei.link}" target="_blank" class="btn secondary">Ver Link</a>` : ''}
-                  ${lei.arquivo ? `<button class="btn secondary" data-download-lei="${lei.id}">Baixar Anexo</button>` : ''}
-                  <button class="btn" data-edit-lei="${lei.id}" style="margin-left:auto;">Editar</button>
-              </div>`;
-          grid.appendChild(card);
-      });
-  }
-  
-  $('#qLeis').oninput = renderLeis;
-  $('#leisGrid').onclick = (e) => {
-      const editBtn = e.target.closest('[data-edit-lei]'); const downloadBtn = e.target.closest('[data-download-lei]');
-      if (editBtn) openLeiModal('edit', editBtn.dataset.editLei);
-      if (downloadBtn) { const lei = DB_LEIS.find(l => l.id == downloadBtn.dataset.downloadLei); if (lei && lei.arquivo) handleDownload(lei.arquivo.data, lei.arquivo.name); }
-  };
-
-  // ===== Lógica de Configurações =====
-  function openUserModal(mode, id = null) {
-    const m = $('#m_user'); m.style.display = 'flex';
-    $('#m_user_t').textContent = mode === 'new' ? 'Novo Usuário' : 'Editar Usuário';
-    const form = $('#f_user'), del = $('#fu_del'); form.reset(); $('#fu_pass').placeholder = mode === 'new' ? 'Defina uma senha' : 'Deixe em branco para não alterar';
-
-    if (mode === 'edit') {
-        const user = DB_USERS.find(u => u.id == id); if (!user) return;
-        form.elements.id.value = user.id; form.elements.name.value = user.name; form.elements.login.value = user.login; form.elements.role.value = user.role; del.style.display = 'inline-flex';
-    } else { form.elements.id.value = ''; del.style.display = 'none'; }
-
-    form.onsubmit = async (e) => {
-        e.preventDefault(); const formData = new FormData(form); const idVal = formData.get('id'); const isNew = !idVal;
-        const rec = { id: isNew ? Date.now() : Number(idVal), name: formData.get('name'), login: formData.get('login'), role: formData.get('role')};
-        if (isNew && !formData.get('pass')) { showToast('Senha é obrigatória para novos usuários.', 'danger'); return; }
-        if (formData.get('pass')) { rec.hashedPassword = simpleHash(formData.get('pass')); }
-
-        const idx = DB_USERS.findIndex(u => u.id == rec.id);
-        if (idx > -1) { if (!rec.hashedPassword) rec.hashedPassword = DB_USERS[idx].hashedPassword; DB_USERS[idx] = rec; } else { DB_USERS.push(rec); }
-        await dbHelper.put('users', rec); m.style.display = 'none'; renderUsers(); showToast('Usuário salvo!');
-    };
-    del.onclick = async () => {
-        const idVal = Number(form.elements.id.value); if (!idVal) return;
-        if (DB_USERS.length <= 1) { showToast('Não é possível excluir o único usuário.', 'danger'); return; }
-        if (confirm('Tem certeza?')) {
-            DB_USERS = DB_USERS.filter(u => u.id != idVal); await dbHelper.delete('users', idVal); m.style.display = 'none'; renderUsers(); showToast('Usuário excluído.', 'danger');
-        }
-    }; $$('[data-close-user]').forEach(x => x.onclick = () => m.style.display = 'none');
-  }
-  
-  function openEmissorModal(mode, id = null) {
-    const m = $('#m_emissor'); m.style.display = 'flex'; $('#m_emissor_t').textContent = mode === 'new' ? 'Novo Emissor' : 'Editar Emissor';
-    const form = $('#f_emissor'), del = $('#fe_del'); form.reset();
-    if (mode === 'edit') { const emissor = DB_EMISSORES.find(e => e.id == id); if (!emissor) return; form.elements.id.value = emissor.id; form.elements.name.value = emissor.name; del.style.display = 'inline-flex'; }
-    else { form.elements.id.value = ''; del.style.display = 'none'; }
-    form.onsubmit = async (e) => {
-        e.preventDefault(); const formData = new FormData(form); const idVal = formData.get('id'); const isNew = !idVal;
-        const rec = { id: isNew ? Date.now() : Number(idVal), name: formData.get('name') };
-        const idx = DB_EMISSORES.findIndex(em => em.id == rec.id); if (idx > -1) DB_EMISSORES[idx] = rec; else DB_EMISSORES.push(rec);
-        await dbHelper.put('emissores', rec); m.style.display = 'none'; renderEmissores(); showToast('Emissor salvo!');
-    };
-    del.onclick = async () => {
-        const idVal = Number(form.elements.id.value); if (!idVal) return;
-        if (confirm('Tem certeza?')) { DB_EMISSORES = DB_EMISSORES.filter(e => e.id != idVal); await dbHelper.delete('emissores', idVal); m.style.display = 'none'; renderEmissores(); showToast('Emissor excluído.', 'danger'); }
-    }; $$('[data-close-emissor]').forEach(x => x.onclick = () => m.style.display = 'none');
+function formToObj(form) {
+  const fd = new FormData(form);
+  const obj = Object.fromEntries(fd.entries());
+  // normalizações simples
+  obj.createdAt = obj.createdAt || null;
+  obj.updatedAt = new Date().toISOString();
+  return obj;
 }
 
-  function renderUsers() {
-    const listEl = $('#userList'); listEl.innerHTML = '';
-    DB_USERS.forEach(user => { const item = document.createElement('div'); item.className = 'user-item'; item.innerHTML = `<span>${user.name} (${user.role})</span><div><button class="btn secondary" data-edit-user="${user.id}">Editar</button></div>`; listEl.appendChild(item); });
-  }
+fProc?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const obj = formToObj(fProc);
 
-  function renderEmissores() {
-    const listEl = $('#emissorList'); listEl.innerHTML = '';
-    DB_EMISSORES.forEach(emissor => { const item = document.createElement('div'); item.className = 'emissor-item'; item.innerHTML = `<span>${emissor.name}</span><div><button class="btn secondary" data-edit-emissor="${emissor.id}">Editar</button></div>`; listEl.appendChild(item); });
+  // Validações básicas
+  if (!obj.num || !obj.int || !obj.ent) {
+    alert("Preencha Nº, Interessado e Entrada.");
+    return;
   }
-
-  function updateEmissorSelect(){
-    const sel = $('#fp_emissor'); if(!sel) return; sel.innerHTML='<option value="">Usuário Logado</option>';
-    DB_EMISSORES.forEach(emissor => { const o=document.createElement('option'); o.value = emissor.id; o.textContent = emissor.name; sel.appendChild(o); });
-  }
-
-  // ===== Lógica do Calendário =====
-  let CUR=new Date(),VIEW='month'; const calTitle = $('#c_title'), calBody = $('#calBody');
-  $('#c_prev').onclick=()=>shift(-1); $('#c_next').onclick=()=>shift(1); $('#c_today').onclick=()=>{CUR=new Date();drawView();}; 
-  $('#new_evt').onclick=()=>openEvt({id:null,data:ymd(CUR),hora:'',desc:'',cat:'g'}); $$('.side input').forEach(el => el.onchange = drawView);
-
-  function getEventList(){ const F={g:$('#f_g').checked,a:$('#f_a').checked,e:$('#f_e').checked,o:$('#f_o').checked,r:$('#f_r').checked,p:$('#f_p').checked,u:$('#f_u').checked}; let list=CAL.filter(e=>F[e.cat]); if($('#f_sync').checked){DB.forEach(pr=>{if(pr.prazo&&pr.stat!=='finalizado'&&pr.stat!=='arquivado'&&F.p)list.push({id:`pr-${pr.id}`,data:pr.prazo,hora:'',desc:`Prazo: ${pr.num}`,cat:'p',readonly:true});});} return list; }
-  function shift(delta){ if(VIEW==='month')CUR.setMonth(CUR.getMonth()+delta); else if(VIEW==='year')CUR.setFullYear(CUR.getFullYear()+delta); drawView(); }
-  function drawView(){ calBody.innerHTML=''; if(VIEW==='month')drawMonth(); else drawYear();}
-  
-  function drawMonth(){
-    const y=CUR.getFullYear(),m=CUR.getMonth();const n=new Date(y,m,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});calTitle.textContent=n.charAt(0).toUpperCase()+n.slice(1);
-    const f=new Date(y,m,1);const s=new Date(f);s.setDate(f.getDate()-f.getDay());const l=new Date(y,m+1,0);const e=new Date(l);e.setDate(l.getDate()+(6-l.getDay()));
-    const list=getEventList(); const w=document.createElement('div');w.className='weekdays';['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d=>{const x=document.createElement('div');x.className='wd';x.textContent=d;w.appendChild(x);});
-    const g=document.createElement('div');g.className='grid-month'; let p=new Date(s);
-    while(p<=e){
-        const c=document.createElement('div');c.className='cell';if(p.getMonth()!==m)c.classList.add('dim');
-        const dn=document.createElement('div');dn.className='dnum';const tdy=ymd(new Date())===ymd(p);dn.innerHTML=`<span class="${tdy?'today':''}">${p.getDate()}</span>`; c.appendChild(dn);
-        const eventsWrapper = document.createElement('div'); eventsWrapper.className = 'events-wrapper';
-        const ds=ymd(p);const evts=list.filter(e=>e.data===ds); const initialsMap = { g: 'G', a: 'A', r: 'R', p: 'TP', u: 'U', e: 'E', o: 'OAB' };
-        const dotsContainer = document.createElement('div'); dotsContainer.className = 'event-dots-container';
-        evts.forEach(evt => {
-            const dot = document.createElement('div'); dot.className = `event-dot ${evt.cat}`; dot.textContent = initialsMap[evt.cat] || '?'; dot.title = evt.desc;
-            dot.onclick = () => { if (String(evt.id).startsWith('pr-')) { const procId = String(evt.id).replace('pr-', ''), processo = DB.find(p => p.id == procId); if (processo) { showTab('proc', { filterBy: { text: processo.num } }); } } else { openEvt(evt); } };
-            dotsContainer.appendChild(dot);
-        });
-        eventsWrapper.appendChild(dotsContainer); c.appendChild(eventsWrapper); c.ondblclick=()=>openEvt({id:null,data:ds,hora:'',desc:'',cat:'g'}); g.appendChild(c);p.setDate(p.getDate()+1);
-    }
-    calBody.append(w,g);
-  }
-
-  function drawYear() { /* ... Lógica para visão anual ... */ }
-  function openEvt(evt){
-    const m=$('#m_evt');m.style.display='flex';
-    const t=$('#m_evt_t'),id=$('#fe_id'),d=$('#fe_data'),h=$('#fe_hora'),de=$('#fe_desc'),c=$('#fe_cat'),dl=$('#fe_del');
-    t.textContent=evt?.id?'Editar':'Novo';id.value=evt?.id||'';d.value=evt?.data||ymd(CUR);h.value=evt?.hora||'';de.value=evt?.desc||'';c.value=evt?.cat||'g';dl.style.display=evt?.id&&!String(evt.id).startsWith('pr-')?'inline-flex':'none';
-    $$('[data-close-evt]').forEach(x=>x.onclick=()=>m.style.display='none');
-    $('#f_evt').onsubmit= async (e)=>{
-        e.preventDefault(); const r={id:id.value?(String(id.value).startsWith('pr-')?id.value:Number(id.value)):Date.now(),data:d.value,hora:h.value,desc:de.value.trim(),cat:c.value}; if(!r.data||!r.desc)return; if(String(r.id).startsWith('pr-')){m.style.display='none';return;}
-        const i=CAL.findIndex(x=>String(x.id)===String(r.id)); if(i>-1)CAL[i]=r;else CAL.push(r);
-        await dbHelper.put('calendario', r); m.style.display='none'; drawView(); showToast('Compromisso salvo!');
-    };
-    dl.onclick= async ()=>{
-        const idVal = Number(id.value); if(!idVal)return;
-        if(confirm('Certeza?')){ CAL=CAL.filter(x=>String(x.id)!==String(idVal)); await dbHelper.delete('calendario', idVal); m.style.display='none'; drawView(); showToast('Compromisso excluído.', 'danger'); }
-    }
-  }
-
-  // ===== Lógica do Dashboard =====
-  let chartInstances = {};
-  const statusColorMap = {'pendente': '#ef4444', 'em-analise': '#f59e0b', 'aguardando-documentacao': '#3b82f6', 'em-diligencia': '#8b5cf6', 'finalizado': '#22c55e', 'arquivado': '#64748b'};
-  const colorPalette = ['#3b82f6', '#f59e0b', '#22c55e', '#ef4444', '#8b5cf6', '#64748b', '#0ea5e9', '#f97316', '#a16207', '#16a34a'];
-  const mesesMap = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const sMapKeys = Object.keys(statusMap);
-   function getChartConfigs(data) {
-    const isDark = document.body.dataset.theme === 'dark', gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', textColor = isDark ? '#f8fafc' : '#1a202c', cardColor = getComputedStyle(document.body).getPropertyValue('--card-bg').trim();
-    Chart.defaults.color = textColor; Chart.defaults.font.family = "'Inter', sans-serif";
-    const labels = mesesMap, dadosAdm = Array(12).fill(0), dadosJud = Array(12).fill(0);
-    data.forEach(p => { if(p.ent){ const m = parse(p.ent).getUTCMonth(); if(p.tipo==='administrativo')dadosAdm[m]++; else dadosJud[m]++; }});
-    const sCounts={}; data.forEach(p=>sCounts[p.stat]=(sCounts[p.stat]||0)+1);
-    const entradasConfig = { type: 'line', data: { labels, datasets: [{ label: 'Administrativo', data: dadosAdm, borderColor: colorPalette[0], backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.3, fill: true },{ label: 'Judicial', data: dadosJud, borderColor: colorPalette[1], backgroundColor: 'rgba(245, 158, 11, 0.1)', tension: 0.3, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: gridColor, drawBorder: false } }, x: { grid: { display: false } } }, onClick: (e, els) => { if(els.length > 0) showTab('proc', { filterBy: { month: els[0].index } }) } }};
-    const statusConfig = { type: 'doughnut', data: { labels: Object.values(statusMap), datasets: [{ data: sMapKeys.map(k=>sCounts[k]||0), backgroundColor: sMapKeys.map(key => statusColorMap[key]), borderWidth: 2, borderColor: cardColor }] }, options: { responsive: true, maintainAspectRatio: false, onClick: (e, els) => { if (els.length > 0) { const statusKey = sMapKeys[els[0].index]; showTab('proc', { filterBy: { status: statusKey } }) } } }};
-    
-    const pareceresPorMes = Array(12).fill(0);
-    DB.forEach(p => {
-        if (p.docId && p.saida) { // Conta qualquer processo com parecer e data de saída
-            const saidaDate = parse(p.saida);
-            if (saidaDate) { const mes = saidaDate.getUTCMonth(); pareceresPorMes[mes]++; }
-        }
-    });
-    const pareceresMesConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Nº de Pareceres', data: pareceresPorMes, backgroundColor: '#26c6da' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: {} } } };
-    return { entradasConfig, statusConfig, pareceresMesConfig };
-  }
-  function renderCharts(chartConfigs) {
-    const chartIds = { chartEntradasDashboard: chartConfigs.entradasConfig, chartStatusDashboard: chartConfigs.statusConfig, chartPareceresMes: chartConfigs.pareceresMesConfig };
-    Object.entries(chartIds).forEach(([canvasId, config]) => {
-        const canvas = $('#' + canvasId); if(!canvas) return;
-        if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
-        chartInstances[canvasId] = new Chart(canvas.getContext('2d'), config);
-    });
-  }
-  function calculateGlobalStats(){
-      const hoje=todayUTC(); let pend=0, anal=0, fin=0, alert=0, venc=0;
-      DB.forEach(p=>{
-        if(p.stat==='pendente') pend++; if(p.stat==='em-analise') anal++; if(p.stat==='finalizado') fin++;
-        if(p.prazo && p.stat!=='finalizado'&&p.stat!=='arquivado'){ const d=parse(p.prazo); if(d){ const df=diffDays(hoje,d); if(df<0) venc++; else if(df<=5) alert++; } }
-      }); return { total: DB.length, pend, anal, fin, alert, venc };
-  }
-  function renderProximosPrazos() {
-      const listEl = $('#dashboard-prazos'); if(!listEl) return; listEl.innerHTML = '';
-      const hoje = todayUTC(); const futuro = new Date(hoje); futuro.setDate(hoje.getDate() + 15);
-      const prazosProc = DB.filter(p=>p.prazo&&parse(p.prazo)>=hoje&&parse(p.prazo)<=futuro&&p.stat!=='finalizado'&&p.stat!=='arquivado').map(p=>({data:p.prazo,tipo:'processo',desc:`Prazo Proc: ${p.num}`}));
-      const prazosAgenda = CAL.filter(c=>c.data&&parse(c.data)>=hoje&&parse(c.data)<=futuro).map(c=>({data:c.data,tipo:'agenda',desc:c.desc}));
-      const todosOsPrazos=[...prazosProc,...prazosAgenda].sort((a,b)=>a.data.localeCompare(b.data));
-      if(todosOsPrazos.length===0){listEl.innerHTML='<li>Nenhum prazo nos próximos 15 dias.</li>';return;}
-      todosOsPrazos.forEach(item=>{
-          const data=parse(item.data); const dia=String(data.getUTCDate()).padStart(2,'0'); const mes=data.toLocaleDateString('pt-BR',{month:'short',timeZone:'UTC'}).replace('.','');
-          const li=document.createElement('li');
-          li.innerHTML=`<div class="prazo-date"><span class="month">${mes}</span><span class="day">${dia}</span></div><div class="prazo-info"><span class="type type-${item.tipo}">${item.tipo.toUpperCase()}</span><div class="desc">${item.desc}</div></div>`;
-          listEl.appendChild(li);
+  // Se tiver ID, atualiza; senão cria
+  const id = obj.id?.trim();
+  try {
+    if (id) {
+      const ref = doc(db, 'processos', id);
+      await updateDoc(ref, {
+        ...obj,
+        updatedAt: serverTimestamp()
       });
-  }
-  function renderAlertasInteligentes() {
-    const listEl = $('#dashboard-alertas'); if (!listEl) return; listEl.innerHTML = ''; const hoje = todayUTC(); const alertas = [];
-    DB.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(hoje, parse(p.prazo)) < 0)
-      .forEach(p => { alertas.push({ tipo: 'Vencido', desc: `Processo ${p.num} está vencido.` }); });
-    DB.filter(p => (p.stat === 'em-analise' || p.stat === 'pendente') && diffDays(parse(p.ent), hoje) > 20)
-      .forEach(p => { alertas.push({ tipo: 'Inativo', desc: `Processo ${p.num} parado há mais de 20 dias.` }); });
-    if (alertas.length === 0) { listEl.innerHTML = '<li>Nenhum alerta no momento.</li>'; return; }
-    alertas.forEach(item => { const li = document.createElement('li'); li.innerHTML = `<div class="prazo-info"><span class="type">${item.tipo.toUpperCase()}</span><div class="desc">${item.desc}</div></div>`; listEl.appendChild(li); });
-  }
-  function renderDashboard() {
-      const kpiData = calculateGlobalStats(); const kpiContainer = $('#dashboard-kpis'); if (!kpiContainer) return;
-      kpiContainer.innerHTML = `
-        <div class="kpi" data-kpi-filter="total" style="border-left-color: #2196F3;"><h4>Total 📊</h4><div class="v">${kpiData.total}</div></div>
-        <div class="kpi" data-kpi-filter="pendente" style="border-left-color: #FFEB3B;"><h4>Pendentes ⏳</h4><div class="v">${kpiData.pend}</div></div>
-        <div class="kpi" data-kpi-filter="em-analise" style="border-left-color: #FF9800;"><h4>Em Análise 🔎</h4><div class="v">${kpiData.anal}</div></div>
-        <div class="kpi" data-kpi-filter="finalizado" style="border-left-color: #4CAF50;"><h4>Finalizados ✅</h4><div class="v">${kpiData.fin}</div></div>
-        <div class="kpi" data-kpi-filter="alerta" style="border-left-color: #FF7043;"><h4>Vencendo ≤5d ⏰</h4><div class="v">${kpiData.alert}</div></div>
-        <div class="kpi" data-kpi-filter="vencido" style="border-left-color: #F44336;"><h4>Vencidos ❌</h4><div class="v">${kpiData.venc}</div></div>
-      `;
-      kpiContainer.onclick = (e) => {
-          const kpi = e.target.closest('[data-kpi-filter]'); if(!kpi) return;
-          const filter = kpi.dataset.kpiFilter, filterBy = {};
-          if (filter === 'total') { showTab('proc'); return; }
-          if (filter === 'alerta' || filter === 'vencido') { filterBy.prazo = filter; } else { filterBy.status = filter; }
-          showTab('proc', { filterBy });
-      };
-      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderProximosPrazos(); renderAlertasInteligentes(); updateAllNotifications();
-  }
-  
-    // ===== Lógica de Notificações =====
-    const notificationBell = $('#notification-bell'), notificationCount = $('#notification-count'), notificationPanel = $('#notification-panel'), notificationList = $('#notification-list'), notificationFilters = $('#notification-filters');
-    const ICONS = {
-        prazo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"></path></svg>`,
-        evento: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>`,
-        alerta: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5.99L19.53 19H4.47L12 5.99M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z"></path></svg>`
-    };
-    function generateAllNotifications() {
-        const notifications = []; const hoje = todayUTC();
-        DB.filter(p => p.prazo && (p.stat !== 'finalizado' && p.stat !== 'arquivado')).forEach(p => { const prazoDate = parse(p.prazo); const df = diffDays(hoje, prazoDate); if (df < 0) { notifications.push({ id: `alert-vencido-${p.id}`, type: 'alerta', date: p.prazo, title: `Processo ${p.num}`, subtitle: `Vencido há ${Math.abs(df)} dia(s)`, navInfo: { type: 'proc', num: p.num } }); } else if (df === 0) { notifications.push({ id: `alert-fatal-${p.id}`, type: 'alerta', date: p.prazo, title: `Processo ${p.num}`, subtitle: 'Prazo fatal (hoje!)', navInfo: { type: 'proc', num: p.num } }); } else if (df > 0 && df <= 5) { notifications.push({ id: `proc-${p.id}`, type: 'prazo', date: p.prazo, title: `Processo ${p.num}`, subtitle: `Prazo em ${df} dia(s)`, navInfo: { type: 'proc', num: p.num } }); } });
-        const futuroEventos = new Date(hoje); futuroEventos.setDate(hoje.getDate() + 7);
-        CAL.filter(e => e.cat !== 'p').forEach(e => { const eventDate = parse(e.data); if (eventDate >= hoje && eventDate <= futuroEventos) { notifications.push({ id: `cal-${e.id}`, type: 'evento', date: e.data, title: e.desc, subtitle: `Dia ${fmtBR(e.data)}${e.hora ? ` às ${e.hora}` : ''}`, navInfo: { type: 'cal', date: e.data } }); } });
-        return notifications.filter(n => !CFG.dismissedNotifications?.includes(n.id)).sort((a,b) => a.date.localeCompare(b.date));
+    } else {
+      await addDoc(colProcessos, {
+        ...obj,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
     }
-    function updateAllNotifications(filter = 'all') {
-        allNotifications = generateAllNotifications();
-        const filteredNotifications = filter === 'all' ? allNotifications : allNotifications.filter(n => n.type === filter);
-        notificationList.innerHTML = '';
-
-        if (filteredNotifications.length > 0) {
-            filteredNotifications.forEach(item => {
-                const li = document.createElement('li'); li.className = `notification-item type-${item.type}`; li.dataset.id = item.id;
-                li.innerHTML = `<div class="icon-wrapper">${ICONS[item.type]}</div><div class="notification-content" data-nav-type="${item.navInfo.type}" data-nav-value="${item.navInfo.num || item.navInfo.date}"><div class="title">${item.title}</div><div class="subtitle">${item.subtitle}</div></div><button class="notification-close-btn" title="Dispensar"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg></button>`;
-                notificationList.appendChild(li);
-            });
-        } else { notificationList.innerHTML = `<li class="notification-item" style="cursor:default; background:transparent; box-shadow:none; justify-content:center; border: none;">Nenhuma notificação.</li>`; }
-        
-        const unreadCount = allNotifications.filter(n => !CFG.readNotifications?.includes(n.id)).length;
-        notificationCount.textContent = unreadCount; notificationCount.style.display = unreadCount > 0 ? 'flex' : 'none';
-    }
-    notificationBell.addEventListener('click', async (e) => {
-        e.stopPropagation(); notificationPanel.classList.toggle('active');
-        if (notificationPanel.classList.contains('active')) {
-            $$('.notification-filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === 'all'));
-            updateAllNotifications('all'); CFG.readNotifications = allNotifications.map(n => n.id);
-            notificationCount.style.display = 'none'; await saveCFG();
-        }
-    });
-    notificationFilters.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if(e.target.tagName === 'BUTTON') {
-            const filter = e.target.dataset.filter; $$('.notification-filter-btn').forEach(btn => btn.classList.remove('active')); e.target.classList.add('active'); updateAllNotifications(filter);
-        }
-    });
-    document.addEventListener('click', (e) => { if (!notificationBell.contains(e.target)) { notificationPanel.classList.remove('active'); } });
-    function navigateToDate(dateString) { CUR = parse(dateString); VIEW = 'month'; drawView(); }
-    notificationList.addEventListener('click', async (e) => {
-        const closeBtn = e.target.closest('.notification-close-btn'), content = e.target.closest('.notification-content');
-        if (closeBtn) {
-            e.stopPropagation(); const item = closeBtn.closest('.notification-item'), notificationId = item.dataset.id;
-            if (!CFG.dismissedNotifications) CFG.dismissedNotifications = [];
-            CFG.dismissedNotifications.push(notificationId); await saveCFG();
-            item.style.transition = 'opacity 0.3s ease, transform 0.3s ease'; item.style.opacity = '0'; item.style.transform = 'translateX(20px)';
-            setTimeout(() => { const activeFilter = $('.notification-filter-btn.active').dataset.filter; updateAllNotifications(activeFilter); }, 300); return;
-        }
-        if (content) {
-            const { navType, navValue } = content.dataset; if (!navType) return;
-            if (navType === 'proc') { showTab('proc', { filterBy: { text: navValue } }); } else if (navType === 'cal') { showTab('cal'); navigateToDate(navValue); }
-            notificationPanel.classList.remove('active');
-        }
-    });
-
-  // ===== Lógica de Tema (Modo Escuro) - ATUALIZADA =====
-  const themeToggleButton = $('#theme-toggle-btn');
-  const themeMenu = $('#theme-menu');
-
-  function applyTheme(themeValue) {
-    let finalTheme = themeValue;
-    if (themeValue === 'system') {
-        finalTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    document.body.dataset.theme = finalTheme;
-    $('.sun').style.display = finalTheme === 'dark' ? 'none' : 'block';
-    $('.moon').style.display = finalTheme === 'dark' ? 'block' : 'none';
-    
-    // Atualiza o estado ativo dos botões no menu
-    $$('.theme-menu-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.themeValue === CFG.theme);
-    });
-
-    // Atualiza gráficos se a aba do dashboard estiver visível
-    if (Object.keys(chartInstances).length > 0 && sections.dashboard.style.display !== 'none') {
-        const chartConfigs = getChartConfigs(DB);
-        renderCharts(chartConfigs);
-    }
+    // Fechar modal e recarregar
+    document.querySelector('[data-close-proc]')?.click();
+    await renderProcessos();
+    showToast("Processo salvo com sucesso.");
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao salvar processo.");
   }
-
-  async function setTheme(themeChoice) {
-    CFG.theme = themeChoice;
-    applyTheme(themeChoice);
-    await saveCFG();
-  }
-  
-  function initTheme() {
-    // Aplica o tema salvo ao carregar a página
-    applyTheme(CFG.theme);
-
-    // Listener para o botão principal que abre/fecha o menu
-    themeToggleButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isActive = themeMenu.classList.toggle('active');
-        themeToggleButton.setAttribute('aria-expanded', isActive);
-    });
-
-    // Listeners para os botões dentro do menu de temas
-    $$('.theme-menu-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const themeValue = btn.dataset.themeValue;
-            setTheme(themeValue);
-            themeMenu.classList.remove('active'); // Fecha o menu após a seleção
-            themeToggleButton.setAttribute('aria-expanded', 'false');
-        });
-    });
-
-    // Listener para mudanças no tema do sistema operacional
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        if (CFG.theme === 'system') {
-            applyTheme('system');
-        }
-    });
-
-    // Fecha o menu se clicar fora dele
-    document.addEventListener('click', (e) => {
-        if (!themeToggleButton.contains(e.target) && !themeMenu.contains(e.target)) {
-            themeMenu.classList.remove('active');
-            themeToggleButton.setAttribute('aria-expanded', 'false');
-        }
-    });
-  }
-  
-  // ===== MELHORIA: Lógica do Menu Mobile, Header Compacto e Acessibilidade =====
-  function setupEnhancedNav() {
-    // Header compacto ao rolar
-    const mainContent = $('.main-content');
-    const appHeader = $('.app-header');
-    if (mainContent && appHeader) {
-        mainContent.addEventListener('scroll', () => {
-            appHeader.classList.toggle('header-compact', mainContent.scrollTop > 8);
-        }, { passive: true });
-    }
-
-    // Lógica do menu mobile
-    const focusableElementsSelector = 'a[href], button:not([disabled])';
-    let focusableElements = [], firstFocusableElement, lastFocusableElement;
-
-    function handleFocusTrap(e) {
-        if (e.key !== 'Tab') return;
-        if (e.shiftKey) { // Shift + Tab
-            if (document.activeElement === firstFocusableElement) { lastFocusableElement.focus(); e.preventDefault(); }
-        } else { // Tab
-            if (document.activeElement === lastFocusableElement) { firstFocusableElement.focus(); e.preventDefault(); }
-        }
-    }
-    
-    window.openMobileMenu = function() {
-        topNav.classList.add('mobile-open');
-        overlay.classList.add('active');
-        mobileMenuToggle.setAttribute('aria-expanded', 'true');
-        
-        focusableElements = Array.from(topNav.querySelectorAll(focusableElementsSelector));
-        firstFocusableElement = focusableElements[0];
-        lastFocusableElement = focusableElements[focusableElements.length - 1];
-        setTimeout(() => firstFocusableElement?.focus(), 100);
-        document.addEventListener('keydown', handleFocusTrap);
-    }
-    
-    window.closeMobileMenu = function() {
-        topNav.classList.remove('mobile-open');
-        overlay.classList.remove('active');
-        mobileMenuToggle.setAttribute('aria-expanded', 'false');
-        document.removeEventListener('keydown', handleFocusTrap);
-        mobileMenuToggle.focus();
-    }
-    
-    mobileMenuToggle.onclick = () => {
-        const isMenuOpen = topNav.classList.contains('mobile-open');
-        if (isMenuOpen) closeMobileMenu(); else openMobileMenu();
-    };
-    
-    overlay.onclick = closeMobileMenu;
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && topNav.classList.contains('mobile-open')) {
-            closeMobileMenu();
-        }
-    });
-  }
-  
-  // ===== Event Listeners Centralizados =====
-  function setupEventListeners() {
-    btnEntrar.onclick = tentarEntrar;
-    loginOverlay.onkeydown = (e) => { if (e.key === 'Enter') tentarEntrar(); };
-    btnSair.onclick = showLogin;
-
-    setupEnhancedNav(); // Inicializa as novas funcionalidades de navegação
-
-    $$('.tab').forEach(b => b.onclick = (e) => { e.preventDefault(); showTab(b.dataset.tab); });
-    $('#btnAddUser').onclick = () => openUserModal('new');
-    $('#userList').onclick = (e) => { if (e.target.closest('[data-edit-user]')) openUserModal('edit', e.target.closest('[data-edit-user]').dataset.editUser); };
-    $('#btnAddEmissor').onclick = () => openEmissorModal('new');
-    $('#emissorList').onclick = (e) => { if (e.target.closest('[data-edit-emissor]')) openEmissorModal('edit', e.target.closest('[data-edit-emissor]').dataset.editEmissor); };
-    $('#btnAddLei').onclick = () => openLeiModal('new');
-    $('#modeloAdd').onclick = () => $('#modeloFile').click();
-
-    $('#modeloFile').onchange = async (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            const newModelo = { id: Date.now(), name: file.name, data: ev.target.result };
-            DB_MODELOS.push(newModelo); await dbHelper.put('modelos', newModelo);
-            renderModelos(true);
-            showToast('Modelo adicionado!');
-        };
-        reader.readAsDataURL(file); e.target.value = '';
-    };
-
-    $('#modeloList').onclick = async (e) => {
-      const delBtn = e.target.closest('[data-del-modelo]'); const downloadBtn = e.target.closest('[data-download-modelo]');
-      if (delBtn) { const modeloId = Number(delBtn.dataset.delModelo); if (confirm('Excluir este modelo?')) { DB_MODELOS = DB_MODELOS.filter(m => m.id !== modeloId); await dbHelper.delete('modelos', modeloId); renderModelos(true); showToast('Modelo excluído.', 'danger'); } }
-      if (downloadBtn) { const modelo = DB_MODELOS.find(m => m.id === Number(downloadBtn.dataset.downloadModelo)); if(modelo) handleDownload(modelo.data, modelo.name); }
-    };
-    
-    $('#parecerList').onclick = async (e) => {
-      const delBtn = e.target.closest('[data-del-doc]'); const versionsBtn = e.target.closest('[data-versions-for]'); const downloadBtn = e.target.closest('[data-download-version]');
-      if (delBtn) {
-          const docId = Number(delBtn.dataset.delDoc); if (confirm('Excluir este parecer e TODO o seu histórico?')) {
-              const versionsToDelete = getVersionsOfDoc(docId); DB_DOCS = DB_DOCS.filter(d => d.id !== docId); DB_VERSOES = DB_VERSOES.filter(v => v.idDocumento !== docId);
-              const procsToUpdate = DB.filter(p => String(p.docId) === String(docId));
-              await dbHelper.delete('documentos', docId); for(const v of versionsToDelete) await dbHelper.delete('versoes', v.id); for(const p of procsToUpdate) { p.docId = null; await dbHelper.put('processos', p); }
-              DB = await dbHelper.getAll('processos'); currentlyDisplayedPareceres = DB_DOCS.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
-              $('#buscaConteudo').value = ''; drawPareceres(true); showToast('Parecer excluído.', 'danger');
-          }
-      }
-      if (versionsBtn) openVersionsModal(Number(versionsBtn.dataset.versionsFor));
-      if (downloadBtn) { const version = getVersion(Number(downloadBtn.dataset.downloadVersion)); if (version) handleDownload(version.data, version.nomeArquivo); }
-    };
-
-    if(mVersoes) mVersoes.onclick = (e) => { if (e.target.matches('.modal') || e.target.closest('[data-close-versoes]')) { mVersoes.style.display = 'none'; } };
-    $('#lista_versoes').onclick = (e) => { const downloadBtn = e.target.closest('[data-download-version]'); if (downloadBtn) { const version = getVersion(Number(downloadBtn.dataset.downloadVersion)); if (version) handleDownload(version.data, version.nomeArquivo); } };
-
-    // ===== AÇÕES AVANÇADAS E BACKUP =====
-    $('#btnHardReset').onclick = async () => {
-        if (confirm('ATENÇÃO!\n\nEsta ação apagará TODOS os dados do JurisControl neste navegador (processos, usuários, documentos, etc.).\n\nEsta ação é IRREVERSÍVEL.\n\nDeseja continuar?')) {
-            try {
-                if (db) {
-                    db.close(); // Fecha a conexão antes de deletar
-                }
-                const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
-                deleteRequest.onsuccess = () => {
-                    showToast('Todos os dados foram apagados. O sistema será reiniciado.', 'danger');
-                    setTimeout(() => location.reload(), 2000);
-                };
-                deleteRequest.onerror = (e) => {
-                    console.error("Erro ao deletar banco de dados:", e.target.error);
-                    showToast('Não foi possível apagar os dados.', 'danger');
-                };
-                deleteRequest.onblocked = () => {
-                     console.warn("Exclusão do banco de dados bloqueada.");
-                    showToast('Feche outras abas do JurisControl e tente novamente.', 'info');
-                };
-            } catch (error) {
-                console.error("Erro no processo de hard reset:", error);
-                showToast('Ocorreu um erro inesperado.', 'danger');
-            }
-        }
-    };
-
-    // Backup e Restauração
-    $('#bk_csv').onclick = () => exportCSV(DB);
-
-    $('#bk_down').onclick = async () => {
-        try {
-            const backupData = {
-                users: await dbHelper.getAll('users'),
-                processos: await dbHelper.getAll('processos'),
-                calendario: await dbHelper.getAll('calendario'),
-                documentos: await dbHelper.getAll('documentos'),
-                versoes: await dbHelper.getAll('versoes'),
-                modelos: await dbHelper.getAll('modelos'),
-                emissores: await dbHelper.getAll('emissores'),
-                leis: await dbHelper.getAll('leis'),
-                config: (await dbHelper.get('config', 'main_cfg'))?.value
-            };
-            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            const dateStr = new Date().toISOString().slice(0, 10);
-            a.href = url;
-            a.download = `juriscontrol_backup_${dateStr}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast('Backup completo baixado com sucesso!');
-        } catch (error) {
-            console.error("Erro ao criar backup:", error);
-            showToast('Falha ao gerar o arquivo de backup.', 'danger');
-        }
-    };
-
-    $('#bk_up').onclick = () => $('#bk_file').click();
-
-    $('#bk_file').onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (!confirm('Restaurar um backup substituirá TODOS os dados atuais. Deseja continuar?')) {
-            e.target.value = '';
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const backupData = JSON.parse(event.target.result);
-                if (!backupData.processos || !backupData.users) {
-                    throw new Error('Arquivo de backup inválido ou corrompido.');
-                }
-                
-                if (db) db.close(); // Fecha a conexão atual para evitar bloqueios
-
-                // Espera um pouco para garantir que a conexão foi fechada
-                setTimeout(async () => {
-                    await dbHelper.init(); // Reabre a conexão
-
-                    for (const storeName of STORES) {
-                         if (backupData[storeName]) {
-                            await dbHelper.clear(storeName);
-                            for (const item of backupData[storeName]) {
-                               await dbHelper.put(storeName, item);
-                            }
-                        }
-                    }
-                    if(backupData.config) {
-                       await dbHelper.put('config', { key: 'main_cfg', value: backupData.config });
-                    }
-
-                    showToast('Backup restaurado com sucesso! O sistema será reiniciado.', 'success');
-                    setTimeout(() => location.reload(), 2000);
-                }, 500);
-
-
-            } catch (error) {
-                console.error("Erro ao restaurar backup:", error);
-                showToast(error.message || 'Erro ao processar o arquivo de backup.', 'danger');
-            } finally {
-                e.target.value = '';
-            }
-        };
-        reader.readAsText(file);
-    };
-  }
-
-  // ===== INICIALIZAÇÃO =====
-  async function init() {
-    try {
-        await dbHelper.init();
-        await loadAllData();
-        initTheme(); // A inicialização do tema agora acontece aqui
-        await initializeUsers();
-        setupEventListeners();
-        checkLoginState();
-    } catch (error) {
-        console.error("Falha na inicialização do aplicativo:", error);
-        document.body.innerHTML = '<h1>Ocorreu um erro crítico ao carregar a aplicação.</h1>';
-    }
-  }
-
-  init();
 });
-</script>
-    </div>
-  </div>
-</div>
 
-<!-- Firebase + Firestore (produção) -->
-<script type="module">
-  /***** Imports Firebase *****/
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import {
-    getFirestore, collection, addDoc, doc, setDoc, updateDoc, deleteDoc,
-    onSnapshot, serverTimestamp, query, orderBy, getDoc
-  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+/* ===== 5) LISTAR PROCESSOS NA TABELA/CARDS ===== */
+function clearProcessosUI() {
+  if (tabelaTbody) tabelaTbody.innerHTML = "";
+  if (mobileCards) mobileCards.innerHTML = "";
+}
 
-  /***** Config do seu projeto *****/
-  const firebaseConfig = {
-    apiKey: "AIZaSyB9dx_F8splj8n_ajSJRGiAqb02u8dUvJQ",
-    authDomain: "juriscontrolcmdc.firebaseapp.com",
-    projectId: "juriscontrolcmdc",
-    storageBucket: "juriscontrolcmdc.firebasestorage.app",
-    messagingSenderId: "570109438050",
-    appId: "1:570109438050:web:ddb296a9863cdd294e093b"
-  };
+async function renderProcessos() {
+  if (!tabelaTbody) return;
+  clearProcessosUI();
 
-  const app = initializeApp(firebaseConfig);
-  const db  = getFirestore(app);
-  console.log("Firestore conectado.");
+  // Ordenar por data de entrada (string yyyy-mm-dd); ajuste se quiser por createdAt
+  const qSnap = await getDocs(query(colProcessos, orderBy('ent', 'desc')));
 
-  /***** Util: pega refs dos elementos existentes no seu HTML *****/
-  const formProc   = document.getElementById("f_proc");          // formulário do modal de processos :contentReference[oaicite:0]{index=0}
-  const tbody      = document.getElementById("tbl-body");         // corpo da tabela de processos :contentReference[oaicite:1]{index=1}
-  const btnDelForm = document.getElementById("fp_del");           // botão Excluir no modal de processos :contentReference[oaicite:2]{index=2}
-  const hidId      = document.getElementById("fp_id");            // hidden id do processo :contentReference[oaicite:3]{index=3}
+  qSnap.forEach((docSnap) => {
+    const p = docSnap.data();
+    const id = docSnap.id;
 
-  // Campos do formulário
-  const fp_num    = document.getElementById("fp_num");
-  const fp_tipo   = document.getElementById("fp_tipo");
-  const fp_int    = document.getElementById("fp_int");
-  const fp_origem = document.getElementById("fp_origem");
-  const fp_obj    = document.getElementById("fp_obj");
-  const fp_acao   = document.getElementById("fp_acao");
-  const fp_ent    = document.getElementById("fp_ent");
-  const fp_prazo  = document.getElementById("fp_prazo");
-  const fp_saida  = document.getElementById("fp_saida");
-  const fp_stat   = document.getElementById("fp_stat");
-  const fp_dest   = document.getElementById("fp_dest");
-
-  /***** Helpers *****/
-  const col = (name) => collection(db, name);
-
-  function formToData() {
-    return {
-      numero: (fp_num.value || "").trim(),
-      tipo: fp_tipo.value || "administrativo",
-      interessado: (fp_int.value || "").trim(),
-      setorOrigem: fp_origem.value || "",
-      objeto: (fp_obj.value || "").trim(),
-      acao: (fp_acao.value || "").trim(),
-      ent: fp_ent.value || null,     // datas como ISO (yyyy-mm-dd)
-      prazo: fp_prazo.value || null,
-      saida: fp_saida.value || null,
-      status: fp_stat.value || "pendente",
-      destino: fp_dest ? (fp_dest.value || "") : "",
-      atualizadoEm: serverTimestamp(),
-      criadoEm: serverTimestamp()
-    };
-  }
-
-  function dataToRow(d, id) {
-    // badge de status conforme suas classes existentes
-    const statusHtml = `<span class="status ${d.status}">${labelStatus(d.status)}</span>`;
-    const prazo = d.prazo ? formatBr(d.prazo) : "—";
-
-    return `
-      <tr data-id="${id}">
-        <td>
-          <div style="font-weight:700;color:var(--text-primary)">${escapeHtml(d.numero)}</div>
-          <div style="font-size:.9rem;color:var(--text-muted)">${escapeHtml(d.interessado)}</div>
-        </td>
-        <td>${escapeHtml(d.objeto || "")}</td>
-        <td style="text-align:center">${statusHtml}</td>
-        <td style="text-align:center">${prazo}</td>
-        <td style="text-align:center">
-          <button type="button" class="btn secondary js-edit">Editar</button>
-          <button type="button" class="btn danger js-del">Excluir</button>
-        </td>
-      </tr>
+    // TABELA (desktop)
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${p.num || ''}</strong><br><span>${p.int || ''}</span></td>
+      <td>${p.obj || ''}</td>
+      <td style="text-align:center"><span class="status ${p.stat||'pendente'}">${labelStatus(p.stat)}</span></td>
+      <td style="text-align:center">${p.prazo || '-'}</td>
+      <td style="text-align:center">
+        <button class="btn secondary" data-view="${id}">Ver</button>
+      </td>
     `;
-  }
+    tabelaTbody.appendChild(tr);
 
-  function labelStatus(s) {
-    switch (s) {
-      case "em-analise": return "Em Análise";
-      case "pendente": return "Pendente";
-      case "finalizado": return "Finalizado";
-      case "aguardando-documentacao": return "Aguardando Documentação";
-      case "em-diligencia": return "Em Diligência";
-      case "arquivado": return "Arquivado";
-      default: return s || "—";
-    }
-  }
-
-  function formatBr(yyyy_mm_dd) {
-    try {
-      const [y,m,d] = yyyy_mm_dd.split("-");
-      return `${d}/${m}/${y}`;
-    } catch { return yyyy_mm_dd || "—"; }
-  }
-
-  function escapeHtml(str) {
-    return (str || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-
-  function fillFormFromDoc(id, d) {
-    hidId.value = id || "";
-    fp_num.value = d.numero || "";
-    fp_tipo.value = d.tipo || "administrativo";
-    fp_int.value = d.interessado || "";
-    fp_origem.value = d.setorOrigem || "";
-    fp_obj.value = d.objeto || "";
-    fp_acao.value = d.acao || "";
-    fp_ent.value = d.ent || "";
-    fp_prazo.value = d.prazo || "";
-    fp_saida.value = d.saida || "";
-    fp_stat.value = d.status || "pendente";
-    if (fp_dest) fp_dest.value = d.destino || "";
-    // Mostra botão excluir quando está editando
-    if (btnDelForm) btnDelForm.style.display = id ? "inline-flex" : "none";
-  }
-
-  /***** SUBMIT: cria ou atualiza *****/
-  formProc?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      const id = (hidId.value || "").trim();
-      const payload = formToData();
-
-      if (!payload.numero) {
-        toast("Informe o número do processo.", "danger");
-        return;
-      }
-
-      if (id) {
-        await updateDoc(doc(db, "processos", id), { ...payload, criadoEm: undefined });
-        toast("Processo atualizado com sucesso.", "success");
-      } else {
-        const ref = await addDoc(col("processos"), payload);
-        hidId.value = ref.id;
-        toast("Processo salvo na nuvem.", "success");
-      }
-
-      closeProcModalSafe(); // tenta fechar seu modal se existir handler
-      formProc.reset();
-      hidId.value = "";
-      if (btnDelForm) btnDelForm.style.display = "none";
-    } catch (err) {
-      console.error(err);
-      toast("Erro ao salvar processo.", "danger");
+    // CARDS (mobile)
+    if (mobileCards) {
+      const card = document.createElement('div');
+      card.className = 'proc-card';
+      card.innerHTML = `
+        <div class="proc-card-header">
+          <div class="num">${p.num||''}</div>
+          <span class="status ${p.stat||'pendente'}">${labelStatus(p.stat)}</span>
+        </div>
+        <div class="proc-card-body">
+          <div class="item"><strong>Interessado:</strong> ${p.int||''}</div>
+          <div class="item"><strong>Objeto:</strong> ${p.obj||''}</div>
+          <div class="item"><strong>Prazo:</strong> ${p.prazo||'-'}</div>
+        </div>
+        <div class="proc-card-footer">
+          <button class="btn secondary" data-view="${id}">Ver</button>
+        </div>
+      `;
+      mobileCards.appendChild(card);
     }
   });
 
-  /***** DELETE: botão do modal *****/
-  btnDelForm?.addEventListener("click", async () => {
-    const id = (hidId.value || "").trim();
-    if (!id) return;
-    if (!confirm("Confirmar exclusão do processo?")) return;
-    try {
-      await deleteDoc(doc(db, "processos", id));
-      toast("Processo excluído.", "success");
-      formProc.reset();
-      hidId.value = "";
-      if (btnDelForm) btnDelForm.style.display = "none";
-      closeProcModalSafe();
-    } catch (err) {
-      console.error(err);
-      toast("Erro ao excluir.", "danger");
-    }
+  // Ação “Ver” → abre modal de visualização e carrega comentários
+  document.querySelectorAll('[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => openViewModal(btn.getAttribute('data-view')));
+  });
+}
+
+function labelStatus(s) {
+  const map = {
+    'pendente':'Pendente',
+    'em-analise':'Em Análise',
+    'aguardando-documentacao':'Aguardando Documentação',
+    'em-diligencia':'Em Diligência',
+    'finalizado':'Finalizado',
+    'arquivado':'Arquivado'
+  };
+  return map[s] || 'Pendente';
+}
+
+/* ===== 6) VISUALIZAÇÃO + COMENTÁRIOS (simples) ===== */
+const mView      = document.getElementById('m_proc_view');            /*  */
+const viewBody   = document.getElementById('view-details-content');   /* onde mostra os dados */ /*  */
+
+async function openViewModal(id) {
+  const ref = doc(db, 'processos', id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return alert("Processo não encontrado.");
+
+  const p = snap.data();
+  // Render detalhes
+  viewBody.innerHTML = `
+    <div class="view-section">
+      <h4>Dados do Processo</h4>
+      <div class="view-grid">
+        <div class="view-item"><strong>Nº</strong><p>${p.num||''}</p></div>
+        <div class="view-item"><strong>Interessado</strong><p>${p.int||''}</p></div>
+        <div class="view-item"><strong>Status</strong><p>${labelStatus(p.stat)}</p></div>
+        <div class="view-item"><strong>Entrada</strong><p>${p.ent||''}</p></div>
+        <div class="view-item"><strong>Prazo</strong><p>${p.prazo||'-'}</p></div>
+        <div class="view-item full-width"><strong>Objeto</strong><p>${p.obj||''}</p></div>
+      </div>
+    </div>
+
+    <div class="view-section" id="commentsSection">
+      <h4>Comentários</h4>
+      <div id="commentList" style="display:flex;flex-direction:column;gap:.5rem;"></div>
+      <div style="display:flex;gap:.5rem;margin-top:.75rem;">
+        <input id="newComment" class="input" placeholder="Escreva um comentário..." />
+        <button id="addCommentBtn" class="btn primary">Comentar</button>
+      </div>
+    </div>
+  `;
+
+  // Carrega comentários
+  await renderComments(id);
+
+  // Bind comentar
+  document.getElementById('addCommentBtn')?.addEventListener('click', async () => {
+    const input = document.getElementById('newComment');
+    const texto = input.value.trim();
+    if (!texto) return;
+    const user = auth.currentUser;
+    await addDoc(colComentarios, {
+      processoId: id,
+      texto,
+      autorEmail: user?.email || 'desconhecido',
+      createdAt: serverTimestamp()
+    });
+    input.value = '';
+    await renderComments(id);
+    showToast("Comentário adicionado.");
   });
 
-  /***** LISTEN: atualiza tabela em tempo real *****/
-  const q = query(col("processos"), orderBy("ent", "desc")); // ordena por data de entrada
-  onSnapshot(q, (snap) => {
-    const rows = [];
-    snap.forEach((docu) => {
-      const d = docu.data();
-      rows.push(dataToRow(d, docu.id));
-    });
-    tbody.innerHTML = rows.join("");
+  // Abre modal
+  mView.style.display = 'flex';
+});
 
-    // Liga botões Editar/Excluir da tabela
-    tbody.querySelectorAll(".js-edit").forEach(btn => {
-      btn.addEventListener("click", async (ev) => {
-        const tr = ev.currentTarget.closest("tr");
-        const id = tr?.getAttribute("data-id");
-        if (!id) return;
-        const docRef = doc(db, "processos", id);
-        const dSnap = await getDoc(docRef);
-        if (dSnap.exists()) {
-          fillFormFromDoc(id, dSnap.data());
-          openProcModalSafe("Editar Processo");
-        }
-      });
-    });
+document.querySelector('[data-close-view]')?.addEventListener('click', () => {
+  mView.style.display = 'none';
+});
 
-    tbody.querySelectorAll(".js-del").forEach(btn => {
-      btn.addEventListener("click", async (ev) => {
-        const tr = ev.currentTarget.closest("tr");
-        const id = tr?.getAttribute("data-id");
-        if (!id) return;
-        if (!confirm("Confirmar exclusão do processo?")) return;
-        try {
-          await deleteDoc(doc(db, "processos", id));
-          toast("Processo excluído.", "success");
-        } catch (err) {
-          console.error(err);
-          toast("Erro ao excluir.", "danger");
-        }
-      });
-    });
+async function renderComments(processoId) {
+  const listEl = document.getElementById('commentList');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  // Simples: ordena por createdAt no cliente (poderia usar orderBy em createdAt se existir)
+  const snaps = await getDocs(colComentarios);
+  const items = [];
+  snaps.forEach(s => {
+    const c = s.data();
+    if (c.processoId === processoId) items.push(c);
   });
+  // Ordena por createdAt se existir timestamp
+  items.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
 
-  /***** Integração suave com seu UI atual *****/
-  // Abre modal de processos no modo "novo" (caso seu botão #add exista)
-  document.getElementById("add")?.addEventListener("click", () => {
-    formProc.reset();
-    hidId.value = "";
-    if (btnDelForm) btnDelForm.style.display = "none";
-    openProcModalSafe("Novo Processo");
-  });
+  for (const c of items) {
+    const li = document.createElement('div');
+    const when = c.createdAt ? new Date(c.createdAt.seconds*1000).toLocaleString() : '';
+    li.className = 'view-item';
+    li.innerHTML = `<strong>${c.autorEmail||'Alguém'}</strong><p>${c.texto}</p><span style="font-size:.8rem;color:var(--text-muted)">${when}</span>`;
+    listEl.appendChild(li);
+  }
+}
 
-  // Helpers para abrir/fechar modal respeitando seus atributos/data-* existentes
-  function openProcModalSafe(title = "Processo") {
-    const modal = document.getElementById("m_proc");
-    const titleEl = document.getElementById("m_proc_t");
-    if (titleEl) titleEl.textContent = title;
-    if (modal) modal.style.display = "flex";
-  }
-  function closeProcModalSafe() {
-    const modal = document.getElementById("m_proc");
-    if (modal) modal.style.display = "none";
-  }
+/* ===== 7) BACKUP / RESTORE (JSON) ===== */
+const btnBackupDown = document.getElementById('bk_down');  /*  */
+const btnBackupUp   = document.getElementById('bk_up');    /*  */
+const inpBackupFile = document.getElementById('bk_file');  /*  */
 
-  // Toast simples usando seu container se existir, senão console
-  function toast(msg, type = "info") {
-    const cont = document.getElementById("toast-container");
-    if (!cont) { console.log(`[${type}]`, msg); return; }
-    const el = document.createElement("div");
-    el.className = `toast ${type}`;
-    el.innerHTML = `<span class="icon">●</span><span>${escapeHtml(msg)}</span>`;
-    cont.appendChild(el);
-    setTimeout(() => el.remove(), 4000);
+btnBackupDown?.addEventListener('click', async () => {
+  const processos = [];
+  const comentarios = [];
+
+  const pSnap = await getDocs(colProcessos);
+  pSnap.forEach(s => processos.push({ id: s.id, ...s.data() }));
+
+  const cSnap = await getDocs(colComentarios);
+  cSnap.forEach(s => comentarios.push({ id: s.id, ...s.data() }));
+
+  const json = JSON.stringify({ exportAt: new Date().toISOString(), processos, comentarios }, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `juriscontrol-backup-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Backup gerado.");
+});
+
+btnBackupUp?.addEventListener('click', () => {
+  inpBackupFile?.click();
+});
+
+inpBackupFile?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const txt = await file.text();
+  const data = JSON.parse(txt);
+
+  // Restaura processos (merge simples por ID — se não existir, cria com ID fixo)
+  for (const p of (data.processos||[])) {
+    const ref = doc(db, 'processos', p.id);
+    await setDoc(ref, p, { merge: true });
   }
+  // Restaura comentários
+  for (const c of (data.comentarios||[])) {
+    const ref = doc(db, 'comentarios', c.id);
+    await setDoc(ref, c, { merge: true });
+  }
+  await renderProcessos();
+  showToast("Backup restaurado.");
+});
+
+/* ===== 8) TOAST SIMPLES (usa seu #toast-container se existir) ===== */
+function showToast(msg) {
+  // usa o seu container se já existir; se não, cria temporário
+  let cont = document.getElementById('toast-container');                /*  */
+  if (!cont) {
+    cont = document.createElement('div');
+    cont.id = 'toast-container';
+    cont.style.position = 'fixed';
+    cont.style.top = '1.25rem';
+    cont.style.right = '1.25rem';
+    cont.style.zIndex = '9999';
+    document.body.appendChild(cont);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast info';
+  el.style.background = 'var(--card-bg)';
+  el.style.color = 'var(--text-primary)';
+  el.style.borderLeft = '4px solid var(--info)';
+  el.style.padding = '1rem';
+  el.style.marginTop = '.5rem';
+  el.style.borderRadius = '10px';
+  el.textContent = msg;
+  cont.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
 </script>
-<!-- / Firebase + Firestore -->
-
-
-</body>
-</html>
-
-</body>
-</html>
-
