@@ -2418,7 +2418,30 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
 });
 </script>
+<!-- Firebase (início) -->
+<script type="module">
+  // Importa funções principais do Firebase pela CDN
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
 
+  // Configuração do Firebase (os dados são os que você pegou no console)
+  const firebaseConfig = {
+    apiKey: "AIZaSyB9dx_F8splj8n_ajSJRGiAqb02u8dUvJQ",
+    authDomain: "juriscontrolcmdc.firebaseapp.com",
+    projectId: "juriscontrolcmdc",
+    storageBucket: "juriscontrolcmdc.firebasestorage.app",
+    messagingSenderId: "570109438050",
+    appId: "1:570109438050:web:ddb296a9863cdd294e093b",
+    measurementId: "G-YGXSSJKEXJ"
+  };
+
+  // Inicializa o Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+
+  console.log("Firebase inicializado com sucesso!");
+</script>
+<!-- Firebase (fim) -->
 </body>
 </html>
 
