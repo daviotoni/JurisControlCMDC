@@ -2424,52 +2424,85 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <!-- Firebase + Firestore -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs } 
-    from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth, setPersistence, browserLocalPersistence,
+         signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIZaSyB9dx_F8splj8n_ajSJRGiAqb02u8dUvJQ",
-    authDomain: "juriscontrolcmdc.firebaseapp.com",
-    projectId: "juriscontrolcmdc",
-    storageBucket: "juriscontrolcmdc.firebasestorage.app",
-    messagingSenderId: "570109438050",
-    appId: "1:570109438050:web:ddb296a9863cdd294e093b"
-  };
+const firebaseConfig = {
+  apiKey: "SUA-API-KEY",
+  authDomain: "SEU-PROJETO.firebaseapp.com",
+  projectId: "SEU-PROJETO",
+  storageBucket: "SEU-PROJETO.appspot.com",
+  messagingSenderId: "XXXXXXXXXXXX",
+  appId: "1:XXXXXXXXXXXX:web:YYYYYYYYYYYYYY"
+};
 
-  // Inicializa Firebase e Firestore
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
 
-  console.log("Firestore pronto!");
+// ===== Login UI (usa seus elementos existentes) =====
+const loginOverlay = document.getElementById('loginOverlay');
+const userInput    = document.getElementById('loginUser');
+const passInput    = document.getElementById('loginPass');
+const btnEntrar    = document.getElementById('btnEntrar');
+const loginErro    = document.getElementById('loginErro');
 
-  // Teste salvar
-  async function salvarProcessoTeste() {
-    try {
-      const docRef = await addDoc(collection(db, "processos"), {
-        numero: "0001/2025",
-        interessado: "Primeiro Teste",
-        status: "Em Análise",
-        prazo: "2025-09-30"
-      });
-      console.log("Processo salvo com ID:", docRef.id);
-    } catch (e) {
-      console.error("Erro ao salvar:", e);
-    }
+setPersistence(auth, browserLocalPersistence);
+
+btnEntrar?.addEventListener('click', async () => {
+  loginErro.textContent = "";
+  try {
+    const email = userInput.value.trim();
+    const pass  = passInput.value;
+    if (!email || !pass) throw new Error("Preencha e-mail e senha.");
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch (e) {
+    loginErro.textContent = e.message || "Falha no login.";
   }
+});
 
-  // Teste listar
-  async function listarProcessos() {
-    const querySnapshot = await getDocs(collection(db, "processos"));
-    querySnapshot.forEach((doc) => {
-      console.log(doc.id, " => ", doc.data());
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // esconde overlay e segue o jogo
+    loginOverlay.style.display = 'none';
+    console.log("Logado como:", user.email);
+    // teste rápido de Firestore:
+    testFirestore();
+  } else {
+    loginOverlay.style.display = 'flex';
+  }
+});
+
+// botão "Sair" (se existir no seu layout)
+document.getElementById('btnSair')?.addEventListener('click', () => signOut(auth));
+
+// ===== Teste rápido Firestore =====
+async function testFirestore() {
+  try {
+    // cria um doc de healthcheck (só pra validar permissões)
+    await addDoc(collection(db, 'historico'), {
+      tipo: 'healthcheck',
+      at: serverTimestamp()
     });
+    console.log('Firestore OK ✅');
+  } catch (e) {
+    console.error('Firestore bloqueou:', e);
   }
+}
 
-  salvarProcessoTeste();
-  listarProcessos();
+// ===== (opcional) Gancho para salvar processos também no Firestore =====
+// Adiciona uma função global para você chamar logo após salvar no seu IndexedDB.
+window.syncProcessToFirestore = async (proc) => {
+  try {
+    const id = String(proc.id); // você usa id numérico; mantemos como string no Firestore
+    await setDoc(doc(db, 'processos', id), { ...proc, syncedAt: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    console.warn("Falha ao sincronizar processo no Firestore:", e);
+  }
+};
 </script>
-<!-- fim Firebase + Firestore -->
 
 </body>
 </html>
