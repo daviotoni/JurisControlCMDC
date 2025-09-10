@@ -2503,29 +2503,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <!-- Firebase + Firestore -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } 
-    from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc } 
-    from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIZaSyB9dx_F8splj8n_ajSJRGiAqb02u8dUvJQ",
-    authDomain: "juriscontrolcmdc.firebaseapp.com",
-    projectId: "juriscontrolcmdc",
-    storageBucket: "juriscontrolcmdc.firebasestorage.app",
-    messagingSenderId: "570109438050",
-    appId: "1:570109438050:web:ddb296a9863cdd294e093b"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-
-  console.log("Firebase e Firestore prontos para uso.");
-
-</script>
+<script type="module" src="firebase.js"></script>
 
 </body>
 </html>
