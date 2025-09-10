@@ -108,6 +108,21 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   // ===== FIM: Lógica do IndexedDB =====
 
+  // ===== INÍCIO: Lógica do Firestore =====
+  const firestoreHelper = {
+      db: null,
+      init(dbInstance) { this.db = dbInstance; },
+      async getAll(storeName) {
+          const snap = await getDocs(collection(this.db, storeName));
+          return snap.docs.map(d => ({ ...d.data() }));
+      },
+      async set(storeName, item) {
+          const key = item.id ?? item.key;
+          await setDoc(doc(this.db, storeName, String(key)), item);
+      }
+  };
+  // ===== FIM: Lógica do Firestore =====
+
   // Variáveis de dados em memória
   let DB_USERS = [], DB = [], CAL = [], DB_DOCS = [], DB_VERSOES = [], DB_MODELOS = [], DB_EMISSORES = [], DB_LEIS = [];
   let CFG;
@@ -121,10 +136,44 @@ document.addEventListener('DOMContentLoaded', () => {
   async function saveCFG() {
       await dbHelper.put('config', { key: 'main_cfg', value: CFG });
   }
-  
+
+  async function syncToFirestore() {
+      if (!firestoreHelper.db) return;
+      for (const storeName of STORES) {
+          const items = await dbHelper.getAll(storeName);
+          for (const item of items) {
+              await firestoreHelper.set(storeName, item);
+          }
+      }
+  }
+
+  async function syncFromFirestore() {
+      if (!firestoreHelper.db) return;
+      for (const storeName of STORES) {
+          const items = await firestoreHelper.getAll(storeName);
+          if (items.length) {
+              await dbHelper.clear(storeName);
+              for (const item of items) {
+                  await dbHelper.put(storeName, item);
+              }
+          }
+      }
+  }
+
   async function loadAllData() {
       const defaultConfig = { sync: true, rowH: 140, theme: 'light', readNotifications: [], dismissedNotifications: [], sidebarCollapsed: false };
-      
+
+      const loadedCfg = await dbHelper.get('config', 'main_cfg');
+      CFG = loadedCfg ? { ...defaultConfig, ...loadedCfg.value } : defaultConfig;
+
+      if (CFG.sync && firestoreHelper.db) {
+          try {
+              await syncFromFirestore();
+          } catch (e) {
+              console.error('Erro ao sincronizar do Firestore:', e);
+          }
+      }
+
       DB_USERS = await dbHelper.getAll('users');
       DB = await dbHelper.getAll('processos');
       CAL = await dbHelper.getAll('calendario');
@@ -133,9 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
       DB_MODELOS = await dbHelper.getAll('modelos');
       DB_EMISSORES = await dbHelper.getAll('emissores');
       DB_LEIS = await dbHelper.getAll('leis');
-      
-      const loadedCfg = await dbHelper.get('config', 'main_cfg');
-      CFG = loadedCfg ? { ...defaultConfig, ...loadedCfg.value } : defaultConfig;
   }
 
   // ===== Lógica de Login & Usuários =====
@@ -1393,12 +1439,34 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         reader.readAsText(file);
     };
+
+    $('#sync_to_cloud').onclick = async () => {
+        try {
+            await syncToFirestore();
+            showToast('Dados enviados para o Firestore.');
+        } catch (e) {
+            console.error('Erro ao enviar para Firestore:', e);
+            showToast('Falha ao enviar dados.', 'danger');
+        }
+    };
+
+    $('#sync_from_cloud').onclick = async () => {
+        try {
+            await syncFromFirestore();
+            await loadAllData();
+            showToast('Dados obtidos do Firestore.');
+        } catch (e) {
+            console.error('Erro ao obter do Firestore:', e);
+            showToast('Falha ao receber dados.', 'danger');
+        }
+    };
   }
 
   // ===== INICIALIZAÇÃO =====
   async function init() {
     try {
         await dbHelper.init();
+        firestoreHelper.init(window.firestoreDB);
         await loadAllData();
         await initTheme();
         await initializeUsers();
