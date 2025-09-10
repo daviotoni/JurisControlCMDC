@@ -1,3 +1,6 @@
+import { auth, signInWithEmailAndPassword } from './firebase.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js';
+
 document.addEventListener('DOMContentLoaded', () => {
 
   // ===== Helpers =====
@@ -151,15 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function initializeUsers() {
-      if (DB_USERS.length === 0) {
-          const defaultUsers = [
-              { id: Date.now(), name: 'Administrador', login: 'admin', hashedPassword: simpleHash('admin'), role: 'admin' }
-          ];
-          for (const user of defaultUsers) {
-              await dbHelper.put('users', user);
-          }
-          DB_USERS = defaultUsers;
-      }
+      // Usuários são gerenciados pelo Firebase; nenhum usuário padrão é criado.
   }
 
   const loginOverlay = $('#loginOverlay');
@@ -189,15 +184,12 @@ document.addEventListener('DOMContentLoaded', () => {
     loginUser.focus();
   }
 
-  function tentarEntrar() {
+  async function tentarEntrar() {
     const login = loginUser.value.trim();
     const pass = loginPass.value;
-    const user = DB_USERS.find(u => u.login === login);
-
-    if (user && simpleHash(pass) === user.hashedPassword) {
-      sessionStorage.setItem('loggedInUser', JSON.stringify(user));
-      showApp(user);
-    } else {
+    try {
+      await signInWithEmailAndPassword(login, pass);
+    } catch (error) {
       loginErro.textContent = 'Login ou senha inválidos';
       loginPass.select();
       loginPass.focus();
@@ -1401,14 +1393,21 @@ document.addEventListener('DOMContentLoaded', () => {
         await dbHelper.init();
         await loadAllData();
         await initTheme();
-        await initializeUsers();
-        setupEventListeners();
-        checkLoginState();
-    } catch (error) {
-        console.error("Falha na inicialização do aplicativo:", error);
-        document.body.innerHTML = '<h1>Ocorreu um erro crítico ao carregar a aplicação.</h1>';
+          await initializeUsers();
+          setupEventListeners();
+          onAuthStateChanged(auth, (user) => {
+              if (user) {
+                  const localUser = DB_USERS.find(u => u.login === user.email) || { name: user.email };
+                  showApp(localUser);
+              } else {
+                  showLogin();
+              }
+          });
+      } catch (error) {
+          console.error("Falha na inicialização do aplicativo:", error);
+          document.body.innerHTML = '<h1>Ocorreu um erro crítico ao carregar a aplicação.</h1>';
+      }
     }
-  }
 
   init();
 });
