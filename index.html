@@ -2075,7 +2075,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const labels = mesesMap, dadosAdm = Array(12).fill(0), dadosJud = Array(12).fill(0);
     data.forEach(p => { if(p.ent){ const m = parse(p.ent).getUTCMonth(); if(p.tipo==='administrativo')dadosAdm[m]++; else dadosJud[m]++; }});
     const sCounts={}; data.forEach(p=>sCounts[p.stat]=(sCounts[p.stat]||0)+1);
-    const entradasConfig = { type: 'line', data: { labels, datasets: [{ label: 'Administrativo', data: dadosAdm, borderColor: colorPalette[0], backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.3, fill: true },{ label: 'Judicial', data: dadosJud, borderColor: colorPalette[1], backgroundColor: 'rgba(245, 158, 11, 0.1)', tension: 0.3, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: gridColor, drawBorder: false } }, x: { grid: { display: false } } }, onClick: (e, els) => { if(els.length > 0) showTab('proc', { filterBy: { month: els[0].index } }) } }};
+    
+    // ===== GRÁFICO DE ENTRADAS ALTERADO PARA BARRAS =====
+    const entradasConfig = { 
+        type: 'bar', 
+        data: { 
+            labels, 
+            datasets: [
+                { label: 'Administrativo', data: dadosAdm, backgroundColor: colorPalette[0] },
+                { label: 'Judicial', data: dadosJud, backgroundColor: colorPalette[1] }
+            ] 
+        }, 
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            scales: { 
+                y: { 
+                    beginAtZero: true,
+                    ticks: { precision: 0 },
+                    grid: { color: gridColor, drawBorder: false } 
+                }, 
+                x: { grid: { display: false } } 
+            }, 
+            onClick: (e, els) => { if(els.length > 0) showTab('proc', { filterBy: { month: els[0].index } }) } 
+        }
+    };
+    // ===== FIM DA ALTERAÇÃO =====
+
     const statusConfig = { type: 'doughnut', data: { labels: Object.values(statusMap), datasets: [{ data: sMapKeys.map(k=>sCounts[k]||0), backgroundColor: sMapKeys.map(key => statusColorMap[key]), borderWidth: 2, borderColor: cardColor }] }, options: { responsive: true, maintainAspectRatio: false, onClick: (e, els) => { if (els.length > 0) { const statusKey = sMapKeys[els[0].index]; showTab('proc', { filterBy: { status: statusKey } }) } } }};
     
     const pareceresPorMes = Array(12).fill(0);
@@ -2502,8 +2528,36 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<!-- Firebase + Firestore -->
-<script type="module" src="firebase.js"></script>
+    <!-- Bloco de script do Firebase corrigido -->
+    <script type="module">
+      // Passo 1: Importe as funções que você precisa dos SDKs do Firebase.
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+      import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    
+      // Passo 2: A configuração do seu projeto Firebase (suas chaves).
+      const firebaseConfig = {
+        apiKey: "AIzaSyB9dx_F8splj8n_ajSJRGiAqb02u8dUvJQ",
+        authDomain: "juriscontrolcmdc.firebaseapp.com",
+        projectId: "juriscontrolcmdc",
+        storageBucket: "juriscontrolcmdc.firebasestorage.app",
+        messagingSenderId: "570109438050",
+        appId: "1:570109438050:web:ddb296a9863cdd294e093b"
+      };
+    
+      // Passo 3: Inicialize os serviços do Firebase.
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+    
+      // Passo 4: Confirme no console que tudo funcionou.
+      console.log("Firebase inicializado com sucesso. Pronto para ser usado.");
+
+      // Passo 5 (PRÓXIMO PASSO LÓGICO): Conecte o Firebase à sua aplicação.
+      // Uma maneira simples de fazer isso é:
+      window.firebase = { db, auth };
+      
+    </script>
 
 </body>
 </html>
