@@ -2527,35 +2527,6 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
 });
 </script>
-
-    <!-- Bloco de script do Firebase corrigido -->
-    <script type="module">
-      // Passo 1: Importe as funções que você precisa dos SDKs do Firebase.
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-      import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    
-      // Passo 2: A configuração do seu projeto Firebase (suas chaves).
-      const firebaseConfig = {
-        apiKey: "AIzaSyB9dx_F8splj8n_ajSJRGiAqb02u8dUvJQ",
-        authDomain: "juriscontrolcmdc.firebaseapp.com",
-        projectId: "juriscontrolcmdc",
-        storageBucket: "juriscontrolcmdc.firebasestorage.app",
-        messagingSenderId: "570109438050",
-        appId: "1:570109438050:web:ddb296a9863cdd294e093b"
-      };
-    
-      // Passo 3: Inicialize os serviços do Firebase.
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      const auth = getAuth(app);
-    
-      // Passo 4: Confirme no console que tudo funcionou.
-      console.log("Firebase inicializado com sucesso. Pronto para ser usado.");
-
-      // Passo 5 (PRÓXIMO PASSO LÓGICO): Conecte o Firebase à sua aplicação.
-      // Uma maneira simples de fazer isso é:
-      window.firebase = { db, auth };
       
     </script>
 
