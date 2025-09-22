@@ -2,14 +2,25 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
+// Configuração do Firebase usando variáveis de ambiente
+// IMPORTANTE: As chaves reais devem ser definidas em um arquivo .env ou nas configurações do servidor
 const firebaseConfig = {
-  apiKey: "AIZaSyB9dx_F8splj8n_ajSJRGiAqb02u8dUvJQ",
-  authDomain: "juriscontrolcmdc.firebaseapp.com",
-  projectId: "juriscontrolcmdc",
-  storageBucket: "juriscontrolcmdc.firebasestorage.app",
-  messagingSenderId: "570109438050",
-  appId: "1:570109438050:web:ddb296a9863cdd294e093b"
+  apiKey: window.FIREBASE_API_KEY || process.env.FIREBASE_API_KEY,
+  authDomain: window.FIREBASE_AUTH_DOMAIN || process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: window.FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID,
+  storageBucket: window.FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: window.FIREBASE_MESSAGING_SENDER_ID || process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: window.FIREBASE_APP_ID || process.env.FIREBASE_APP_ID
 };
+
+// Verificar se todas as configurações necessárias estão presentes
+const requiredConfigs = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+const missingConfigs = requiredConfigs.filter(key => !firebaseConfig[key]);
+
+if (missingConfigs.length > 0) {
+  console.error('Configurações do Firebase ausentes:', missingConfigs);
+  throw new Error(`Configurações do Firebase não encontradas: ${missingConfigs.join(', ')}`);
+}
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
