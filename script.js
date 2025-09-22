@@ -33,80 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
-  // ===== INÍCIO: Lógica do IndexedDB =====
-  const DB_NAME = 'JurisControlDB_v1';
-  const DB_VERSION = 1;
-  const STORES = ['users', 'processos', 'calendario', 'documentos', 'versoes', 'modelos', 'emissores', 'leis', 'config'];
-  let db;
+  // ===== INÍCIO: Integração com o Novo Sistema de Banco de Dados =====
+  // A lógica de banco de dados foi movida para `database-manager.js` e `sync-integration.js`
+  // O objeto `dbHelper` agora é um wrapper gerenciado pelo `syncIntegration`.
+  const dbHelper = window.dbHelper || {};
+  // ===== FIM: Integração =====
 
-  const dbHelper = {
-      async init() {
-          return new Promise((resolve, reject) => {
-              const request = indexedDB.open(DB_NAME, DB_VERSION);
-              request.onerror = (event) => reject("Erro ao abrir o IndexedDB");
-              request.onsuccess = (event) => {
-                  db = event.target.result;
-                  resolve(db);
-              };
-              request.onupgradeneeded = (event) => {
-                  const db = event.target.result;
-                  STORES.forEach(storeName => {
-                      if (!db.objectStoreNames.contains(storeName)) {
-                          db.createObjectStore(storeName, { keyPath: 'id' });
-                      }
-                  });
-                  if(db.objectStoreNames.contains('config')) db.deleteObjectStore('config');
-                  db.createObjectStore('config', { keyPath: 'key' });
-              };
-          });
-      },
-      async get(storeName, key) {
-          return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readonly');
-              const store = transaction.objectStore(storeName);
-              const request = store.get(key);
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => reject(request.error);
-          });
-      },
-      async getAll(storeName) {
-          return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readonly');
-              const store = transaction.objectStore(storeName);
-              const request = store.getAll();
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => reject(request.error);
-          });
-      },
-      async put(storeName, item) {
-          return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readwrite');
-              const store = transaction.objectStore(storeName);
-              const request = store.put(item);
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => reject(request.error);
-          });
-      },
-      async delete(storeName, key) {
-          return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readwrite');
-              const store = transaction.objectStore(storeName);
-              const request = store.delete(key);
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => reject(request.error);
-          });
-      },
-      async clear(storeName) {
-           return new Promise((resolve, reject) => {
-              const transaction = db.transaction(storeName, 'readwrite');
-              const store = transaction.objectStore(storeName);
-              const request = store.clear();
-              request.onsuccess = () => resolve();
-              request.onerror = () => reject(request.error);
-          });
-      }
-  };
-  // ===== FIM: Lógica do IndexedDB =====
 
   // Variáveis de dados em memória
   let DB_USERS = [], DB = [], CAL = [], DB_DOCS = [], DB_VERSOES = [], DB_MODELOS = [], DB_EMISSORES = [], DB_LEIS = [];
@@ -1365,7 +1297,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Espera um pouco para garantir que a conexão foi fechada
                 setTimeout(async () => {
-                    await dbHelper.init(); // Reabre a conexão
+                    // A inicialização agora é feita pelo sync-integration.js // Reabre a conexão
 
                     for (const storeName of STORES) {
                          if (backupData[storeName]) {
@@ -1398,7 +1330,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===== INICIALIZAÇÃO =====
   async function init() {
     try {
-        await dbHelper.init();
+        // A inicialização agora é feita pelo sync-integration.js
         await loadAllData();
         await initTheme();
         await initializeUsers();
