@@ -795,18 +795,18 @@
                         <div class="form-group"><label for="fp_num">Nº do Processo</label><input id="fp_num" name="num" class="input" required></div>
                         <div class="form-group"><label for="fp_tipo">Tipo</label><select id="fp_tipo" name="tipo" class="select"><option value="administrativo">Administrativo</option><option value="judicial">Judicial</option></select></div>
                         <div class="form-group full-width"><label for="fp_int">Interessado</label><input id="fp_int" name="int" class="input" required></div>
-                        <div class="form-group full-width"><label for="fp_origem">Setor de Origem</label><select id="fp_origem" name="setorOrigem" class="select"></select></div>
+                        <div class="form-group"><label for="fp_origem">Setor de Origem</label><select id="fp_origem" name="setorOrigem" class="select"></select></div>
+                        <div class="form-group"><label for="fp_dest">Setor Enviado</label><select id="fp_dest" name="dest" class="select"></select></div>
                         <div class="form-group full-width"><label for="fp_obj">Objeto</label><textarea id="fp_obj" name="obj" class="input" required></textarea></div>
                         <div class="form-group full-width"><label for="fp_acao">Ação Tomada</label><textarea id="fp_acao" name="acao" class="input"></textarea></div>
                         <fieldset class="full-width" style="border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem; margin-top: 1rem;">
                             <legend style="padding: 0 0.5rem; font-weight: 600;">Status e Prazos</legend>
-                            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
+                            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                                 <div class="form-group"><label for="fp_ent">Entrada</label><input id="fp_ent" name="ent" type="date" class="input" required></div>
                                 <div class="form-group"><label for="fp_prazo">Prazo Final</label><input id="fp_prazo" name="prazo" type="date" class="input"></div>
                                 <div class="form-group"><label for="fp_saida">Saída</label><input id="fp_saida" name="saida" type="date" class="input"></div>
                                 <div class="form-group"><label for="fp_stat">Status</label><select id="fp_stat" name="stat" class="select"><option value="pendente">Pendente</option><option value="em-analise">Em Análise</option><option value="aguardando-documentacao">Aguardando Documentação</option><option value="em-diligencia">Em Diligência</option><option value="finalizado">Finalizado</option><option value="arquivado">Arquivado</option></select></div>
-                                <div class="form-group full-width" id="fp_dest_group" style="display:none"><label for="fp_dest">Destino</label><select id="fp_dest" name="dest" class="select"></select></div>
-                                <div class="form-group"><label for="fp_emissor">Emissor da Ficha</label><select id="fp_emissor" name="emissorId" class="select"><option value="">Usuário Logado</option></select></div>
+                                <div class="form-group" style="grid-column: span 2;"><label for="fp_emissor">Emissor da Ficha</label><select id="fp_emissor" name="emissorId" class="select"><option value="">Usuário Logado</option></select></div>
                             </div>
                         </fieldset>
                     </div>
@@ -1493,7 +1493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function filterSort() {
         let L = DB.slice();
         const t = (q.value || '').toLowerCase().trim();
-        if (t) L = L.filter(p => [p.num, p.int, p.obj, p.setorOrigem, p.acao, statusMap[p.stat]].some(v => String(v || '').toLowerCase().includes(t)));
+        if (t) L = L.filter(p => [p.num, p.int, p.obj, p.setorOrigem, p.dest, p.acao, statusMap[p.stat]].some(v => String(v || '').toLowerCase().includes(t)));
         if (initialFilter?.status) L = L.filter(p => p.stat === initialFilter.status);
         if (initialFilter?.prazo === 'alerta') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) <= 5 && diffDays(todayUTC(), parse(p.prazo)) >= 0);
         if (initialFilter?.prazo === 'vencido') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) < 0);
@@ -1718,7 +1718,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tramGrid.appendChild(createViewItemHTML('Status', `<span class="status ${p.stat}">${sanitizeHTML(statusMap[p.stat]) || '—'}</span>`));
     tramGrid.appendChild(createViewItem('Prazo Final', fmtBR(p.prazo)));
     tramGrid.appendChild(createViewItem('Setor de Origem', p.setorOrigem));
-    tramGrid.appendChild(createViewItem('Destino Final', p.dest));
+    tramGrid.appendChild(createViewItem('Setor Enviado', p.dest));
     tramGrid.appendChild(createViewItem('Data de Entrada', fmtBR(p.ent)));
     tramGrid.appendChild(createViewItem('Data de Saída', fmtBR(p.saida)));
     tramGrid.appendChild(createViewItem('Dias de Tramitação', diasTramitacao));
@@ -1824,7 +1824,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rowHeight = lines.length * 5 + 4; doc.setDrawColor(230, 230, 230); doc.line(margin, y + rowHeight - 1, pageW - margin, y + rowHeight - 1); y += rowHeight;
             };
 
-            drawSection('DADOS DO PROCESSO', () => { drawDataRow('Nº DO PROCESSO:', p.num); drawDataRow('TIPO:', p.tipo === 'administrativo' ? 'Administrativo' : 'Judicial'); drawDataRow('SETOR DE ORIGEM:', p.setorOrigem); drawDataRow('DESTINO:', p.dest); drawDataRow('INTERESSADO:', p.int); });
+            drawSection('DADOS DO PROCESSO', () => { drawDataRow('Nº DO PROCESSO:', p.num); drawDataRow('TIPO:', p.tipo === 'administrativo' ? 'Administrativo' : 'Judicial'); drawDataRow('SETOR DE ORIGEM:', p.setorOrigem); drawDataRow('SETOR ENVIADO:', p.dest); drawDataRow('INTERESSADO:', p.int); });
             drawSection('OBJETO E AÇÃO TOMADA', () => { drawDataRow('OBJETO:', p.obj); drawDataRow('AÇÃO TOMADA:', p.acao); });
             drawSection('PRAZOS E ANDAMENTO', () => {
                 const diasTramitacaoCalc = p.ent ? `${diffDays(parse(p.ent), p.saida ? parse(p.saida) : todayUTC())} dia(s)` : '—';
@@ -2528,8 +2528,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-    </script>
-
 </body>
 </html>
-
