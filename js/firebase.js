@@ -1,8 +1,8 @@
 // js/firebase.js
-// Inicialização do Firebase + Funções de ajuda (versão Compat)
+// Firebase + Auth + Firestore helpers (Compat)
 
 // ============================================
-// CONFIGURAÇÃO DO SEU PROJETO FIREBASE
+// CONFIG
 // ============================================
 const firebaseConfig = {
   apiKey: "AIzaSyB9dx_F8splj8n_ajSJRGiAqbo2u8dUvJQ",
@@ -14,79 +14,52 @@ const firebaseConfig = {
   measurementId: "G-7ZVC7NZRML"
 };
 
-// Inicializa o Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Referências globais
 window.auth = firebase.auth();
 window.db = firebase.firestore();
 
-console.log("✅ Firebase inicializado com sucesso");
+console.log("✅ Firebase + Auth inicializado");
 
 // ============================================
-// FUNÇÕES DE AJUDA - FIRESTORE
+// AUTH HELPERS
 // ============================================
 
 /**
- * Salva um novo processo no Firestore
- * @param {Object} processo - Objeto com os dados do processo
+ * Login com email e senha usando Firebase Auth
  */
-async function salvarProcesso(processo) {
+async function loginComFirebase(email, senha) {
   try {
-    const docRef = await db.collection('processos').add({
-      ...processo,
-      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    console.log('✅ Processo salvo com ID:', docRef.id);
-    return docRef.id;
+    const userCredential = await auth.signInWithEmailAndPassword(email, senha);
+    console.log('✅ Login realizado com sucesso:', userCredential.user.email);
+    return userCredential.user;
   } catch (error) {
-    console.error('❌ Erro ao salvar processo:', error);
+    console.error('❌ Erro no login Firebase:', error.code, error.message);
     throw error;
   }
 }
 
 /**
- * Carrega todos os processos do Firestore
+ * Logout
  */
-async function carregarProcessos() {
-  try {
-    const snapshot = await db.collection('processos').orderBy('criadoEm', 'desc').get();
-    const processos = [];
-    snapshot.forEach(doc => {
-      processos.push({ id: doc.id, ...doc.data() });
-    });
-    console.log(`✅ ${processos.length} processos carregados`);
-    return processos;
-  } catch (error) {
-    console.error('❌ Erro ao carregar processos:', error);
-    throw error;
-  }
+async function logoutFirebase() {
+  await auth.signOut();
+  console.log('✅ Logout realizado');
 }
 
 /**
- * Teste rápido - cria um processo de exemplo
+ * Observa mudanças no estado de autenticação
  */
-async function testeSalvarProcesso() {
-  const processoTeste = {
-    num: "TESTE-001",
-    tipo: "Ação Civil",
-    obj: "Teste de integração Firebase",
-    stat: "Em andamento",
-    prazo: "2026-07-01"
-  };
-  
-  const id = await salvarProcesso(processoTeste);
-  console.log('ID do processo teste:', id);
-  return id;
+function observarAuth(callback) {
+  return auth.onAuthStateChanged(callback);
 }
 
-// Deixa as funções acessíveis no console do navegador
-window.salvarProcesso = salvarProcesso;
-window.carregarProcessos = carregarProcessos;
-window.testeSalvarProcesso = testeSalvarProcesso;
+// Expõe as funções
+window.loginComFirebase = loginComFirebase;
+window.logoutFirebase = logoutFirebase;
+window.observarAuth = observarAuth;
 
-console.log("\n👉 Funções disponíveis no console:");
-console.log("   - testeSalvarProcesso()   // cria um processo de teste");
-console.log("   - carregarProcessos()     // lista todos os processos");
-console.log("   - salvarProcesso({...})   // salva um processo manualmente");
+console.log("\n👉 Funções de Auth disponíveis:");
+console.log("   loginComFirebase(email, senha)");
+console.log("   logoutFirebase()");
+console.log("   observarAuth(callback)");
