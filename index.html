@@ -1205,18 +1205,34 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function tentarEntrar() {
-    const login = loginUser.value.trim();
-    const pass = loginPass.value;
-    const user = DB_USERS.find(u => u.login === login);
+   async function tentarEntrar() {
+    const email = loginUser.value.trim();
+    const senha = loginPass.value;
 
-    if (user && await cryptoHelper.verifyPassword(pass, user.salt, user.hashedPassword)) {
-      const userSessionData = { id: user.id, name: user.name, login: user.login, role: user.role };
-      sessionStorage.setItem('loggedInUser', JSON.stringify(userSessionData));
-      showApp(user);
-    } else {
-      loginErro.textContent = 'Login ou senha inválidos';
-      loginPass.select();
-      loginPass.focus();
+    loginErro.textContent = '';
+    btnEntrar.disabled = true;
+
+    try {
+        // === LOGIN PELO FIREBASE ===
+        const firebaseUser = await loginComFirebase(email, senha);
+
+        // Cria um objeto simples de sessão (podemos melhorar depois)
+        const userSession = {
+            id: firebaseUser.uid,
+            name: firebaseUser.email.split('@')[0],
+            login: firebaseUser.email,
+            role: 'user'
+        };
+
+        sessionStorage.setItem('loggedInUser', JSON.stringify(userSession));
+        showApp(userSession);
+
+    } catch (error) {
+        console.error(error);
+        loginErro.textContent = 'Login ou senha inválidos';
+        btnEntrar.disabled = false;
+    }
+}
     }
   }
 
