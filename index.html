@@ -1205,7 +1205,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function tentarEntrar() {
-   async function tentarEntrar() {
     const email = loginUser.value.trim();
     const senha = loginPass.value;
 
@@ -1216,7 +1215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // === LOGIN PELO FIREBASE ===
         const firebaseUser = await loginComFirebase(email, senha);
 
-        // Cria um objeto simples de sessão (podemos melhorar depois)
+        // Cria um objeto simples de sessão
         const userSession = {
             id: firebaseUser.uid,
             name: firebaseUser.email.split('@')[0],
@@ -1231,8 +1230,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error(error);
         loginErro.textContent = 'Login ou senha inválidos';
         btnEntrar.disabled = false;
-    }
-}
     }
   }
 
