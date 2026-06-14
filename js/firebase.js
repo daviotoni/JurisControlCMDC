@@ -17,10 +17,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 window.auth = firebase.auth();
+window.storage = firebase.storage();
 window.db = firebase.firestore();
 
-console.log("✅ Firebase + Auth inicializado");
-
+console.log("✅ Firebase, Firestore e Storage inicializados");
 // ============================================
 // AUTH HELPERS
 // ============================================
