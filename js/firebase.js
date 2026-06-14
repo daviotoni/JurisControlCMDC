@@ -1,5 +1,5 @@
 // js/firebase.js
-// Firebase + Auth + Firestore helpers (Compat)
+// Firebase + Auth + Firestore + Storage helpers (Compat)
 
 // ============================================
 // CONFIG
@@ -16,11 +16,12 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-window.auth = firebase.auth();
+window.auth    = firebase.auth();
+window.db      = firebase.firestore();
 window.storage = firebase.storage();
-window.db = firebase.firestore();
 
-console.log("✅ Firebase, Firestore e Storage inicializados");
+console.log("✅ Firebase + Auth + Firestore + Storage inicializados");
+
 // ============================================
 // AUTH HELPERS
 // ============================================
@@ -54,12 +55,15 @@ function observarAuth(callback) {
   return auth.onAuthStateChanged(callback);
 }
 
-// Expõe as funções
+// Expõe as funções globalmente
 window.loginComFirebase = loginComFirebase;
-window.logoutFirebase = logoutFirebase;
-window.observarAuth = observarAuth;
+window.logoutFirebase   = logoutFirebase;
+window.observarAuth     = observarAuth;
 
-console.log("\n👉 Funções de Auth disponíveis:");
+console.log("\n👉 Funções disponíveis:");
 console.log("   loginComFirebase(email, senha)");
 console.log("   logoutFirebase()");
 console.log("   observarAuth(callback)");
+console.log("   firestoreHelper.* (CRUD Firestore)");
+console.log("   dbHelper.* (compatibilidade IndexedDB → Firestore)");
+console.log("   storage (Firebase Storage)");
