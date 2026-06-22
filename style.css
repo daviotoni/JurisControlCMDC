@@ -20,7 +20,6 @@
             --sidebar-bg-light: #ffffff;
             --card-bg-light: #ffffff;
             --header-bg-light: #ffffff;
-            /* CORREÇÃO APLICADA ABAIXO */
             --text-primary-light: #1e293b; 
             --text-secondary-light: #64748b;
             --text-muted-light: #94a3b8;
@@ -81,7 +80,6 @@
             -moz-osx-font-smoothing: grayscale;
         }
         
-        /* MELHORIA: Prefers Reduced Motion */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: 0.01ms !important;
@@ -143,7 +141,6 @@
             flex-grow: 1;
         }
 
-        /* ===== MELHORIA: Header com Efeito "Glass" e Transição para Compacto ===== */
         .app-header {
             backdrop-filter: saturate(180%) blur(12px);
             -webkit-backdrop-filter: saturate(180%) blur(12px);
@@ -184,14 +181,12 @@
         .icon-btn:hover { background-color: var(--brand-bg-active); color: var(--brand-600); }
         .icon-btn svg { width: 20px; height: 20px; }
         
-        /* MELHORIA: Acessibilidade de Foco Visível */
-        .icon-btn:focus-visible, .top-nav a:focus-visible {
+        .icon-btn:focus-visible, .top-nav a:focus-visible, .theme-menu-btn:focus-visible {
             outline: 2px solid var(--brand-500);
             outline-offset: 2px;
             border-radius: 4px;
         }
 
-        /* ===== MELHORIA: Navegação Superior com Indicador Ativo Animado ===== */
         .top-nav { display: flex; align-items: center; height: 100%; }
         .top-nav ul { list-style: none; padding: 0; margin: 0; display: flex; height: 100%; }
         .top-nav a {
@@ -204,7 +199,7 @@
             color: var(--text-secondary);
             font-weight: 600;
             transition: color var(--transition-speed), background-color var(--transition-speed);
-            position: relative; /* Necessário para o ::after */
+            position: relative; 
         }
         .top-nav a::after {
             content: "";
@@ -234,13 +229,11 @@
 
         #mobile-menu-toggle { display: none; }
 
-        /* Conteúdo Principal */
         main {
             padding: 2rem;
             flex-grow: 1;
         }
 
-        /* Componentes de UI Genéricos */
         .card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -281,7 +274,64 @@
         .input:focus, .select:focus, textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
         body[data-theme="dark"] .input, body[data-theme="dark"] .select, body[data-theme="dark"] textarea { background-color: var(--sidebar-bg-dark); }
 
-        /* Tela de Login */
+        .theme-switch-wrapper {
+            position: relative;
+        }
+        .theme-menu {
+            position: absolute;
+            top: calc(100% + 1rem);
+            right: 0;
+            width: 220px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            padding: 0.5rem;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+        }
+        .theme-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .theme-menu-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            border: none;
+            background-color: transparent;
+            color: var(--text-secondary);
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+        }
+        .theme-menu-btn:hover {
+            background-color: var(--brand-bg-active);
+            color: var(--brand-600);
+        }
+        .theme-menu-btn.active {
+            background-color: var(--brand-bg-active);
+            color: var(--brand-700);
+        }
+        .theme-menu-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+        .theme-menu-divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 0.5rem 0;
+        }
+
         .login-overlay {
             position: fixed; inset: 0; background: linear-gradient(145deg, var(--brand-500), var(--brand-700));
             display: flex; align-items: center; justify-content: center; z-index: 2001;
@@ -298,7 +348,6 @@
         .login-acoes .btn { width: 100%; }
         .lembrar-me { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem; justify-content: flex-start; }
 
-        /* Dashboard */
         .dash-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; }
         .dash-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; }
         .kpi {
@@ -325,11 +374,10 @@
 
         .chart-container { position: relative; width: 100%; height: 300px; }
 
-        /* Seção de Processos e Leis */
         .toolbar { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
         .toolbar .input { max-width: 350px; flex-grow: 1;}
         .toolbar .select { max-width: 200px;}
-        .toolbar .actions-group { margin-left: auto; display: flex; gap: 1rem; flex-wrap: wrap; } /* Gap aumentado */
+        .toolbar .actions-group { margin-left: auto; display: flex; gap: 1rem; flex-wrap: wrap; } 
         
         .table-wrap { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
@@ -351,14 +399,12 @@
         .lei-card-ementa { flex-grow: 1; font-size: 0.9rem; margin-bottom: 1rem; }
         .lei-card-actions { display: flex; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); }
 
-        /* Paginação */
         .pagination-container { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1.5rem; }
         .page-link { border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-secondary); font-weight: 600; border-radius: 8px; padding: 0.5rem 0.8rem; cursor: pointer; transition: all var(--transition-speed); }
         .page-link:hover { border-color: var(--brand-500); color: var(--brand-600); background-color: var(--brand-50); }
         .page-link.active { background-color: var(--brand-600); border-color: var(--brand-600); color: #fff; }
         .page-link.disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Cards Responsivos para Processos */
         .mobile-cards-container { display: none; gap: 1rem; flex-direction: column; }
         .proc-card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
         .proc-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -367,14 +413,12 @@
         .proc-card-body .item strong { color: var(--text-muted); }
         .proc-card-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); }
         
-        /* MELHORIA: Overlay do menu mobile */
         .mobile-menu-overlay {
             position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.4); z-index: 90;
             opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
         }
         .mobile-menu-overlay.active { opacity: 1; visibility: visible; }
 
-        /* ===== MELHORIAS: Media Queries para Responsividade e Menu Mobile ===== */
         @media (max-width: 1200px) {
             .nav-text { display: none; }
             .top-nav a { gap: 0; justify-content: center; width: 60px; }
@@ -386,21 +430,21 @@
 
             .top-nav {
                 position: absolute;
-                top: 65px; /* Altura do header padrão */
+                top: 65px; 
                 left: 0; width: 100%;
                 background-color: var(--header-bg); border-bottom: 1px solid var(--border-color); box-shadow: var(--shadow);
                 transform: translateY(-100%); opacity: 0; visibility: hidden;
                 transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease, top 0.3s ease;
             }
             .app-header.header-compact .top-nav {
-                top: 56px; /* Ajusta a posição do menu quando o header está compacto */
+                top: 56px; 
             }
             .top-nav.mobile-open {
                 transform: translateY(0); opacity: 1; visibility: visible;
             }
             .top-nav ul { flex-direction: column; width: 100%; height: auto; }
             .top-nav a { justify-content: flex-start; width: 100%; height: auto; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); }
-            .top-nav a::after { left: 1.5rem; right: auto; width: 3px; height: 1.5rem; top: 50%; bottom: auto; transform: translateY(-50%) scaleY(0); transform-origin: center; } /* Adapta indicador para menu vertical */
+            .top-nav a::after { left: 1.5rem; right: auto; width: 3px; height: 1.5rem; top: 50%; bottom: auto; transform: translateY(-50%) scaleY(0); transform-origin: center; } 
             .top-nav a:hover::after, .top-nav a.active::after { transform: translateY(-50%) scaleY(1); }
             .top-nav li:last-child a { border-bottom: none; }
 
@@ -409,7 +453,6 @@
             main { padding: 1.5rem; }
         }
 
-        /* Calendário */
         .cal-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
         .cal-title { margin: 0 auto; font-weight: 700; font-size: 1.25rem; color: var(--text-primary); }
         .cal-zone { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; min-height: 70vh; }
@@ -438,7 +481,6 @@
         .tag-pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; color:#fff; font-weight:900 }
         .tag-pill.g{background:var(--info)} .tag-pill.a{background:#a855f7} .tag-pill.r{background:#16a34a} .tag-pill.p{background:#dc2626} .tag-pill.u{background:#f97316} .tag-pill.e{background:#475569} .tag-pill.o{background:#facc15;color:#444}
 
-        /* Modais */
         .modal { 
             position: fixed; inset: 0; background: rgba(16, 24, 40, .6); display: none; 
             align-items: flex-start; justify-content: center; z-index: 1001; overflow-y: auto; padding: 4rem 1rem; 
@@ -459,7 +501,6 @@
         .view-item strong { display: block; font-size: 0.8rem; color: var(--text-muted); }
         .view-item p { margin: 0; word-break: break-word; }
         
-        /* Notificações */
         .notification-bell { position: relative; cursor: pointer; color: var(--text-secondary); }
         .notification-bell:hover { color: var(--text-primary); }
         .notification-bell svg { width: 24px; height: 24px; fill: currentColor; }
@@ -493,7 +534,6 @@
         .list .user-item:last-child, .list .version-item:last-child, .list .emissor-item:last-child { border-bottom: none; }
         .doc-list .doc-item {border:1px solid var(--border-color);border-radius:10px;padding:8px;display:flex;justify-content:space-between;align-items:center;background:var(--card-bg); gap: 8px;}
 
-        /* Notificações Toast */
         #toast-container { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 350px; }
         .toast { background-color: var(--card-bg); color: var(--text-primary); border-radius: 10px; box-shadow: var(--shadow); padding: 1rem; display: flex; align-items: center; gap: 0.75rem; border-left: 4px solid; opacity: 0; transform: translateX(2rem); animation: toast-slide-in 0.4s ease-out forwards, toast-fade-out 0.4s ease-in 3.5s forwards; }
         .toast .icon { flex-shrink: 0; width: 20px; height: 20px; }
