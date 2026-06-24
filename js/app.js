@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const todayUTC=()=>{ const d=new Date(); return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())); };
   const diffDays=(a,b)=> Math.ceil((b-a)/86400000);
   function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
-  
+  h
   const sanitizeHTML = (str) => {
     if (!str) return '';
     const temp = document.createElement('div');
@@ -581,7 +581,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (viewBtn) openProcDetails(viewBtn.dataset.viewProc);
         if (editBtn) openProc('edit', editBtn.dataset.editProc);
         if (delBtn) {
-            const id = Number(delBtn.dataset.delProc);
+            const rawId = delBtn.dataset.delProc;
+                  if (!rawId || rawId === 'undefined') { showToast('ID inválido. Recarregue a página.', 'danger'); return; }
+                  const id = Number(rawId);
             if (confirm('Tem certeza que deseja excluir este processo?')) {
                 DB = DB.filter(p => p.id != id);
                 await dbHelper.delete('processos', id);
