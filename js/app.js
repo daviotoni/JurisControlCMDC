@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const todayUTC=()=>{ const d=new Date(); return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())); };
   const diffDays=(a,b)=> Math.ceil((b-a)/86400000);
   function ymd(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
-  h
+
   const sanitizeHTML = (str) => {
     if (!str) return '';
     const temp = document.createElement('div');
