@@ -1589,7 +1589,6 @@ document.addEventListener('DOMContentLoaded', () => {
   async function init() {
     try {
       await dbHelper.init();
-              initTheme();
               setupEventListeners();
               showLogin();
 
@@ -1598,6 +1597,7 @@ document.addEventListener('DOMContentLoaded', () => {
                           if (user) {
                                         try {
                                                         await loadAllData();
+                                                                        initTheme();
                                                         await initializeUsers();
                                                         checkLoginState();
                                         } catch (err) {
