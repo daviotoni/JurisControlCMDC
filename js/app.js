@@ -1588,12 +1588,26 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===== INICIALIZAÇÃO =====
   async function init() {
     try {
-        await dbHelper.init();
-        await loadAllData();
-        initTheme(); 
-        await initializeUsers();
-        setupEventListeners();
-        checkLoginState();
+      await dbHelper.init();
+              initTheme();
+              setupEventListeners();
+              showLogin();
+
+              // Aguarda autenticação Firebase e carrega dados
+              observarAuth(async (user) => {
+                          if (user) {
+                                        try {
+                                                        await loadAllData();
+                                                        await initializeUsers();
+                                                        checkLoginState();
+                                        } catch (err) {
+                                                        console.error('Erro ao carregar dados após autenticação:', err);
+                                                        showLogin();
+                                        }
+                          } else {
+                                        checkLoginState();
+                          }
+              });
     } catch (error) {
         console.error("Falha na inicialização do aplicativo:", error);
         document.body.innerHTML = '<h1>Ocorreu um erro crítico ao carregar a aplicação.</h1><p>Por favor, verifique o console para mais detalhes.</p>';
