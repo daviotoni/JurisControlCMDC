@@ -188,7 +188,9 @@
             transition: opacity 0.2s ease;
             letter-spacing: -0.3px;
         }
+        .sidebar.collapsed .sidebar-logo { display: none; }
         .sidebar.collapsed .sidebar-logo-text { opacity: 0; width: 0; }
+        .sidebar.collapsed .sidebar-header { justify-content: center; padding: 0; }
         .sidebar-collapse-btn svg { transition: transform 0.25s ease; }
         .sidebar.collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
 
@@ -335,6 +337,9 @@
         main {
             padding: 2rem;
             flex-grow: 1;
+            min-width: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .card {
@@ -476,7 +481,7 @@
         .login-acoes .btn { width: 100%; padding: 0.75rem 1rem; font-size: 1rem; }
         .lembrar-me { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem; justify-content: flex-start; }
 
-        .dash-grid { display: grid; grid-template-columns: 1fr 310px; gap: 1.5rem; }
+        .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 1.5rem; }
         .dash-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.5rem; }
         .kpi {
             background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius);
@@ -491,8 +496,8 @@
         .kpi-icon svg { width: 20px; height: 20px; }
         .kpi .v { font-size: 2.25rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
         
-        .dash-left-col { grid-column: 1; display: grid; gap: 1.5rem; min-width: 0; }
-        .dash-right-col { grid-column: 2; display: grid; gap: 1.5rem; align-content: start; }
+        .dash-left-col { grid-column: 1; display: grid; gap: 1.5rem; min-width: 0; overflow: hidden; }
+        .dash-right-col { grid-column: 2; display: grid; gap: 1.5rem; align-content: start; width: 310px; min-width: 310px; }
         
         .prazos-list, .alert-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; }
         .prazos-list li, .alert-list li { display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem 0.25rem; border-bottom: 1px solid var(--border-color); }
