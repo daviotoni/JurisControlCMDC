@@ -684,7 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try { const idx = DB.findIndex(p => p.id == rec.id);
         if (idx > -1) {
             const oldRec = { ...DB[idx] };
-            rec.docId = DB[idx].docId;
+            rec.docId = DB[idx].docId ?? null;
             DB[idx] = rec;
             await dbHelper.put('processos', rec);
             await logHistorico(rec.id, rec.num, 'editado', getChanges(oldRec, rec));
