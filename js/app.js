@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     paginationContainer.innerHTML = '';
     
     if(!currentlyDisplayedPareceres.length){
-        list.innerHTML = `<div style="padding:8px; color:var(--text-muted)">Nenhum parecer encontrado.</div>`;
+        list.innerHTML = `<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg><h3>Nenhum parecer encontrado</h3><p>Pareceres vinculados a processos aparecem aqui.</p></div>`;
         return;
     }
 
@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortedModelos = DB_MODELOS.sort((a, b) => a.name.localeCompare(b.name));
 
     if (!sortedModelos.length) {
-        list.innerHTML = `<div style="padding:8px; color:var(--text-muted)">Nenhum modelo cadastrado.</div>`;
+        list.innerHTML = `<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><h3>Nenhum modelo cadastrado</h3><p>Adicione modelos .docx para usar como base.</p></div>`;
         return;
     }
 
@@ -453,7 +453,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showTab(key, options = {}){
     Object.values(sections).forEach(s=> { if(s) s.style.display='none'; });
-    if(sections[key]) sections[key].style.display='block';
+    if(sections[key]) {
+        sections[key].style.display='block';
+        sections[key].classList.remove('section-enter');
+        void sections[key].offsetWidth;
+        sections[key].classList.add('section-enter');
+    }
     
     $$('.tab').forEach(t=> {
         const isActive = t.dataset.tab === key;
@@ -482,6 +487,32 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
+  const fieldLabels = { num: 'Nº Processo', int: 'Interessado', tipo: 'Tipo', obj: 'Objeto', acao: 'Ação Tomada', stat: 'Status', setorOrigem: 'Setor de Origem', dest: 'Setor Enviado', ent: 'Data de Entrada', prazo: 'Prazo Final', saida: 'Data de Saída' };
+
+  function getChanges(oldRec, newRec) {
+      const trackFields = ['num','int','tipo','obj','acao','stat','setorOrigem','dest','ent','prazo','saida'];
+      return trackFields
+          .filter(f => String(oldRec[f] || '') !== String(newRec[f] || ''))
+          .map(f => ({ campo: f, de: oldRec[f] || '', para: newRec[f] || '' }));
+  }
+
+  async function logHistorico(processoId, processoNum, acao, changes = []) {
+      try {
+          const user = JSON.parse(sessionStorage.getItem('loggedInUser'));
+          const entry = {
+              id: Date.now(),
+              processoId: String(processoId),
+              processoNum: processoNum || String(processoId),
+              acao,
+              usuario: user?.name || user?.login || 'Sistema',
+              timestamp: new Date().toISOString(),
+              campos: changes
+          };
+          await dbHelper.put('historico', entry);
+      } catch (e) {
+          console.warn('Erro ao registrar histórico:', e);
+      }
+  }
   
   function renderProc(reset = false, initialFilter = null) {
     const q = $('#q'), ord = $('#ord'), tbody = $('#tbl-body'), mobileContainer = $('#mobile-cards-container'), paginationProcessesContainer = $('#pagination-container');
@@ -515,8 +546,9 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileContainer.innerHTML = '';
 
         if (L.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">Nenhum processo encontrado.</td></tr>`;
-            mobileContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:2rem;">Nenhum processo encontrado.</p>`;
+            const emptyHtml = `<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="12" y1="10" x2="12" y2="16"/></svg><h3>Nenhum processo encontrado</h3><p>Tente ajustar os filtros ou clique em "Adicionar Processo".</p></div>`;
+            tbody.innerHTML = `<tr><td colspan="5">${emptyHtml}</td></tr>`;
+            mobileContainer.innerHTML = emptyHtml;
         } else {
             const pageItems = L.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
             pageItems.forEach(p => {
@@ -582,9 +614,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editBtn) openProc('edit', editBtn.dataset.editProc);
         if (delBtn) {
             const rawId = delBtn.dataset.delProc;
-                  if (!rawId || rawId === 'undefined') { showToast('ID inválido. Recarregue a página.', 'danger'); return; }
-                  const id = Number(rawId);
+            if (!rawId || rawId === 'undefined') { showToast('ID inválido. Recarregue a página.', 'danger'); return; }
+            const id = Number(rawId);
+            const procToDelete = DB.find(p => p.id == id);
             if (confirm('Tem certeza que deseja excluir este processo?')) {
+                await logHistorico(id, procToDelete?.num, 'excluido');
                 DB = DB.filter(p => p.id != id);
                 await dbHelper.delete('processos', id);
                 draw(true);
@@ -644,12 +678,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const idx = DB.findIndex(p => p.id == rec.id);
         if (idx > -1) {
-            rec.docId = DB[idx].docId; 
+            const oldRec = { ...DB[idx] };
+            rec.docId = DB[idx].docId;
             DB[idx] = rec;
+            await dbHelper.put('processos', rec);
+            await logHistorico(rec.id, rec.num, 'editado', getChanges(oldRec, rec));
+        } else {
+            DB.unshift(rec);
+            await dbHelper.put('processos', rec);
+            await logHistorico(rec.id, rec.num, 'criado');
         }
-        else DB.unshift(rec);
-        
-        await dbHelper.put('processos', rec);
         m.style.display = 'none';
         renderProc(true);
         renderDashboard();
@@ -658,7 +696,9 @@ document.addEventListener('DOMContentLoaded', () => {
     del.onclick = async () => {
         const idVal = Number(form.elements.id.value);
         if (!idVal) return;
+        const procToDelete = DB.find(p => p.id == idVal);
         if (confirm('Tem certeza?')) {
+            await logHistorico(idVal, procToDelete?.num, 'excluido');
             DB = DB.filter(x => x.id != idVal);
             await dbHelper.delete('processos', idVal);
             m.style.display = 'none';
@@ -802,6 +842,77 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedEmissorId = $('#pdf_emissor_select_view').value;
         generateProcessPDF(id, selectedEmissorId);
     };
+
+    const btnHistorico = $('#btnHistorico');
+    if (btnHistorico) btnHistorico.onclick = () => openHistoricoModal(p.id, p.num);
+  }
+
+  async function openHistoricoModal(processoId, processoNum) {
+      const m = $('#m_historico'); if (!m) return;
+      $('#m_historico_t').textContent = `Histórico — Processo ${processoNum}`;
+      const timeline = $('#historico-timeline');
+      timeline.innerHTML = '<div class="historico-loading">Carregando histórico...</div>';
+      m.style.display = 'flex';
+      m.onclick = (e) => { if (e.target === m) m.style.display = 'none'; };
+      $$('[data-close-historico]').forEach(x => x.onclick = () => m.style.display = 'none');
+
+      const acaoIcons = {
+          criado: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>`,
+          editado: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+          excluido: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`
+      };
+      const acaoLabels = { criado: 'Processo criado', editado: 'Processo editado', excluido: 'Processo excluído' };
+
+      try {
+          const snapshot = await window.db.collection('historico')
+              .where('processoId', '==', String(processoId))
+              .get();
+          const entries = snapshot.docs.map(d => d.data())
+              .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+          if (entries.length === 0) {
+              timeline.innerHTML = `
+                  <div class="empty-state">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+                      <h3>Sem registros</h3>
+                      <p>Nenhuma alteração registrada para este processo ainda.</p>
+                  </div>`;
+              return;
+          }
+
+          timeline.innerHTML = '';
+          entries.forEach(entry => {
+              const dt = new Date(entry.timestamp);
+              const dateStr = dt.toLocaleDateString('pt-BR') + ' às ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+              let changesHtml = '';
+              if (entry.campos && entry.campos.length > 0) {
+                  const items = entry.campos.map(c => {
+                      const label = fieldLabels[c.campo] || c.campo;
+                      const de = c.campo === 'stat' ? (statusMap[c.de] || c.de || '—') : (c.de || '—');
+                      const para = c.campo === 'stat' ? (statusMap[c.para] || c.para || '—') : (c.para || '—');
+                      return `<li><span class="campo">${sanitizeHTML(label)}:</span> <span class="de">${sanitizeHTML(de)}</span> <span style="color:var(--text-muted)">→</span> <span class="para">${sanitizeHTML(para)}</span></li>`;
+                  }).join('');
+                  changesHtml = `<ul class="historico-changes">${items}</ul>`;
+              } else {
+                  changesHtml = `<p style="font-size:0.82rem;color:var(--text-muted);margin:0;">${entry.acao === 'criado' ? 'Processo cadastrado no sistema.' : 'Processo removido do sistema.'}</p>`;
+              }
+              const div = document.createElement('div');
+              div.className = 'historico-entry';
+              div.innerHTML = `
+                  <div class="historico-icon ${sanitizeHTML(entry.acao)}">${acaoIcons[entry.acao] || ''}</div>
+                  <div class="historico-content">
+                      <div class="historico-header">
+                          <span class="historico-action">${sanitizeHTML(acaoLabels[entry.acao] || entry.acao)}</span>
+                          <span class="historico-meta">${sanitizeHTML(dateStr)} · ${sanitizeHTML(entry.usuario)}</span>
+                      </div>
+                      ${changesHtml}
+                  </div>`;
+              timeline.appendChild(div);
+          });
+      } catch (e) {
+          console.error('Erro ao carregar histórico:', e);
+          timeline.innerHTML = `<div class="empty-state"><p>Não foi possível carregar o histórico. Verifique a conexão.</p></div>`;
+      }
   }
 
   async function generateProcessPDF(procId, emissorId) {
@@ -856,24 +967,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function exportCSV(data) {
         if (data.length === 0) { showToast('Nenhum dado para exportar.', 'info'); return; }
-        const headers = ['Nº Processo', 'Interessado', 'Tipo', 'Status', 'Objeto', 'Ação Tomada', 'Data Entrada', 'Prazo Final', 'Data Saída'];
-        const rows = data.map(p => [ `"${p.num || ''}"`, `"${p.int || ''}"`, `"${p.tipo || ''}"`, `"${statusMap[p.stat] || ''}"`, `"${(p.obj || '').replace(/"/g, '""')}"`, `"${(p.acao || '').replace(/"/g, '""')}"`, `"${p.ent ? fmtBR(p.ent) : ''}"`, `"${p.prazo ? fmtBR(p.prazo) : ''}"`, `"${p.saida ? fmtBR(p.saida) : ''}"` ].join(','));
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
-        const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "processos.csv");
-        document.body.appendChild(link); link.click(); document.body.removeChild(link); showToast('Dados exportados para CSV!');
+        const csvEsc = (v) => `"${String(v || '').replace(/"/g, '""')}"`;
+        const headers = ['Nº Processo','Tipo','Interessado','Objeto','Ação Tomada','Status','Setor de Origem','Setor Enviado','Data Entrada','Prazo Final','Data Saída','Dias Tramitação'];
+        const rows = data.map(p => [
+            csvEsc(p.num),
+            csvEsc(p.tipo ? (p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)) : ''),
+            csvEsc(p.int),
+            csvEsc(p.obj),
+            csvEsc(p.acao),
+            csvEsc(statusMap[p.stat] || p.stat),
+            csvEsc(p.setorOrigem),
+            csvEsc(p.dest),
+            csvEsc(p.ent ? fmtBR(p.ent) : ''),
+            csvEsc(p.prazo ? fmtBR(p.prazo) : ''),
+            csvEsc(p.saida ? fmtBR(p.saida) : ''),
+            csvEsc((p.ent && p.saida) ? diffDays(parse(p.ent), parse(p.saida)) : (p.ent ? diffDays(parse(p.ent), todayUTC()) : ''))
+        ].join(','));
+        const BOM = '﻿';
+        const blob = new Blob([BOM + [headers.join(','), ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `processos_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast('Dados exportados para CSV!');
     }
 
     async function exportXLSX(data) {
         showToast('Iniciando exportação para Excel...', 'info');
         try {
             if (typeof XLSX === 'undefined') throw new Error('Biblioteca XLSX não carregada.');
-            const dataForSheet = data.map(p => ({
-                'Nº Processo': p.num || '', 'Interessado': p.int || '', 'Tipo': p.tipo ? (p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)) : '', 'Status': statusMap[p.stat] || '', 'Objeto': p.obj || '', 'Entrada': p.ent ? fmtBR(p.ent) : '', 'Prazo': p.prazo ? fmtBR(p.prazo) : '', 'Saída': p.saida ? fmtBR(p.saida) : '', 'Dias Tramit.': (p.ent && p.saida) ? diffDays(parse(p.ent), parse(p.saida)) : (p.ent ? diffDays(parse(p.ent), todayUTC()) : '')
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Processos');
-            XLSX.writeFile(workbook, 'processos.xlsx');
+            const wb = XLSX.utils.book_new();
+
+            // ===== Aba 1: Processos =====
+            const headers = ['Nº Processo','Tipo','Interessado','Objeto','Ação Tomada','Status','Setor de Origem','Setor Enviado','Data Entrada','Prazo Final','Data Saída','Dias Tramitação'];
+            const rows = data.map(p => [
+                p.num || '',
+                p.tipo ? (p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)) : '',
+                p.int || '',
+                p.obj || '',
+                p.acao || '',
+                statusMap[p.stat] || p.stat || '',
+                p.setorOrigem || '',
+                p.dest || '',
+                p.ent ? fmtBR(p.ent) : '',
+                p.prazo ? fmtBR(p.prazo) : '',
+                p.saida ? fmtBR(p.saida) : '',
+                (p.ent && p.saida) ? diffDays(parse(p.ent), parse(p.saida)) : (p.ent ? diffDays(parse(p.ent), todayUTC()) : '')
+            ]);
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+            ws['!cols'] = [
+                {wch:18},{wch:14},{wch:30},{wch:40},{wch:35},
+                {wch:22},{wch:20},{wch:20},{wch:13},{wch:13},{wch:13},{wch:16}
+            ];
+            XLSX.utils.book_append_sheet(wb, ws, 'Processos');
+
+            // ===== Aba 2: Resumo =====
+            const stats = calculateGlobalStats();
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            const statusCounts = {};
+            data.forEach(p => { statusCounts[p.stat] = (statusCounts[p.stat] || 0) + 1; });
+            const summaryRows = [
+                ['PROCURADORIA GERAL — CÂMARA MUNICIPAL DE DUQUE DE CAXIAS'],
+                [`Relatório gerado em: ${hoje}`],
+                [''],
+                ['RESUMO GERAL', 'Quantidade'],
+                ['Total de processos', stats.total],
+                ['Pendentes', stats.pend],
+                ['Em Análise', stats.anal],
+                ['Finalizados', stats.fin],
+                ['Vencendo (≤5 dias)', stats.alert],
+                ['Vencidos', stats.venc],
+                [''],
+                ['DISTRIBUIÇÃO POR STATUS', 'Quantidade'],
+                ...Object.entries(statusMap).map(([key, label]) => [label, statusCounts[key] || 0])
+            ];
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+            wsSummary['!cols'] = [{wch:35},{wch:14}];
+            XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo');
+
+            XLSX.writeFile(wb, `processos_${new Date().toISOString().slice(0,10)}.xlsx`);
             showToast('Exportação para Excel concluída!');
         } catch (error) { console.error("Erro ao exportar para Excel:", error); showToast(error.message || 'Erro ao exportar para Excel.', 'danger'); }
     }
@@ -914,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderLeis() {
       const grid = $('#leisGrid'); const q = $('#qLeis').value.toLowerCase().trim(); grid.innerHTML = '';
       const leisFiltradas = DB_LEIS.filter(lei => !q || [lei.tipo, lei.numero, lei.ano, lei.ementa].some(v => String(v || '').toLowerCase().includes(q)));
-      if (leisFiltradas.length === 0) { grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">Nenhuma lei encontrada.</p>`; return; }
+      if (leisFiltradas.length === 0) { grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m16 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="m2 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg><h3>Nenhuma lei encontrada</h3><p>Tente ajustar a busca ou clique em "Adicionar Lei".</p></div>`; return; }
       leisFiltradas.forEach(lei => {
           const card = document.createElement('div'); card.className = 'card lei-card';
           card.innerHTML = `<div class="lei-card-header">${sanitizeHTML(lei.tipo)} Nº ${sanitizeHTML(lei.numero)}/${sanitizeHTML(lei.ano)}</div><p class="lei-card-ementa">${sanitizeHTML(lei.ementa)}</p>
@@ -1160,14 +1334,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function renderDashboard() {
       const kpiData = calculateGlobalStats(); const kpiContainer = $('#dashboard-kpis'); if (!kpiContainer) return;
-      kpiContainer.innerHTML = `
-        <div class="kpi" data-kpi-filter="total" style="border-left-color: #2196F3;"><h4>Total 📊</h4><div class="v">${kpiData.total}</div></div>
-        <div class="kpi" data-kpi-filter="pendente" style="border-left-color: #FFEB3B;"><h4>Pendentes ⏳</h4><div class="v">${kpiData.pend}</div></div>
-        <div class="kpi" data-kpi-filter="em-analise" style="border-left-color: #FF9800;"><h4>Em Análise 🔎</h4><div class="v">${kpiData.anal}</div></div>
-        <div class="kpi" data-kpi-filter="finalizado" style="border-left-color: #4CAF50;"><h4>Finalizados ✅</h4><div class="v">${kpiData.fin}</div></div>
-        <div class="kpi" data-kpi-filter="alerta" style="border-left-color: #FF7043;"><h4>Vencendo ≤5d ⏰</h4><div class="v">${kpiData.alert}</div></div>
-        <div class="kpi" data-kpi-filter="vencido" style="border-left-color: #F44336;"><h4>Vencidos ❌</h4><div class="v">${kpiData.venc}</div></div>
-      `;
+      const kpiItems = [
+          { filter: 'total',     label: 'Total de Processos',  value: kpiData.total,  color: '#2196F3', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>` },
+          { filter: 'pendente',  label: 'Pendentes',           value: kpiData.pend,   color: '#f59e0b', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
+          { filter: 'em-analise',label: 'Em Análise',          value: kpiData.anal,   color: '#FF9800', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>` },
+          { filter: 'finalizado',label: 'Finalizados',         value: kpiData.fin,    color: '#22c55e', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>` },
+          { filter: 'alerta',    label: 'Vencendo (≤5 dias)',  value: kpiData.alert,  color: '#FF7043', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` },
+          { filter: 'vencido',   label: 'Vencidos',            value: kpiData.venc,   color: '#ef4444', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>` },
+      ];
+      kpiContainer.innerHTML = kpiItems.map(item => `
+          <div class="kpi" data-kpi-filter="${item.filter}" style="border-left-color:${item.color};">
+              <div class="kpi-header">
+                  <h4>${item.label}</h4>
+                  <div class="kpi-icon" style="color:${item.color};">${item.icon}</div>
+              </div>
+              <div class="v">${item.value}</div>
+          </div>`).join('');
       kpiContainer.onclick = (e) => {
           const kpi = e.target.closest('[data-kpi-filter]'); if(!kpi) return;
           const filter = kpi.dataset.kpiFilter, filterBy = {};
