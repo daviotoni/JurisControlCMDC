@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JurisControl</title>
-        <link rel="stylesheet" href="style.css?v=20260628-layout">
+        <link rel="stylesheet" href="style.css?v=20260628-process-edit">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -295,7 +295,7 @@
                 <div class="dialog-footer">
                     <button type="button" class="btn danger" id="fp_del" style="display: none; margin-right: auto;">Excluir</button>
                     <button type="button" class="btn secondary" data-close-proc>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
+                    <button type="submit" class="btn primary">Salvar</button>
                 </div>
                 <input type="hidden" id="fp_id" name="id">
             </form>
@@ -317,7 +317,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
                     Histórico
                 </button>
-                <button type="button" class="btn secondary" data-close-view style="align-self: flex-end;">Fechar</button>
+                <button type="button" class="btn secondary" data-open-proc-edit style="align-self: flex-end;">Editar Processo</button><button type="button" class="btn secondary" data-close-view style="align-self: flex-end;">Fechar</button>
             </div>
         </div>
     </div>
@@ -336,7 +336,7 @@
                 <div class="dialog-footer">
                     <button id="fe_del" type="button" class="btn danger" style="display:none; margin-right: auto;">Excluir</button>
                     <button type="button" class="btn secondary" data-close-evt>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
+                    <button type="submit" class="btn primary">Salvar</button>
                 </div>
                 <input type="hidden" id="fe_id" name="id">
             </form>
@@ -359,7 +359,7 @@
                 <div class="dialog-footer">
                     <button id="fl_del" type="button" class="btn danger" style="display:none; margin-right: auto;">Excluir</button>
                     <button type="button" class="btn secondary" data-close-lei>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
+                    <button type="submit" class="btn primary">Salvar</button>
                 </div>
                 <input type="hidden" id="fl_id" name="id">
             </form>
@@ -393,7 +393,7 @@
                 <div class="dialog-footer">
                     <button type="button" class="btn danger" id="fu_del" style="display:none; margin-right: auto;">Excluir</button>
                     <button type="button" class="btn secondary" data-close-user>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
+                    <button type="submit" class="btn primary">Salvar</button>
                 </div>
                 <input type="hidden" id="fu_id" name="id">
             </form>
@@ -409,7 +409,7 @@
                 <div class="dialog-footer">
                      <button type="button" class="btn danger" id="fe_del" style="display:none; margin-right: auto;">Excluir</button>
                     <button type="button" class="btn secondary" data-close-emissor>Cancelar</button>
-                    <button class="btn primary">Salvar</button>
+                    <button type="submit" class="btn primary">Salvar</button>
                 </div>
                 <input type="hidden" id="fe_id" name="id">
             </form>
@@ -432,7 +432,7 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/app.js?v=20260628-layout"></script>
+    <script src="js/app.js?v=20260628-process-edit"></script>
 
 </body>
 </html>
