@@ -16,6 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return temp.innerHTML;
   };
 
+  // Whitelist de valores válidos para classes CSS dinâmicas (evita injeção via Firestore)
+  const VALID_STATS = new Set(['pendente','em-analise','aguardando-documentacao','em-diligencia','finalizado','arquivado']);
+  const VALID_ACAO  = new Set(['criado','editado','excluido']);
+  const VALID_CAT   = new Set(['g','a','r','p','u','e','o']);
+  const safeCSSClass = (value, whitelist) => whitelist.has(value) ? value : '';
+
   // ===== Lógica para Notificações Toast =====
   const TOAST_ICONS = {
       success: `<svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>`,
@@ -565,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div>${sanitizeHTML(p.int)}</div>
                     </td>
                     <td>${sanitizeHTML(p.obj) || '—'}</td>
-                    <td style="text-align:center"><span class="status ${p.stat}">${sanitizeHTML(sTxt)}</span></td>
+                    <td style="text-align:center"><span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(sTxt)}</span></td>
                     <td style="text-align:center">${p.prazo ? fmtBR(p.prazo) : '—'}</td>
                     <td style="text-align:center">
                         <div class="action-buttons" style="display:flex; gap: 4px; justify-content:center;">
@@ -582,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.innerHTML = `
                     <div class="proc-card-header">
                         <span class="num">${sanitizeHTML(p.num)}</span>
-                        <span class="status ${p.stat}">${sanitizeHTML(sTxt)}</span>
+                        <span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(sTxt)}</span>
                     </div>
                     <div class="proc-card-body">
                         <div class="item"><strong>Interessado:</strong> ${sanitizeHTML(p.int)}</div>
@@ -766,7 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
     idGrid.appendChild(createViewItem('Ação Tomada', p.acao)).style.gridColumn = '1 / -1';
 
     const tramGrid = $('#details-tramitacao');
-    tramGrid.appendChild(createViewItemHTML('Status', `<span class="status ${p.stat}">${sanitizeHTML(statusMap[p.stat]) || '—'}</span>`));
+    tramGrid.appendChild(createViewItemHTML('Status', `<span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(statusMap[p.stat]) || '—'}</span>`));
     tramGrid.appendChild(createViewItem('Prazo Final', fmtBR(p.prazo)));
     tramGrid.appendChild(createViewItem('Setor de Origem', p.setorOrigem));
     tramGrid.appendChild(createViewItem('Setor Enviado', p.dest));
@@ -904,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const div = document.createElement('div');
               div.className = 'historico-entry';
               div.innerHTML = `
-                  <div class="historico-icon ${sanitizeHTML(entry.acao)}">${acaoIcons[entry.acao] || ''}</div>
+                  <div class="historico-icon ${safeCSSClass(entry.acao, VALID_ACAO)}">${acaoIcons[entry.acao] || ''}</div>
                   <div class="historico-content">
                       <div class="historico-header">
                           <span class="historico-action">${sanitizeHTML(acaoLabels[entry.acao] || entry.acao)}</span>
@@ -1223,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ds=ymd(p);const evts=list.filter(e=>e.data===ds); const initialsMap = { g: 'G', a: 'A', r: 'R', p: 'TP', u: 'U', e: 'E', o: 'OAB' };
         const dotsContainer = document.createElement('div'); dotsContainer.className = 'event-dots-container';
         evts.forEach(evt => {
-            const dot = document.createElement('div'); dot.className = `event-dot ${evt.cat}`; dot.textContent = initialsMap[evt.cat] || '?'; dot.title = evt.desc;
+            const dot = document.createElement('div'); dot.className = `event-dot ${safeCSSClass(evt.cat, VALID_CAT)}`; dot.textContent = initialsMap[evt.cat] || '?'; dot.title = sanitizeHTML(evt.desc);
             dot.onclick = () => { if (String(evt.id).startsWith('pr-')) { const procId = String(evt.id).replace('pr-', ''), processo = DB.find(p => p.id == procId); if (processo) { showTab('proc', { filterBy: { text: processo.num } }); } } else { openEvt(evt); } };
             dotsContainer.appendChild(dot);
         });

@@ -20,7 +20,6 @@ window.auth    = firebase.auth();
 window.db      = firebase.firestore();
 window.storage = firebase.storage();
 
-console.log("✅ Firebase + Auth + Firestore + Storage inicializados");
 
 // ============================================
 // AUTH HELPERS
@@ -60,10 +59,3 @@ window.loginComFirebase = loginComFirebase;
 window.logoutFirebase   = logoutFirebase;
 window.observarAuth     = observarAuth;
 
-console.log("\n👉 Funções disponíveis:");
-console.log("   loginComFirebase(email, senha)");
-console.log("   logoutFirebase()");
-console.log("   observarAuth(callback)");
-console.log("   firestoreHelper.* (CRUD Firestore)");
-console.log("   dbHelper.* (compatibilidade IndexedDB → Firestore)");
-console.log("   storage (Firebase Storage)");
