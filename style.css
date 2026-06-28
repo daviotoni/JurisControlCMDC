@@ -132,9 +132,8 @@
         .app-layout {
             display: flex;
             flex-direction: row;
-            width: 100%;
-            height: 100vh;
-            position: relative;
+            position: fixed;
+            inset: 0;
         }
 
         /* ===== Sidebar ===== */
@@ -477,8 +476,8 @@
         .login-acoes .btn { width: 100%; padding: 0.75rem 1rem; font-size: 1rem; }
         .lembrar-me { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem; justify-content: flex-start; }
 
-        .dash-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.5rem; }
-        .dash-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; }
+        .dash-grid { display: grid; grid-template-columns: 1fr 310px; gap: 1.5rem; }
+        .dash-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.5rem; }
         .kpi {
             background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius);
             padding: 1.25rem; box-shadow: var(--shadow); cursor: pointer; transition: transform var(--transition-speed), box-shadow var(--transition-speed);
@@ -492,8 +491,8 @@
         .kpi-icon svg { width: 20px; height: 20px; }
         .kpi .v { font-size: 2.25rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
         
-        .dash-left-col { grid-column: 1 / span 8; display: grid; gap: 1.5rem; }
-        .dash-right-col { grid-column: 9 / -1; display: grid; gap: 1.5rem; align-content: start; }
+        .dash-left-col { grid-column: 1; display: grid; gap: 1.5rem; min-width: 0; }
+        .dash-right-col { grid-column: 2; display: grid; gap: 1.5rem; align-content: start; }
         
         .prazos-list, .alert-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; }
         .prazos-list li, .alert-list li { display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem 0.25rem; border-bottom: 1px solid var(--border-color); }
@@ -552,6 +551,8 @@
             #mobile-menu-toggle { display: inline-flex; }
             .app-header { padding: 0 1.5rem; }
             main { padding: 1.5rem; }
+            .dash-grid { grid-template-columns: 1fr; }
+            .dash-right-col { grid-column: 1; }
 
             .sidebar {
                 position: fixed;
