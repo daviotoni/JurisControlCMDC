@@ -681,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (key !== 'id') rec[key] = value.trim();
         }
         
-        const idx = DB.findIndex(p => p.id == rec.id);
+        try { const idx = DB.findIndex(p => p.id == rec.id);
         if (idx > -1) {
             const oldRec = { ...DB[idx] };
             rec.docId = DB[idx].docId;
@@ -696,7 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
         m.style.display = 'none';
         renderProc(true);
         renderDashboard();
-        showToast('Processo salvo com sucesso!');
+        showToast('Processo salvo com sucesso!'); } catch(err) { console.error('Erro ao salvar processo:', err); showToast('Erro ao salvar. Tente novamente.', 'danger'); return; }
     };
     del.onclick = async () => {
         const idVal = Number(form.elements.id.value);
@@ -840,8 +840,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (p.emissorId) { selectEmissorView.value = p.emissorId; }
 
-    modal.style.display = 'flex';
-    $$('[data-close-view]').forEach(b => b.onclick = () => modal.style.display = 'none');
+    modal.style.display = 'flex'; modal.dataset.procId = id;;
+    $$('[data-close-view]').forEach(b=>b.onclick=()=>modal.style.display='none'); modal.onclick=(e)=>{if(e.target===modal)modal.style.display='none';}; $$('[data-open-proc-edit]').forEach(b=>b.onclick=()=>{const pid=Number(modal.dataset.procId);modal.style.display='none';openProc('edit',pid);});
 
     $('#btnGerarPdf').onclick = async () => {
         const selectedEmissorId = $('#pdf_emissor_select_view').value;
