@@ -22,7 +22,7 @@
 
 <body data-theme="light">
 
-    <div id="mobile-menu-overlay" class="mobile-menu-overlay"></div>
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <div id="loginOverlay" class="login-overlay">
         <div class="login-card">
@@ -53,27 +53,37 @@
     </div>
     
     <div class="app-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <div class="sidebar-logo-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="m2 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                    </div>
+                    <span class="sidebar-logo-text">JurisControl</span>
+                </div>
+                <button id="sidebar-collapse-btn" class="icon-btn sidebar-collapse-btn" title="Colapsar menu" aria-label="Colapsar menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
+                </button>
+            </div>
+            <nav class="sidebar-nav" id="sidebar-nav">
+                <ul>
+                    <li><a href="#" class="tab active" data-tab="dashboard" data-tooltip="Dashboard" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg><span class="nav-label">Dashboard</span></a></li>
+                    <li><a href="#" class="tab" data-tab="proc" data-tooltip="Processos"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path><path d="M8 10v4"></path><path d="M12 10v2"></path><path d="M16 10v6"></path></svg><span class="nav-label">Processos</span></a></li>
+                    <li><a href="#" class="tab" data-tab="cal" data-tooltip="Calendário"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path><path d="M16 18h.01"></path></svg><span class="nav-label">Calendário</span></a></li>
+                    <li><a href="#" class="tab" data-tab="docs" data-tooltip="Documentos"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg><span class="nav-label">Documentos</span></a></li>
+                    <li><a href="#" class="tab" data-tab="leis" data-tooltip="Banco de Leis"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"></path><path d="m2 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"></path></svg><span class="nav-label">Leis</span></a></li>
+                    <li><a href="#" class="tab" data-tab="cfg" data-tooltip="Configurações"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"></path><path d="M14 17H4"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg><span class="nav-label">Configurações</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="app-body">
         <header class="app-header">
             <div class="header-left">
-                <div class="header-logo">
-                    <h1>JurisControl</h1>
-                    <p>Procuradoria Geral CMDC</p>
-                </div>
-                
-                <button id="mobile-menu-toggle" class="icon-btn" title="Abrir menu" aria-controls="top-nav" aria-expanded="false">
+                <button id="mobile-menu-toggle" class="icon-btn" title="Abrir menu" aria-controls="sidebar" aria-expanded="false">
                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                 </button>
-                
-                <nav class="top-nav" id="top-nav">
-                    <ul>
-                        <li><a href="#" class="tab active" data-tab="dashboard" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg><span class="nav-text">Dashboard</span></a></li>
-                        <li><a href="#" class="tab" data-tab="proc"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path><path d="M8 10v4"></path><path d="M12 10v2"></path><path d="M16 10v6"></path></svg><span class="nav-text">Processos</span></a></li>
-                        <li><a href="#" class="tab" data-tab="cal"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path><path d="M16 18h.01"></path></svg><span class="nav-text">Calendário</span></a></li>
-                        <li><a href="#" class="tab" data-tab="docs"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg><span class="nav-text">Documentos</span></a></li>
-                        <li><a href="#" class="tab" data-tab="leis"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"></path><path d="m2 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"></path></svg><span class="nav-text">Leis</span></a></li>
-                        <li><a href="#" class="tab" data-tab="cfg"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"></path><path d="M14 17H4"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg><span class="nav-text">Configurações</span></a></li>
-                    </ul>
-                </nav>
+                <h2 id="page-title" class="page-title">Dashboard</h2>
             </div>
             <div class="header-right">
                 <span id="welcomeMsg"></span>
@@ -118,7 +128,7 @@
 
         <div class="main-content">
             <main>
-                 <section id="secDashboard" style="display:block;">
+                <section id="secDashboard" style="display:block;">
                     <div class="dash-grid">
                         <div id="dashboard-kpis" class="dash-kpis"></div>
                         <div class="dash-left-col">
@@ -138,6 +148,7 @@
                         <div class="dash-right-col">
                             <div class="card"><h3>Próximos Prazos (15 dias)</h3><ul class="prazos-list" id="dashboard-prazos"></ul></div>
                             <div class="card"><h3>Alertas Inteligentes</h3><ul class="alert-list" id="dashboard-alertas"></ul></div>
+                            <div class="card"><h3>Últimas Atividades</h3><div id="dashboard-atividades" class="atividades-list"></div></div>
                         </div>
                     </div>
                 </section>
@@ -254,8 +265,9 @@
                 </section>
             </main>
         </div>
+        </div>
     </div>
-    
+
     <div id="m_proc" class="modal">
         <div class="dialog" style="max-width: 800px;">
             <div class="dialog-header"><h3 id="m_proc_t"></h3></div>

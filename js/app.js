@@ -170,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loginOverlay.style.display = 'none';
     appLayout.style.display = 'flex';
     welcomeMsg.textContent = `Bem-vindo, ${sanitizeHTML(user.name)}`;
+    if (sidebar && CFG.sidebarCollapsed) sidebar.classList.add('collapsed');
     renderDashboard();
     showTab('dashboard');
 
@@ -446,10 +447,11 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const sections={dashboard: $('#secDashboard'), proc:$('#secProc'), cal:$('#secCal'), docs:$('#secDoc'), leis: $('#secLeis'), cfg:$('#secCfg')};
-  
+  const tabTitles = { dashboard: 'Dashboard', proc: 'Processos', cal: 'Calendário', docs: 'Documentos', leis: 'Banco de Leis', cfg: 'Configurações' };
+
   const mobileMenuToggle = $('#mobile-menu-toggle');
-  const topNav = $('#top-nav');
-  const overlay = $('#mobile-menu-overlay');
+  const sidebar = $('#sidebar');
+  const overlay = $('#sidebar-overlay');
 
   function showTab(key, options = {}){
     Object.values(sections).forEach(s=> { if(s) s.style.display='none'; });
@@ -459,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
         void sections[key].offsetWidth;
         sections[key].classList.add('section-enter');
     }
-    
+
     $$('.tab').forEach(t=> {
         const isActive = t.dataset.tab === key;
         t.classList.toggle('active', isActive);
@@ -469,18 +471,21 @@ document.addEventListener('DOMContentLoaded', () => {
             t.removeAttribute('aria-current');
         }
     });
-    
-    if(topNav.classList.contains('mobile-open')) {
+
+    const pageTitleEl = $('#page-title');
+    if (pageTitleEl) pageTitleEl.textContent = tabTitles[key] || '';
+
+    if(sidebar && sidebar.classList.contains('mobile-open')) {
         closeMobileMenu();
     }
-    
+
     if(key==='dashboard') renderDashboard();
     if(key==='proc') renderProc(true, options.filterBy);
     if(key==='cal') drawView();
-    if(key==='docs') { 
+    if(key==='docs') {
         currentlyDisplayedPareceres = DB_DOCS.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
-        drawPareceres(true); 
-        renderModelos(true); 
+        drawPareceres(true);
+        renderModelos(true);
     }
     if(key==='leis') renderLeis();
     if(key==='cfg') { renderUsers(); renderEmissores(); }
@@ -1357,7 +1362,40 @@ document.addEventListener('DOMContentLoaded', () => {
           if (filter === 'alerta' || filter === 'vencido') { filterBy.prazo = filter; } else { filterBy.status = filter; }
           showTab('proc', { filterBy });
       };
-      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderProximosPrazos(); renderAlertasInteligentes(); updateAllNotifications();
+      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
+  }
+
+  async function renderUltimasAtividades() {
+      const container = $('#dashboard-atividades');
+      if (!container) return;
+      try {
+          const snap = await window.db.collection('historico').get();
+          const entries = snap.docs.map(d => d.data());
+          entries.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+          const recent = entries.slice(0, 8);
+          if (recent.length === 0) {
+              container.innerHTML = '<div style="padding:1rem 0; color:var(--text-muted); font-size:0.85rem;">Nenhuma atividade registrada.</div>';
+              return;
+          }
+          const acaoIconMap = {
+              'Criado': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>`,
+              'Editado': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+              'Excluído': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6m4-6v6"/></svg>`
+          };
+          const iconClass = (a) => a === 'Criado' ? 'criado' : a === 'Excluído' ? 'excluido' : 'editado';
+          const fmtTS = (ts) => { try { return new Date(ts).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); } catch(e) { return ''; } };
+          container.innerHTML = recent.map(e => `
+              <div class="atividade-item">
+                  <div class="atividade-icon ${iconClass(e.acao)}">${acaoIconMap[e.acao] || acaoIconMap['Editado']}</div>
+                  <div class="atividade-content">
+                      <div class="atividade-desc">${sanitizeHTML(e.acao)} — Proc. ${sanitizeHTML(e.processoNum || String(e.processoId))}</div>
+                      <div class="atividade-meta">${sanitizeHTML(e.usuario || '')} · ${fmtTS(e.timestamp)}</div>
+                  </div>
+              </div>`).join('');
+      } catch (err) {
+          console.warn('Erro ao carregar atividades:', err);
+          container.innerHTML = '';
+      }
   }
   
     const notificationBell = $('#notification-bell'), notificationCount = $('#notification-count'), notificationPanel = $('#notification-panel'), notificationList = $('#notification-list'), notificationFilters = $('#notification-filters');
@@ -1490,50 +1528,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    const focusableElementsSelector = 'a[href], button:not([disabled])';
-    let focusableElements = [], firstFocusableElement, lastFocusableElement;
-
-    function handleFocusTrap(e) {
-        if (e.key !== 'Tab') return;
-        if (e.shiftKey) { 
-            if (document.activeElement === firstFocusableElement) { lastFocusableElement.focus(); e.preventDefault(); }
-        } else { 
-            if (document.activeElement === lastFocusableElement) { firstFocusableElement.focus(); e.preventDefault(); }
-        }
-    }
-    
     window.openMobileMenu = function() {
-        topNav.classList.add('mobile-open');
+        if (!sidebar) return;
+        sidebar.classList.add('mobile-open');
         overlay.classList.add('active');
         mobileMenuToggle.setAttribute('aria-expanded', 'true');
-        
-        focusableElements = Array.from(topNav.querySelectorAll(focusableElementsSelector));
-        firstFocusableElement = focusableElements[0];
-        lastFocusableElement = focusableElements[focusableElements.length - 1];
-        setTimeout(() => firstFocusableElement?.focus(), 100);
-        document.addEventListener('keydown', handleFocusTrap);
-    }
-    
+    };
+
     window.closeMobileMenu = function() {
-        topNav.classList.remove('mobile-open');
+        if (!sidebar) return;
+        sidebar.classList.remove('mobile-open');
         overlay.classList.remove('active');
         mobileMenuToggle.setAttribute('aria-expanded', 'false');
-        document.removeEventListener('keydown', handleFocusTrap);
-        mobileMenuToggle.focus();
-    }
-    
-    mobileMenuToggle.onclick = () => {
-        const isMenuOpen = topNav.classList.contains('mobile-open');
-        if (isMenuOpen) closeMobileMenu(); else openMobileMenu();
     };
-    
-    overlay.onclick = closeMobileMenu;
+
+    if (mobileMenuToggle) {
+        mobileMenuToggle.onclick = () => {
+            const isOpen = sidebar && sidebar.classList.contains('mobile-open');
+            if (isOpen) closeMobileMenu(); else openMobileMenu();
+        };
+    }
+
+    if (overlay) overlay.onclick = closeMobileMenu;
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && topNav.classList.contains('mobile-open')) {
+        if (e.key === 'Escape' && sidebar && sidebar.classList.contains('mobile-open')) {
             closeMobileMenu();
         }
     });
+
+    const collapseBtn = $('#sidebar-collapse-btn');
+    if (collapseBtn && sidebar) {
+        collapseBtn.onclick = () => {
+            const isCollapsed = sidebar.classList.toggle('collapsed');
+            CFG.sidebarCollapsed = isCollapsed;
+            saveCFG();
+        };
+    }
   }
   
   function setupEventListeners() {
