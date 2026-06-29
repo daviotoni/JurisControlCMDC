@@ -588,7 +588,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.innerHTML = `
                     <div class="proc-card-header">
                         <span class="num">${sanitizeHTML(p.num)}</span>
-                        <span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(sTxt)}</span>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            ${p.anotacoes && p.anotacoes.length > 0 ? `<span class="anotacoes-badge" title="${p.anotacoes.length} anotação(ões)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${p.anotacoes.length}</span>` : ''}
+                            <span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(sTxt)}</span>
+                        </div>
                     </div>
                     <div class="proc-card-body">
                         <div class="item"><strong>Interessado:</strong> ${sanitizeHTML(p.int)}</div>
@@ -762,6 +765,14 @@ document.addEventListener('DOMContentLoaded', () => {
         <h4>Tramitação e Parecer</h4>
         <div class="view-grid" id="details-tramitacao"></div>
       </div>
+      <div class="view-section anotacoes-section">
+        <h4>Anotações e Pendências</h4>
+        <div class="anotacoes-timeline" id="anotacoes-timeline"></div>
+        <div class="anotacao-nova">
+          <textarea id="nova-anotacao" class="anotacao-textarea" placeholder="Registrar anotação, pendência ou atualização..."></textarea>
+          <button id="btnRegistrarAnotacao" class="btn primary">Registrar</button>
+        </div>
+      </div>
     `;
 
     const idGrid = $('#details-identificacao');
@@ -845,6 +856,47 @@ document.addEventListener('DOMContentLoaded', () => {
         selectEmissorView.appendChild(option);
     });
     if (p.emissorId) { selectEmissorView.value = p.emissorId; }
+
+    const renderAnotacoes = () => {
+        const timeline = $('#anotacoes-timeline');
+        const lista = (p.anotacoes || []).slice().sort((a, b) => b.id - a.id);
+        if (lista.length === 0) {
+            timeline.innerHTML = '<p class="anotacoes-empty">Nenhuma anotação registrada ainda.</p>';
+        } else {
+            timeline.innerHTML = lista.map(a => {
+                const dt = new Date(a.dt);
+                const dateStr = dt.toLocaleDateString('pt-BR') + ' às ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const initials = sanitizeHTML(a.usuario.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase());
+                return `
+                    <div class="anotacao-entry">
+                        <div class="anotacao-avatar">${initials}</div>
+                        <div class="anotacao-body">
+                            <div class="anotacao-meta">
+                                <span class="anotacao-user">${sanitizeHTML(a.usuario)}</span>
+                                <span class="anotacao-date">${sanitizeHTML(dateStr)}</span>
+                            </div>
+                            <p class="anotacao-texto">${sanitizeHTML(a.texto)}</p>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+    };
+    renderAnotacoes();
+
+    $('#btnRegistrarAnotacao').onclick = async () => {
+        const textarea = $('#nova-anotacao');
+        const texto = textarea.value.trim();
+        if (!texto) { showToast('Digite uma anotação antes de registrar.', 'info'); return; }
+        const user = JSON.parse(sessionStorage.getItem('loggedInUser'));
+        const entrada = { id: Date.now(), usuario: user?.name || user?.login || 'Usuário', dt: new Date().toISOString(), texto };
+        if (!p.anotacoes) p.anotacoes = [];
+        p.anotacoes.push(entrada);
+        await dbHelper.put('processos', p);
+        textarea.value = '';
+        renderAnotacoes();
+        renderProc();
+        showToast('Anotação registrada!', 'success');
+    };
 
     modal.style.display = 'flex'; modal.dataset.procId = id;;
     $$('[data-close-view]').forEach(b=>b.onclick=()=>modal.style.display='none'); modal.onclick=(e)=>{if(e.target===modal)modal.style.display='none';}; $$('[data-open-proc-edit]').forEach(b=>b.onclick=()=>{const pid=Number(modal.dataset.procId);modal.style.display='none';openProc('edit',pid);});
