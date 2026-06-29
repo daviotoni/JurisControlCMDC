@@ -614,8 +614,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     let viewMode = 'lista';
-    const kanbanContainer = $('#kanban-container');
-    const tableWrap = $('.table-wrap', $('#secProc'));
     const paginationEl = $('#pagination-container');
 
     const KANBAN_COLS = [
@@ -665,10 +663,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function setViewMode(mode) {
         viewMode = mode;
         const isKanban = mode === 'kanban';
-        kanbanContainer.style.display   = isKanban ? 'flex' : 'none';
-        tableWrap.style.display         = isKanban ? 'none' : '';
+        const kc = document.getElementById('kanban-container');
+        const tw = document.querySelector('#secProc .table-wrap');
+        if (kc) kc.style.display = isKanban ? 'flex' : 'none';
+        if (tw) tw.style.display = isKanban ? 'none' : '';
         mobileContainer.style.display   = isKanban ? 'none' : '';
         paginationEl.style.display      = isKanban ? 'none' : '';
+        document.querySelector('.main-content').style.overflowX = isKanban ? 'auto' : '';
         $('#btnViewLista').classList.toggle('active', !isKanban);
         $('#btnViewKanban').classList.toggle('active', isKanban);
         if (isKanban) drawKanban(); else draw(true);
