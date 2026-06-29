@@ -613,7 +613,72 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    q.oninput = () => draw(true); ord.onchange = () => draw(true);
+    let viewMode = 'lista';
+    const kanbanContainer = $('#kanban-container');
+    const tableWrap = $('.table-wrap', $('#secProc'));
+    const paginationEl = $('#pagination-container');
+
+    const KANBAN_COLS = [
+        { key: 'pendente',                label: 'Pendente',               color: '#ef4444' },
+        { key: 'em-analise',              label: 'Em Análise',             color: '#f59e0b' },
+        { key: 'aguardando-documentacao', label: 'Aguard. Documentação',   color: '#3b82f6' },
+        { key: 'em-diligencia',           label: 'Em Diligência',          color: '#8b5cf6' },
+        { key: 'finalizado',              label: 'Finalizado',             color: '#22c55e' },
+        { key: 'arquivado',               label: 'Arquivado',              color: '#64748b' },
+    ];
+
+    function drawKanban() {
+        const L = filterSort();
+        kanbanContainer.innerHTML = KANBAN_COLS.map(col => {
+            const procs = L.filter(p => p.stat === col.key);
+            const cards = procs.map(p => {
+                const dias = p.prazo ? diffDays(todayUTC(), parse(p.prazo)) : null;
+                const vencido = dias !== null && p.stat !== 'finalizado' && p.stat !== 'arquivado' && dias < 0;
+                const alerta  = dias !== null && p.stat !== 'finalizado' && p.stat !== 'arquivado' && dias >= 0 && dias <= 5;
+                const prazoClass = vencido ? 'vencido' : alerta ? 'alerta' : '';
+                const badgeHtml = p.anotacoes && p.anotacoes.length > 0
+                    ? `<span class="anotacoes-badge"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${p.anotacoes.length}</span>` : '';
+                return `
+                    <div class="kanban-card" data-view-proc="${p.id}">
+                        <div class="kanban-card-num">${sanitizeHTML(p.num)}</div>
+                        <div class="kanban-card-int">${sanitizeHTML(p.int)}</div>
+                        ${p.obj ? `<div class="kanban-card-obj">${sanitizeHTML(p.obj)}</div>` : ''}
+                        <div class="kanban-card-footer">
+                            ${p.prazo ? `<span class="kanban-prazo ${prazoClass}">⏱ ${fmtBR(p.prazo)}</span>` : '<span></span>'}
+                            ${badgeHtml}
+                        </div>
+                    </div>`;
+            }).join('');
+            return `
+                <div class="kanban-column">
+                    <div class="kanban-col-header" style="border-top:3px solid ${col.color};">
+                        <span class="kanban-col-title">${col.label}</span>
+                        <span class="kanban-col-count">${procs.length}</span>
+                    </div>
+                    <div class="kanban-col-body">
+                        ${cards || '<p class="kanban-empty">Sem processos</p>'}
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function setViewMode(mode) {
+        viewMode = mode;
+        const isKanban = mode === 'kanban';
+        kanbanContainer.style.display   = isKanban ? 'flex' : 'none';
+        tableWrap.style.display         = isKanban ? 'none' : '';
+        mobileContainer.style.display   = isKanban ? 'none' : '';
+        paginationEl.style.display      = isKanban ? 'none' : '';
+        $('#btnViewLista').classList.toggle('active', !isKanban);
+        $('#btnViewKanban').classList.toggle('active', isKanban);
+        if (isKanban) drawKanban(); else draw(true);
+    }
+
+    $('#btnViewLista').onclick  = () => setViewMode('lista');
+    $('#btnViewKanban').onclick = () => setViewMode('kanban');
+
+    q.oninput = () => { if (viewMode === 'kanban') drawKanban(); else draw(true); };
+    ord.onchange = () => { if (viewMode === 'kanban') drawKanban(); else draw(true); };
     $('#add').onclick = () => openProc('new');
     $('#exportCsv').onclick = () => exportCSV(filterSort());
     $('#exportXlsx').onclick = () => exportXLSX(filterSort());
