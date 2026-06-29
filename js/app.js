@@ -614,6 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     let viewMode = 'lista';
+    const kanbanContainer = $('#kanban-container');
     const paginationEl = $('#pagination-container');
 
     const KANBAN_COLS = [
@@ -664,7 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
         viewMode = mode;
         const isKanban = mode === 'kanban';
         const kc = document.getElementById('kanban-container');
-        const tw = document.querySelector('#secProc .table-wrap');
+        const tw = document.getElementById('proc-table-wrap');
         if (kc) kc.style.display = isKanban ? 'flex' : 'none';
         if (tw) tw.style.display = isKanban ? 'none' : '';
         mobileContainer.style.display   = isKanban ? 'none' : '';
