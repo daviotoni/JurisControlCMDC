@@ -1006,61 +1006,247 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function exportXLSX(data) {
-        showToast('Iniciando exportação para Excel...', 'info');
+        showToast('Gerando planilha...', 'info');
         try {
-            if (typeof XLSX === 'undefined') throw new Error('Biblioteca XLSX não carregada.');
-            const wb = XLSX.utils.book_new();
+            if (typeof ExcelJS === 'undefined') throw new Error('Biblioteca ExcelJS não carregada.');
 
-            // ===== Aba 1: Processos =====
-            const headers = ['Nº Processo','Tipo','Interessado','Objeto','Ação Tomada','Status','Setor de Origem','Setor Enviado','Data Entrada','Prazo Final','Data Saída','Dias Tramitação'];
-            const rows = data.map(p => [
-                p.num || '',
-                p.tipo ? (p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)) : '',
-                p.int || '',
-                p.obj || '',
-                p.acao || '',
-                statusMap[p.stat] || p.stat || '',
-                p.setorOrigem || '',
-                p.dest || '',
-                p.ent ? fmtBR(p.ent) : '',
-                p.prazo ? fmtBR(p.prazo) : '',
-                p.saida ? fmtBR(p.saida) : '',
-                (p.ent && p.saida) ? diffDays(parse(p.ent), parse(p.saida)) : (p.ent ? diffDays(parse(p.ent), todayUTC()) : '')
-            ]);
-            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-            ws['!cols'] = [
-                {wch:18},{wch:14},{wch:30},{wch:40},{wch:35},
-                {wch:22},{wch:20},{wch:20},{wch:13},{wch:13},{wch:13},{wch:16}
-            ];
-            XLSX.utils.book_append_sheet(wb, ws, 'Processos');
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'JurisControl';
+            wb.created = new Date();
 
-            // ===== Aba 2: Resumo =====
-            const stats = calculateGlobalStats();
             const hoje = new Date().toLocaleDateString('pt-BR');
+
+            const C = {
+                NAVY:        'FF1B3A5C',
+                NAVY_MID:    'FF2D5986',
+                BLUE_HDR:    'FF1D4ED8',
+                WHITE:       'FFFFFFFF',
+                BORDER:      'FFCBD5E1',
+                ALT:         'FFF0F7FF',
+                GRAY_LIGHT:  'FFF8FAFC',
+            };
+
+            const statusStyle = {
+                'pendente':                  { bg: 'FFEF4444', fg: 'FFFFFFFF', bold: true },
+                'em-analise':                { bg: 'FFF59E0B', fg: 'FF1C1917', bold: true },
+                'aguardando-documentacao':   { bg: 'FF3B82F6', fg: 'FFFFFFFF', bold: true },
+                'em-diligencia':             { bg: 'FF8B5CF6', fg: 'FFFFFFFF', bold: true },
+                'finalizado':                { bg: 'FF22C55E', fg: 'FFFFFFFF', bold: true },
+                'arquivado':                 { bg: 'FF94A3B8', fg: 'FFFFFFFF', bold: true },
+            };
+
+            const thin   = (c = C.BORDER) => ({ style: 'thin',   color: { argb: c } });
+            const medium = (c = C.NAVY)   => ({ style: 'medium', color: { argb: c } });
+            const borderAll  = { top: thin(), bottom: thin(), left: thin(), right: thin() };
+            const borderBold = { top: medium(), bottom: medium(), left: medium(), right: medium() };
+
+            const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+
+            const font = (opts = {}) => ({ name: 'Calibri', size: 10, ...opts });
+
+            const NUM_COLS = 12;
+
+            // ===========================
+            // ABA 1 — PROCESSOS
+            // ===========================
+            const ws = wb.addWorksheet('Processos', {
+                views: [{ state: 'frozen', xSplit: 0, ySplit: 4 }],
+                properties: { tabColor: { argb: 'FF1D4ED8' } },
+            });
+
+            ws.columns = [
+                { width: 18 }, { width: 14 }, { width: 30 }, { width: 42 }, { width: 36 },
+                { width: 24 }, { width: 22 }, { width: 22 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 16 },
+            ];
+
+            // Linha 1 — Título institucional
+            ws.mergeCells(1, 1, 1, NUM_COLS);
+            const r1 = ws.getRow(1);
+            r1.height = 34;
+            const t1 = ws.getCell('A1');
+            t1.value = 'PROCURADORIA GERAL — CÂMARA MUNICIPAL DE DUQUE DE CAXIAS';
+            t1.font  = font({ bold: true, size: 13, color: { argb: C.WHITE } });
+            t1.fill  = fill(C.NAVY);
+            t1.alignment = { horizontal: 'center', vertical: 'middle' };
+            t1.border = borderBold;
+
+            // Linha 2 — Subtítulo
+            ws.mergeCells(2, 1, 2, NUM_COLS);
+            const r2 = ws.getRow(2);
+            r2.height = 22;
+            const t2 = ws.getCell('A2');
+            t2.value = `Relatorio de Processos  |  Gerado em: ${hoje}`;
+            t2.font  = font({ size: 11, color: { argb: C.WHITE } });
+            t2.fill  = fill(C.NAVY_MID);
+            t2.alignment = { horizontal: 'center', vertical: 'middle' };
+            t2.border = borderBold;
+
+            // Linha 3 — separador visual
+            ws.mergeCells(3, 1, 3, NUM_COLS);
+            ws.getRow(3).height = 6;
+            ws.getCell('A3').fill = fill(C.NAVY);
+
+            // Linha 4 — Cabeçalho das colunas
+            const HEADERS = ['Nº Processo','Tipo','Interessado','Objeto','Ação Tomada','Status','Setor de Origem','Setor Enviado','Data Entrada','Prazo Final','Data Saída','Dias Tram.'];
+            const hdrRow = ws.getRow(4);
+            hdrRow.height = 30;
+            HEADERS.forEach((h, i) => {
+                const cell = hdrRow.getCell(i + 1);
+                cell.value = h;
+                cell.font  = font({ bold: true, size: 10, color: { argb: C.WHITE } });
+                cell.fill  = fill(C.BLUE_HDR);
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                cell.border = borderAll;
+            });
+
+            // Linhas de dados
+            data.forEach((p, i) => {
+                const row = ws.getRow(5 + i);
+                row.height = 20;
+                const bgFill = fill(i % 2 === 1 ? C.ALT : C.WHITE);
+
+                const diasTram = (p.ent && p.saida)
+                    ? diffDays(parse(p.ent), parse(p.saida))
+                    : (p.ent ? diffDays(parse(p.ent), todayUTC()) : '');
+
+                const values = [
+                    p.num || '',
+                    p.tipo ? (p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)) : '',
+                    p.int  || '',
+                    p.obj  || '',
+                    p.acao || '',
+                    statusMap[p.stat] || p.stat || '',
+                    p.setorOrigem || '',
+                    p.dest || '',
+                    p.ent   ? fmtBR(p.ent)   : '',
+                    p.prazo ? fmtBR(p.prazo)  : '',
+                    p.saida ? fmtBR(p.saida)  : '',
+                    diasTram,
+                ];
+
+                values.forEach((v, j) => {
+                    const cell = row.getCell(j + 1);
+                    cell.value  = v;
+                    cell.border = borderAll;
+
+                    if (j === 5 && statusStyle[p.stat]) {
+                        const s = statusStyle[p.stat];
+                        cell.fill  = fill(s.bg);
+                        cell.font  = font({ bold: s.bold, color: { argb: s.fg } });
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    } else {
+                        cell.fill = bgFill;
+                        cell.font = font({ bold: j === 0 });
+                        if ([8, 9, 10, 11].includes(j)) cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    }
+                });
+            });
+
+            // ===========================
+            // ABA 2 — RESUMO
+            // ===========================
+            const wsR = wb.addWorksheet('Resumo', {
+                properties: { tabColor: { argb: 'FF22C55E' } },
+            });
+            wsR.columns = [{ width: 38 }, { width: 16 }];
+
+            const stats = calculateGlobalStats();
             const statusCounts = {};
             data.forEach(p => { statusCounts[p.stat] = (statusCounts[p.stat] || 0) + 1; });
-            const summaryRows = [
-                ['PROCURADORIA GERAL — CÂMARA MUNICIPAL DE DUQUE DE CAXIAS'],
-                [`Relatório gerado em: ${hoje}`],
-                [''],
-                ['RESUMO GERAL', 'Quantidade'],
-                ['Total de processos', stats.total],
-                ['Pendentes', stats.pend],
-                ['Em Análise', stats.anal],
-                ['Finalizados', stats.fin],
-                ['Vencendo (≤5 dias)', stats.alert],
-                ['Vencidos', stats.venc],
-                [''],
-                ['DISTRIBUIÇÃO POR STATUS', 'Quantidade'],
-                ...Object.entries(statusMap).map(([key, label]) => [label, statusCounts[key] || 0])
-            ];
-            const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
-            wsSummary['!cols'] = [{wch:35},{wch:14}];
-            XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo');
 
-            XLSX.writeFile(wb, `processos_${new Date().toISOString().slice(0,10)}.xlsx`);
-            showToast('Exportação para Excel concluída!');
-        } catch (error) { console.error("Erro ao exportar para Excel:", error); showToast(error.message || 'Erro ao exportar para Excel.', 'danger'); }
+            let rn = 1;
+
+            const rMerge = (label, bg, fgFont, sz = 11, h = 28) => {
+                wsR.mergeCells(`A${rn}:B${rn}`);
+                const c = wsR.getCell(`A${rn}`);
+                c.value = label;
+                c.font  = font({ bold: true, size: sz, color: { argb: fgFont } });
+                c.fill  = fill(bg);
+                c.alignment = { horizontal: 'center', vertical: 'middle' };
+                c.border = borderBold;
+                wsR.getRow(rn).height = h;
+                rn++;
+            };
+
+            const rData = (label, value, bgA = C.WHITE, bgB = C.WHITE, fgB = '00000000', boldA = false) => {
+                const cA = wsR.getCell(`A${rn}`);
+                const cB = wsR.getCell(`B${rn}`);
+                cA.value = label;  cB.value = value;
+                cA.font  = font({ bold: boldA });
+                cB.font  = font({ bold: true, color: { argb: fgB } });
+                cA.fill  = fill(bgA); cB.fill = fill(bgB);
+                cA.border = borderAll; cB.border = borderAll;
+                cB.alignment = { horizontal: 'center', vertical: 'middle' };
+                wsR.getRow(rn).height = 22;
+                rn++;
+            };
+
+            const rSep = () => {
+                wsR.mergeCells(`A${rn}:B${rn}`);
+                wsR.getCell(`A${rn}`).fill = fill(C.NAVY);
+                wsR.getRow(rn).height = 5;
+                rn++;
+            };
+
+            const rSecHdr = (label) => {
+                wsR.mergeCells(`A${rn}:B${rn}`);
+                const c = wsR.getCell(`A${rn}`);
+                c.value = label;
+                c.font  = font({ bold: true, size: 10, color: { argb: C.WHITE } });
+                c.fill  = fill(C.BLUE_HDR);
+                c.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+                c.border = borderAll;
+                wsR.getRow(rn).height = 24;
+                rn++;
+            };
+
+            rMerge('PROCURADORIA GERAL — CÂMARA MUNICIPAL DE DUQUE DE CAXIAS', C.NAVY, C.WHITE, 13, 34);
+            rMerge(`Relatorio Gerencial  |  ${hoje}`, C.NAVY_MID, C.WHITE, 11, 22);
+            rSep();
+            wsR.getRow(rn).height = 8; rn++;
+
+            rSecHdr('RESUMO GERAL');
+            rData('Total de Processos',      stats.total,  C.GRAY_LIGHT, C.GRAY_LIGHT, 'FF1B3A5C', true);
+            rData('Pendentes',               stats.pend,   'FFFEF2F2',   'FFFEF2F2',   'FFDC2626');
+            rData('Em Análise',              stats.anal,   'FFFFFBEB',   'FFFFFBEB',   'FFD97706');
+            rData('Finalizados',             stats.fin,    'FFF0FDF4',   'FFF0FDF4',   'FF15803D');
+            rData('Vencendo em até 5 dias',  stats.alert,  'FFFFF7ED',   'FFFFF7ED',   'FFC2410C');
+            rData('Vencidos',                stats.venc,   'FFFEF2F2',   'FFFEF2F2',   'FFDC2626', true);
+
+            wsR.getRow(rn).height = 8; rn++;
+
+            rSecHdr('DISTRIBUIÇÃO POR STATUS');
+            Object.entries(statusMap).forEach(([key, label]) => {
+                const s = statusStyle[key];
+                if (s) {
+                    const cA = wsR.getCell(`A${rn}`);
+                    const cB = wsR.getCell(`B${rn}`);
+                    cA.value = label;
+                    cB.value = statusCounts[key] || 0;
+                    cA.font  = font({ bold: true, color: { argb: s.fg } });
+                    cB.font  = font({ bold: true, color: { argb: s.fg } });
+                    cA.fill  = fill(s.bg); cB.fill = fill(s.bg);
+                    cA.border = borderAll; cB.border = borderAll;
+                    cB.alignment = { horizontal: 'center', vertical: 'middle' };
+                    wsR.getRow(rn).height = 22;
+                    rn++;
+                }
+            });
+
+            // Gerar arquivo
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url  = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href  = url;
+            link.download = `processos_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showToast('Planilha Excel exportada com sucesso!');
+        } catch (error) {
+            console.error('Erro ao exportar para Excel:', error);
+            showToast(error.message || 'Erro ao exportar para Excel.', 'danger');
+        }
     }
   
   function openLeiModal(mode, id = null) {
