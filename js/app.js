@@ -614,6 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     let viewMode = 'lista';
+    const kanbanContainer = $('#kanban-container');
     const paginationEl = $('#pagination-container');
 
     const KANBAN_COLS = [
