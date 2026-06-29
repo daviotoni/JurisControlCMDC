@@ -18,6 +18,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
 </head>
 
 <body data-theme="light">
@@ -158,6 +159,16 @@
                     <select id="ord" class="select">
                       <option value="entrada">Ordenar por Entrada</option><option value="prazo">Ordenar por Prazo</option><option value="status">Ordenar por Status</option>
                     </select>
+                    <div class="view-toggle-group">
+                        <button id="btnViewLista" class="btn secondary active" title="Visualização em Lista">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                            Lista
+                        </button>
+                        <button id="btnViewKanban" class="btn secondary" title="Visualização Kanban">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
+                            Kanban
+                        </button>
+                    </div>
                     <div class="actions-group">
                         <button id="exportCsv" class="btn secondary">Exportar CSV</button>
                         <button id="exportXlsx" class="btn secondary">Exportar Excel</button>
@@ -172,6 +183,7 @@
                   </div>
                   <div id="mobile-cards-container" class="mobile-cards-container"></div>
                   <div id="pagination-container" class="pagination-container"></div>
+                  <div id="kanban-container" class="kanban-board" style="display:none;"></div>
                 </section>
                 
                 <section id="secDoc" style="display:none">
