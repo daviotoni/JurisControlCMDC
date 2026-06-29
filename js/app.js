@@ -1580,7 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupEnhancedNav();
 
-    $$('.tab').forEach(b => b.onclick = (e) => { e.preventDefault(); showTab(b.dataset.tab); });
+    $$('.tab').forEach(b => b.onclick = (e) => { e.preventDefault(); showTab(b.dataset.tab); if (window.closeMobileMenu) window.closeMobileMenu(); });
     $('#btnAddUser').onclick = () => openUserModal('new');
     $('#userList').onclick = (e) => { if (e.target.closest('[data-edit-user]')) openUserModal('edit', e.target.closest('[data-edit-user]').dataset.editUser); };
     $('#btnAddEmissor').onclick = () => openEmissorModal('new');
