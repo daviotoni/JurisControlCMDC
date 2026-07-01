@@ -621,6 +621,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderProc(reset = false, initialFilter = null) {
     const q = $('#q'), ord = $('#ord'), tbody = $('#tbl-body'), mobileContainer = $('#mobile-cards-container'), paginationProcessesContainer = $('#pagination-container');
+    const btnToggleFiltros = $('#btnToggleFiltros'), filtrosPanel = $('#filtrosPanel'), filtrosCount = $('#filtrosCount'), btnLimparFiltros = $('#btnLimparFiltros');
+    const filtroStatus = $('#filtroStatus'), filtroSetor = $('#filtroSetor'), filtroTipo = $('#filtroTipo'), filtroEmissor = $('#filtroEmissor'), filtroEntradaDe = $('#filtroEntradaDe'), filtroEntradaAte = $('#filtroEntradaAte');
 
     let currentPage = 1;
     const itemsPerPage = 10;
@@ -628,6 +630,48 @@ document.addEventListener('DOMContentLoaded', () => {
     if (initialFilter) {
         q.value = '';
         if(initialFilter.text) q.value = initialFilter.text;
+    }
+
+    if (!filtroStatus.dataset.populated) {
+        filtroStatus.dataset.populated = '1';
+        Object.entries(statusMap).forEach(([value, label]) => {
+            const opt = document.createElement('option'); opt.value = value; opt.textContent = label;
+            filtroStatus.appendChild(opt);
+        });
+    }
+    if (!filtroSetor.dataset.populated) {
+        filtroSetor.dataset.populated = '1';
+        SETORES.forEach(s => {
+            const opt = document.createElement('option'); opt.value = s; opt.textContent = s;
+            filtroSetor.appendChild(opt);
+        });
+    }
+    // Emissores podem mudar entre renders (cadastro dinâmico), então repopula sempre preservando a seleção atual
+    (() => {
+        const current = filtroEmissor.value;
+        filtroEmissor.innerHTML = '<option value="">Todos</option>';
+        DB_EMISSORES.forEach(em => {
+            const opt = document.createElement('option'); opt.value = em.id; opt.textContent = em.name;
+            filtroEmissor.appendChild(opt);
+        });
+        if (current) filtroEmissor.value = current;
+    })();
+
+    function countActiveFiltros() {
+        return [filtroStatus.value, filtroSetor.value, filtroTipo.value, filtroEmissor.value, filtroEntradaDe.value, filtroEntradaAte.value]
+            .filter(v => v).length;
+    }
+
+    function updateFiltrosUI() {
+        const n = countActiveFiltros();
+        if (n > 0) {
+            filtrosCount.style.display = 'inline-flex';
+            filtrosCount.textContent = String(n);
+            btnToggleFiltros.classList.add('active');
+        } else {
+            filtrosCount.style.display = 'none';
+            btnToggleFiltros.classList.remove('active');
+        }
     }
 
     function filterSort() {
@@ -638,12 +682,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (initialFilter?.prazo === 'alerta') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) <= 5 && diffDays(todayUTC(), parse(p.prazo)) >= 0);
         if (initialFilter?.prazo === 'vencido') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) < 0);
         if (initialFilter?.month !== undefined) L = L.filter(p => p.ent && parse(p.ent).getUTCMonth() === initialFilter.month);
+        if (filtroStatus.value) L = L.filter(p => p.stat === filtroStatus.value);
+        if (filtroSetor.value) L = L.filter(p => p.setorOrigem === filtroSetor.value || p.dest === filtroSetor.value);
+        if (filtroTipo.value) L = L.filter(p => p.tipo === filtroTipo.value);
+        if (filtroEmissor.value) L = L.filter(p => String(p.emissorId || '') === filtroEmissor.value);
+        if (filtroEntradaDe.value) { const de = parse(filtroEntradaDe.value); L = L.filter(p => p.ent && parse(p.ent) >= de); }
+        if (filtroEntradaAte.value) { const ate = parse(filtroEntradaAte.value); L = L.filter(p => p.ent && parse(p.ent) <= ate); }
         if (ord.value === 'prazo') L.sort((a, b) => { const A = parse(a.prazo), B = parse(b.prazo); return (A ? A.getTime() : Infinity) - (B ? B.getTime() : Infinity); });
         else if (ord.value === 'status') L.sort((a, b) => (a.stat || '').localeCompare(b.stat || ''));
         else L.sort((a, b) => { const A = parse(a.ent), B = parse(b.ent); return (B ? B.getTime() : 0) - (A ? A.getTime() : 0); });
         return L;
     }
-    
+
     function draw(resetPage = false) {
         if (resetPage) currentPage = 1;
         const L = filterSort();
@@ -865,6 +915,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     q.oninput = () => { if (viewMode === 'kanban') drawKanban(); else draw(true); };
     ord.onchange = () => { if (viewMode === 'kanban') drawKanban(); else draw(true); };
+
+    const refreshView = () => { updateFiltrosUI(); if (viewMode === 'kanban') drawKanban(); else draw(true); };
+    [filtroStatus, filtroSetor, filtroTipo, filtroEmissor, filtroEntradaDe, filtroEntradaAte].forEach(el => {
+        el.onchange = refreshView;
+    });
+    btnToggleFiltros.onclick = () => {
+        const open = filtrosPanel.style.display !== 'none';
+        filtrosPanel.style.display = open ? 'none' : 'block';
+    };
+    btnLimparFiltros.onclick = () => {
+        filtroStatus.value = ''; filtroSetor.value = ''; filtroTipo.value = '';
+        filtroEmissor.value = ''; filtroEntradaDe.value = ''; filtroEntradaAte.value = '';
+        refreshView();
+    };
+    updateFiltrosUI();
+
     $('#add').onclick = () => openProc('new');
     $('#exportCsv').onclick = () => exportCSV(filterSort());
     $('#exportXlsx').onclick = () => exportXLSX(filterSort());

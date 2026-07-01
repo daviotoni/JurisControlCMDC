@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JurisControl</title>
-        <link rel="stylesheet" href="style.css?v=20260701-confirm">
+        <link rel="stylesheet" href="style.css?v=20260701-filtros">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -159,6 +159,11 @@
                     <select id="ord" class="select">
                       <option value="entrada">Ordenar por Entrada</option><option value="prazo">Ordenar por Prazo</option><option value="status">Ordenar por Status</option>
                     </select>
+                    <button id="btnToggleFiltros" class="btn secondary" type="button" title="Filtros avançados">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        Filtros
+                        <span id="filtrosCount" class="filtros-count" style="display:none;">0</span>
+                    </button>
                     <div class="view-toggle-group">
                         <button id="btnViewLista" class="btn secondary active" title="Visualização em Lista">
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
@@ -173,6 +178,41 @@
                         <button id="exportCsv" class="btn secondary">Exportar CSV</button>
                         <button id="exportXlsx" class="btn secondary">Exportar Excel</button>
                         <button id="add" class="btn primary">Adicionar Processo</button>
+                    </div>
+                  </div>
+                  <div id="filtrosPanel" class="filtros-panel" style="display:none;">
+                    <div class="filtros-grid">
+                        <div class="form-group">
+                            <label for="filtroStatus">Status</label>
+                            <select id="filtroStatus" class="select"><option value="">Todos</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filtroSetor">Setor (origem ou envio)</label>
+                            <select id="filtroSetor" class="select"><option value="">Todos</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filtroTipo">Tipo</label>
+                            <select id="filtroTipo" class="select">
+                                <option value="">Todos</option>
+                                <option value="administrativo">Administrativo</option>
+                                <option value="judicial">Judicial</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filtroEmissor">Emissor</label>
+                            <select id="filtroEmissor" class="select"><option value="">Todos</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filtroEntradaDe">Entrada — De</label>
+                            <input id="filtroEntradaDe" type="date" class="input">
+                        </div>
+                        <div class="form-group">
+                            <label for="filtroEntradaAte">Entrada — Até</label>
+                            <input id="filtroEntradaAte" type="date" class="input">
+                        </div>
+                    </div>
+                    <div class="filtros-footer">
+                        <button id="btnLimparFiltros" class="btn secondary" type="button">Limpar filtros</button>
                     </div>
                   </div>
                   <div class="table-wrap" id="proc-table-wrap">
@@ -461,7 +501,7 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/app.js?v=20260701-confirm"></script>
+    <script src="js/app.js?v=20260701-filtros"></script>
 
 </body>
 </html>
