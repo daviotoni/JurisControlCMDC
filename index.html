@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JurisControl</title>
-        <link rel="stylesheet" href="style.css?v=20260701-parecer">
+        <link rel="stylesheet" href="style.css?v=20260701-redesign-navy">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
@@ -27,28 +27,35 @@
 
     <div id="loginOverlay" class="login-overlay">
         <div class="login-card">
-            <div class="login-brand">
-                <div class="login-brand-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="m2 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+            <div class="login-hero">
+                <img src="img/brasao-shield.png" alt="Brasão CMDC" class="login-hero-shield">
+                <div class="login-hero-eyebrow">Câmara Municipal de Duque de Caxias</div>
+                <h1 class="login-hero-title">JurisControl</h1>
+                <p class="login-hero-tagline">Gestão de processos, prazos e pareceres — em um só lugar.</p>
+            </div>
+            <div class="login-panel">
+                <h2>Acessar o sistema</h2>
+                <p class="login-panel-subtitle">Use suas credenciais institucionais</p>
+                <div class="grupo">
+                    <label for="loginUser">E-mail</label>
+                    <input id="loginUser" type="email" class="input" autocomplete="email" placeholder="Digite seu e-mail">
                 </div>
-                <h2>JurisControl</h2>
+                <div class="grupo">
+                    <label for="loginPass">Senha</label>
+                    <input id="loginPass" type="password" class="input" autocomplete="current-password" placeholder="Digite sua senha">
+                </div>
+                <div class="login-row">
+                    <div class="lembrar-me">
+                        <input type="checkbox" id="lembrarUser" style="width: auto;">
+                        <label for="lembrarUser" style="margin:0;">Lembrar-me</label>
+                    </div>
+                    <span class="login-forgot">Esqueci a senha</span>
+                </div>
+                <div class="login-acoes">
+                    <button id="btnEntrar" class="btn primary">Entrar</button>
+                </div>
+                <div id="loginErro" class="login-erro"></div>
             </div>
-            <div class="grupo">
-                <label for="loginUser">E-mail</label>
-                <input id="loginUser" type="email" class="input" autocomplete="email" placeholder="Digite seu e-mail">
-            </div>
-            <div class="grupo">
-                <label for="loginPass">Senha</label>
-                <input id="loginPass" type="password" class="input" autocomplete="current-password" placeholder="Digite sua senha">
-            </div>
-            <div class="lembrar-me">
-                <input type="checkbox" id="lembrarUser" style="width: auto;">
-                <label for="lembrarUser" style="margin:0;">Lembrar-me</label>
-            </div>
-            <div class="login-acoes">
-                <button id="btnEntrar" class="btn primary">Entrar</button>
-            </div>
-            <div id="loginErro" class="login-erro"></div>
         </div>
     </div>
     
@@ -58,9 +65,12 @@
             <div class="sidebar-header">
                 <div class="sidebar-logo">
                     <div class="sidebar-logo-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="m2 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                        <img src="img/brasao-shield.png" alt="Brasão CMDC">
                     </div>
-                    <span class="sidebar-logo-text">JurisControl</span>
+                    <div class="sidebar-logo-text-wrap">
+                        <span class="sidebar-logo-text">JurisControl</span>
+                        <span class="sidebar-logo-sub">CMDC</span>
+                    </div>
                 </div>
                 <button id="sidebar-collapse-btn" class="icon-btn sidebar-collapse-btn" title="Colapsar menu" aria-label="Colapsar menu">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
@@ -68,12 +78,12 @@
             </div>
             <nav class="sidebar-nav" id="sidebar-nav">
                 <ul>
-                    <li><a href="#" class="tab active" data-tab="dashboard" data-tooltip="Dashboard" aria-current="page"><span class="nav-emoji">📊</span><span class="nav-label">Dashboard</span></a></li>
-                    <li><a href="#" class="tab" data-tab="proc" data-tooltip="Processos"><span class="nav-emoji">📋</span><span class="nav-label">Processos</span></a></li>
-                    <li><a href="#" class="tab" data-tab="cal" data-tooltip="Calendário"><span class="nav-emoji">📅</span><span class="nav-label">Calendário</span></a></li>
-                    <li><a href="#" class="tab" data-tab="docs" data-tooltip="Documentos"><span class="nav-emoji">📄</span><span class="nav-label">Documentos</span></a></li>
-                    <li><a href="#" class="tab" data-tab="leis" data-tooltip="Banco de Leis"><span class="nav-emoji">⚖️</span><span class="nav-label">Leis</span></a></li>
-                    <li><a href="#" class="tab" data-tab="cfg" data-tooltip="Configurações"><span class="nav-emoji">⚙️</span><span class="nav-label">Configurações</span></a></li>
+                    <li><a href="#" class="tab active" data-tab="dashboard" data-tooltip="Dashboard" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg><span class="nav-label">Dashboard</span></a></li>
+                    <li><a href="#" class="tab" data-tab="proc" data-tooltip="Processos"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><span class="nav-label">Processos</span></a></li>
+                    <li><a href="#" class="tab" data-tab="cal" data-tooltip="Calendário"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="nav-label">Calendário</span></a></li>
+                    <li><a href="#" class="tab" data-tab="docs" data-tooltip="Documentos"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="nav-label">Documentos</span></a></li>
+                    <li><a href="#" class="tab" data-tab="leis" data-tooltip="Banco de Leis"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="nav-label">Leis</span></a></li>
+                    <li><a href="#" class="tab" data-tab="cfg" data-tooltip="Configurações"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8L7 17M17 7l2.8-2.8"/></svg><span class="nav-label">Configurações</span></a></li>
                 </ul>
             </nav>
         </aside>
@@ -268,7 +278,12 @@
                     <input id="qLeis" class="input" placeholder="Buscar por tipo, número, ano, ementa…">
                     <div class="actions-group"><button id="btnAddLei" class="btn primary">Adicionar Lei</button></div>
                   </div>
-                  <div id="leisGrid" class="leis-grid"></div>
+                  <div class="table-wrap">
+                    <table>
+                      <thead><tr><th>Número</th><th>Ementa</th><th>Tipo</th><th style="text-align:center">Ano</th><th style="text-align:center">Ações</th></tr></thead>
+                      <tbody id="leisGrid"></tbody>
+                    </table>
+                  </div>
                 </section>
                 
                 <section id="secCal" style="display:none">
@@ -326,7 +341,7 @@
                            <input id="bk_file" type="file" accept=".json" class="sr-only">
                          </div>
                     </div>
-                    <div class="card" style="grid-column: 1 / -1; border-color: var(--danger)">
+                    <div class="card danger-zone" style="grid-column: 1 / -1; border-color: var(--danger)">
                         <h3>Ações Avançadas</h3>
                         <p class="small">Use com cuidado. Ações aqui não podem ser desfeitas.</p>
                         <button id="btnHardReset" class="btn danger">Limpar Dados Locais (Hard Reset)</button>
@@ -558,7 +573,7 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/app.js?v=20260701-parecer-fase2"></script>
+    <script src="js/app.js?v=20260701-redesign-navy"></script>
 
 </body>
 </html>

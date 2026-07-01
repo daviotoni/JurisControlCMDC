@@ -1145,12 +1145,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const paginationEl = $('#pagination-bar');
 
     const KANBAN_COLS = [
-        { key: 'pendente',                label: 'Pendente',               color: '#ef4444' },
-        { key: 'em-analise',              label: 'Em Análise',             color: '#f59e0b' },
-        { key: 'aguardando-documentacao', label: 'Aguard. Documentação',   color: '#3b82f6' },
-        { key: 'em-diligencia',           label: 'Em Diligência',          color: '#8b5cf6' },
-        { key: 'finalizado',              label: 'Finalizado',             color: '#22c55e' },
-        { key: 'arquivado',               label: 'Arquivado',              color: '#64748b' },
+        { key: 'pendente',                label: 'Pendente',               color: '#b42323' },
+        { key: 'em-analise',              label: 'Em Análise',             color: '#b25e09' },
+        { key: 'aguardando-documentacao', label: 'Aguard. Documentação',   color: '#0a3d73' },
+        { key: 'em-diligencia',           label: 'Em Diligência',          color: '#7c3aad' },
+        { key: 'finalizado',              label: 'Finalizado',             color: '#2f855a' },
+        { key: 'arquivado',               label: 'Arquivado',              color: '#8194ab' },
     ];
 
     function drawKanban() {
@@ -2187,16 +2187,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderLeis() {
       const grid = $('#leisGrid'); const q = $('#qLeis').value.toLowerCase().trim(); grid.innerHTML = '';
       const leisFiltradas = DB_LEIS.filter(lei => !q || [lei.tipo, lei.numero, lei.ano, lei.ementa].some(v => String(v || '').toLowerCase().includes(q)));
-      if (leisFiltradas.length === 0) { grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m16 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="m2 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg><h3>Nenhuma lei encontrada</h3><p>Tente ajustar a busca ou clique em "Adicionar Lei".</p></div>`; return; }
+      if (leisFiltradas.length === 0) { grid.innerHTML = `<tr><td colspan="5"><div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m16 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="m2 16 3-8 3 8c-.8.9-2 1-3 1-1 0-2.2-.1-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg><h3>Nenhuma lei encontrada</h3><p>Tente ajustar a busca ou clique em "Adicionar Lei".</p></div></td></tr>`; return; }
       leisFiltradas.forEach(lei => {
-          const card = document.createElement('div'); card.className = 'card lei-card';
-          card.innerHTML = `<div class="lei-card-header">${sanitizeHTML(lei.tipo)} Nº ${sanitizeHTML(lei.numero)}/${sanitizeHTML(lei.ano)}</div><p class="lei-card-ementa">${sanitizeHTML(lei.ementa)}</p>
-              <div class="lei-card-actions">
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="lei-numero">${sanitizeHTML(lei.tipo)} Nº ${sanitizeHTML(lei.numero)}</td>
+              <td class="lei-ementa">${sanitizeHTML(lei.ementa)}</td>
+              <td><span class="status lei-tipo-pill">${sanitizeHTML(lei.tipo)}</span></td>
+              <td style="text-align:center">${sanitizeHTML(lei.ano)}</td>
+              <td style="text-align:center"><div class="lei-row-actions">
                   ${lei.link ? `<a href="${sanitizeHTML(lei.link)}" target="_blank" class="btn secondary">Ver Link</a>` : ''}
                   ${lei.arquivo ? `<button class="btn secondary" data-download-lei="${lei.id}">Baixar Anexo</button>` : ''}
-                  <button class="btn" data-edit-lei="${lei.id}" style="margin-left:auto;">Editar</button>
-              </div>`;
-          grid.appendChild(card);
+                  <button class="btn" data-edit-lei="${lei.id}">Editar</button>
+              </div></td>`;
+          grid.appendChild(tr);
       });
   }
   
@@ -2441,13 +2444,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let chartInstances = {};
-  const statusColorMap = {'pendente': '#ef4444', 'em-analise': '#f59e0b', 'aguardando-documentacao': '#3b82f6', 'em-diligencia': '#8b5cf6', 'finalizado': '#22c55e', 'arquivado': '#64748b'};
-  const colorPalette = ['#3b82f6', '#f59e0b', '#22c55e', '#ef4444', '#8b5cf6', '#64748b', '#0ea5e9', '#f97316', '#a16207', '#16a34a'];
+  const statusColorMap = {'pendente': '#b42323', 'em-analise': '#b25e09', 'aguardando-documentacao': '#0a3d73', 'em-diligencia': '#7c3aad', 'finalizado': '#2f855a', 'arquivado': '#8194ab'};
+  const colorPalette = ['#0a3d73', '#b25e09', '#2f855a', '#b42323', '#7c3aad', '#8194ab', '#1c5f9e', '#c2a14d', '#0e4a89', '#245f43'];
   const mesesMap = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const sMapKeys = Object.keys(statusMap);
    function getChartConfigs(data) {
-    const isDark = document.body.dataset.theme === 'dark', gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', textColor = isDark ? '#f8fafc' : '#1a202c', cardColor = getComputedStyle(document.body).getPropertyValue('--card-bg').trim();
-    Chart.defaults.color = textColor; Chart.defaults.font.family = "'Inter', sans-serif";
+    const isDark = document.body.dataset.theme === 'dark', gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', textColor = isDark ? '#eef2f8' : '#132a44', cardColor = getComputedStyle(document.body).getPropertyValue('--card-bg').trim();
+    Chart.defaults.color = textColor; Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
     const labels = mesesMap, dadosAdm = Array(12).fill(0), dadosJud = Array(12).fill(0);
     data.forEach(p => { if(p.ent){ const m = parse(p.ent).getUTCMonth(); if(p.tipo==='administrativo')dadosAdm[m]++; else dadosJud[m]++; }});
     const sCounts={}; data.forEach(p=>sCounts[p.stat]=(sCounts[p.stat]||0)+1);
@@ -2499,7 +2502,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isNaN(emitidoDate)) pareceresPorMes[emitidoDate.getUTCMonth()]++;
         }
     });
-    const pareceresMesConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Nº de Pareceres', data: pareceresPorMes, backgroundColor: '#26c6da' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: {} } } };
+    const pareceresMesConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Nº de Pareceres', data: pareceresPorMes, backgroundColor: '#1c5f9e' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: {} } } };
     return { entradasConfig, statusConfig, pareceresMesConfig };
   }
   function renderCharts(chartConfigs) {
@@ -2526,8 +2529,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if(todosOsPrazos.length===0){listEl.innerHTML='<li>Nenhum prazo nos próximos 15 dias.</li>';return;}
       todosOsPrazos.forEach(item=>{
           const data=parse(item.data); const dia=String(data.getUTCDate()).padStart(2,'0'); const mes=data.toLocaleDateString('pt-BR',{month:'short',timeZone:'UTC'}).replace('.','');
+          const dias = diffDays(hoje, data);
+          const urgClass = dias <= 1 ? 'prazo-date-danger' : dias <= 5 ? 'prazo-date-warning' : 'prazo-date-info';
           const li=document.createElement('li');
-          li.innerHTML=`<div class="prazo-date"><span class="month">${sanitizeHTML(mes)}</span><span class="day">${sanitizeHTML(dia)}</span></div><div class="prazo-info"><span class="type type-${sanitizeHTML(item.tipo)}">${sanitizeHTML(item.tipo.toUpperCase())}</span><div class="desc">${sanitizeHTML(item.desc)}</div></div>`;
+          li.innerHTML=`<div class="prazo-date ${urgClass}"><span class="month">${sanitizeHTML(mes)}</span><span class="day">${sanitizeHTML(dia)}</span></div><div class="prazo-info"><span class="type type-${sanitizeHTML(item.tipo)}">${sanitizeHTML(item.tipo.toUpperCase())}</span><div class="desc">${sanitizeHTML(item.desc)}</div></div>`;
           listEl.appendChild(li);
       });
   }
@@ -2543,12 +2548,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderDashboard() {
       const kpiData = calculateGlobalStats(); const kpiContainer = $('#dashboard-kpis'); if (!kpiContainer) return;
       const kpiItems = [
-          { filter: 'total',     label: 'Total de Processos',  value: kpiData.total,  color: '#2196F3', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>` },
-          { filter: 'pendente',  label: 'Pendentes',           value: kpiData.pend,   color: '#f59e0b', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
-          { filter: 'em-analise',label: 'Em Análise',          value: kpiData.anal,   color: '#FF9800', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>` },
-          { filter: 'finalizado',label: 'Finalizados',         value: kpiData.fin,    color: '#22c55e', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>` },
-          { filter: 'alerta',    label: 'Vencendo (≤5 dias)',  value: kpiData.alert,  color: '#FF7043', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` },
-          { filter: 'vencido',   label: 'Vencidos',            value: kpiData.venc,   color: '#ef4444', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>` },
+          { filter: 'total',     label: 'Total de Processos',  value: kpiData.total,  color: '#0a3d73', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>` },
+          { filter: 'pendente',  label: 'Pendentes',           value: kpiData.pend,   color: '#7c3aad', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
+          { filter: 'em-analise',label: 'Em Análise',          value: kpiData.anal,   color: '#b25e09', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>` },
+          { filter: 'finalizado',label: 'Finalizados',         value: kpiData.fin,    color: '#2f855a', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>` },
+          { filter: 'alerta',    label: 'Vencendo (≤5 dias)',  value: kpiData.alert,  color: '#c2a14d', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` },
+          { filter: 'vencido',   label: 'Vencidos',            value: kpiData.venc,   color: '#b42323', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>` },
       ];
       kpiContainer.innerHTML = kpiItems.map(item => `
           <div class="kpi" data-kpi-filter="${item.filter}" style="border-left-color:${item.color};">
