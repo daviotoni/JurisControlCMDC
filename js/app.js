@@ -524,7 +524,69 @@ document.addEventListener('DOMContentLoaded', () => {
           console.warn('Erro ao registrar histórico:', e);
       }
   }
-  
+
+  // ===== Tooltip de anotações (hover no balãozinho) =====
+  (function setupAnotacoesTooltip() {
+      let tipEl = null;
+      const ensureTip = () => {
+          if (!tipEl) {
+              tipEl = document.createElement('div');
+              tipEl.className = 'anot-tooltip';
+              tipEl.style.display = 'none';
+              document.body.appendChild(tipEl);
+          }
+          return tipEl;
+      };
+      const buildPreview = (anotacoes) => {
+          const lista = (anotacoes || []).slice().sort((a, b) => b.id - a.id);
+          if (!lista.length) return '';
+          const shown = lista.slice(0, 3);
+          const rows = shown.map(a => {
+              const dt = new Date(a.dt);
+              const dateStr = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+              let texto = a.texto || '';
+              if (texto.length > 160) texto = texto.slice(0, 160) + '…';
+              return `<div class="anot-tip-row">
+                  <div class="anot-tip-meta"><span class="anot-tip-user">${sanitizeHTML(a.usuario || 'Usuário')}</span><span class="anot-tip-date">${sanitizeHTML(dateStr)}</span></div>
+                  <div class="anot-tip-text">${sanitizeHTML(texto)}</div>
+              </div>`;
+          }).join('');
+          const restante = lista.length - shown.length;
+          const more = restante > 0 ? `<div class="anot-tip-more">+${restante} anotação(ões) anterior(es)</div>` : '';
+          return `<div class="anot-tip-title">Últimas anotações</div>${rows}${more}`;
+      };
+      const position = (badge) => {
+          const r = badge.getBoundingClientRect();
+          const tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
+          let left = r.left + r.width / 2 - tw / 2;
+          left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+          let top = r.top - th - 8;
+          if (top < 8) top = r.bottom + 8; // vira para baixo se não couber acima
+          tipEl.style.left = left + 'px';
+          tipEl.style.top = top + 'px';
+      };
+      const show = (badge) => {
+          const p = DB.find(x => String(x.id) === String(badge.dataset.anot));
+          if (!p) return;
+          const html = buildPreview(p.anotacoes);
+          if (!html) return;
+          ensureTip().innerHTML = html;
+          tipEl.style.display = 'block';
+          position(badge);
+      };
+      const hide = () => { if (tipEl) tipEl.style.display = 'none'; };
+
+      document.addEventListener('mouseover', (e) => {
+          const badge = e.target.closest && e.target.closest('.anotacoes-badge');
+          if (badge && badge.dataset.anot) show(badge);
+      });
+      document.addEventListener('mouseout', (e) => {
+          const badge = e.target.closest && e.target.closest('.anotacoes-badge');
+          if (badge && !badge.contains(e.relatedTarget)) hide();
+      });
+      window.addEventListener('scroll', hide, true);
+  })();
+
   function renderProc(reset = false, initialFilter = null) {
     const q = $('#q'), ord = $('#ord'), tbody = $('#tbl-body'), mobileContainer = $('#mobile-cards-container'), paginationProcessesContainer = $('#pagination-container');
 
@@ -589,7 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="proc-card-header">
                         <span class="num">${sanitizeHTML(p.num)}</span>
                         <div style="display:flex;align-items:center;gap:0.5rem;">
-                            ${p.anotacoes && p.anotacoes.length > 0 ? `<span class="anotacoes-badge" title="${p.anotacoes.length} anotação(ões)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${p.anotacoes.length}</span>` : ''}
+                            ${p.anotacoes && p.anotacoes.length > 0 ? `<span class="anotacoes-badge" data-anot="${p.id}" aria-label="${p.anotacoes.length} anotação(ões)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${p.anotacoes.length}</span>` : ''}
                             <span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(sTxt)}</span>
                         </div>
                     </div>
@@ -636,9 +698,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const alerta  = dias !== null && p.stat !== 'finalizado' && p.stat !== 'arquivado' && dias >= 0 && dias <= 5;
                 const prazoClass = vencido ? 'vencido' : alerta ? 'alerta' : '';
                 const badgeHtml = p.anotacoes && p.anotacoes.length > 0
-                    ? `<span class="anotacoes-badge"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${p.anotacoes.length}</span>` : '';
+                    ? `<span class="anotacoes-badge" data-anot="${p.id}" aria-label="${p.anotacoes.length} anotação(ões)"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${p.anotacoes.length}</span>` : '';
                 return `
-                    <div class="kanban-card" data-view-proc="${p.id}">
+                    <div class="kanban-card" data-view-proc="${p.id}" data-proc-id="${p.id}">
                         <div class="kanban-card-num">${sanitizeHTML(p.num)}</div>
                         <div class="kanban-card-int">${sanitizeHTML(p.int)}</div>
                         ${p.obj ? `<div class="kanban-card-obj">${sanitizeHTML(p.obj)}</div>` : ''}
@@ -654,11 +716,101 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="kanban-col-title">${col.label}</span>
                         <span class="kanban-col-count">${procs.length}</span>
                     </div>
-                    <div class="kanban-col-body">
+                    <div class="kanban-col-body" data-col-key="${col.key}">
                         ${cards || '<p class="kanban-empty">Sem processos</p>'}
                     </div>
                 </div>`;
         }).join('');
+    }
+
+    // Move um processo para outro status (usado pelo drag & drop do Kanban)
+    async function moveProcToStatus(id, newStat) {
+        if (!id || !newStat || !VALID_STATS.has(newStat)) return;
+        const p = DB.find(x => String(x.id) === String(id));
+        if (!p || p.stat === newStat) return;
+        const oldStat = p.stat;
+        p.stat = newStat;
+        try {
+            await dbHelper.put('processos', p);
+            await logHistorico(p.id, p.num, 'editado', [{ campo: 'stat', de: oldStat, para: newStat }]);
+            showToast(`Processo movido para "${statusMap[newStat] || newStat}".`, 'success');
+        } catch (err) {
+            p.stat = oldStat; // rollback em caso de falha
+            console.warn('Erro ao mover processo:', err);
+            showToast('Não foi possível mover o processo.', 'danger');
+        }
+        drawKanban();
+    }
+
+    // Drag & drop baseado em Pointer Events (funciona com mouse e toque)
+    function initKanbanDnD(container) {
+        let drag = null;
+        const THRESH = 8;
+
+        container.addEventListener('pointerdown', (e) => {
+            if (e.button != null && e.button > 0) return; // apenas botão principal / toque
+            const card = e.target.closest('.kanban-card');
+            if (!card) return;
+            drag = { id: card.dataset.procId, card, startX: e.clientX, startY: e.clientY,
+                     pointerId: e.pointerId, started: false, ghost: null, overBody: null };
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!drag || e.pointerId !== drag.pointerId) return;
+            const dx = e.clientX - drag.startX, dy = e.clientY - drag.startY;
+            if (!drag.started) {
+                if (Math.hypot(dx, dy) < THRESH) return;
+                drag.started = true;
+                const r = drag.card.getBoundingClientRect();
+                const ghost = drag.card.cloneNode(true);
+                ghost.classList.add('kanban-card-ghost');
+                ghost.style.width = r.width + 'px';
+                drag.gx = e.clientX - r.left;
+                drag.gy = e.clientY - r.top;
+                document.body.appendChild(ghost);
+                drag.ghost = ghost;
+                drag.card.classList.add('dragging');
+                document.body.classList.add('kanban-dragging');
+            }
+            e.preventDefault();
+            drag.ghost.style.left = (e.clientX - drag.gx) + 'px';
+            drag.ghost.style.top = (e.clientY - drag.gy) + 'px';
+            const under = document.elementFromPoint(e.clientX, e.clientY);
+            const body = under && under.closest ? under.closest('.kanban-col-body') : null;
+            container.querySelectorAll('.kanban-col-body.drag-over').forEach(el => { if (el !== body) el.classList.remove('drag-over'); });
+            if (body) body.classList.add('drag-over');
+            drag.overBody = body;
+        }, { passive: false });
+
+        const finish = async (e) => {
+            if (!drag || e.pointerId !== drag.pointerId) return;
+            const d = drag; drag = null;
+            container.querySelectorAll('.kanban-col-body.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (!d.started) return; // foi um toque/clique simples → deixa abrir os detalhes
+            d.card.classList.remove('dragging');
+            document.body.classList.remove('kanban-dragging');
+            if (d.ghost) d.ghost.remove();
+            // suprime o clique sintético que segue o arrasto (evita abrir "Ver")
+            const supp = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+            window.addEventListener('click', supp, true);
+            setTimeout(() => window.removeEventListener('click', supp, true), 350);
+            if (d.overBody && d.overBody.dataset.colKey) {
+                await moveProcToStatus(d.id, d.overBody.dataset.colKey);
+            }
+        };
+        window.addEventListener('pointerup', finish);
+        window.addEventListener('pointercancel', (e) => {
+            if (!drag || e.pointerId !== drag.pointerId) return;
+            if (drag.ghost) drag.ghost.remove();
+            drag.card.classList.remove('dragging');
+            document.body.classList.remove('kanban-dragging');
+            container.querySelectorAll('.kanban-col-body.drag-over').forEach(el => el.classList.remove('drag-over'));
+            drag = null;
+        });
+    }
+    if (kanbanContainer && !kanbanContainer.dataset.dndInit) {
+        kanbanContainer.dataset.dndInit = '1';
+        initKanbanDnD(kanbanContainer);
     }
 
     function setViewMode(mode) {
