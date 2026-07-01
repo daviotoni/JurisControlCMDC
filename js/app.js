@@ -741,7 +741,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const pageItems = L.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
             pageItems.forEach(p => {
                 const sTxt = statusMap[p.stat] || p.stat;
+                const dias = p.prazo ? diffDays(todayUTC(), parse(p.prazo)) : null;
+                const vencido = dias !== null && p.stat !== 'finalizado' && p.stat !== 'arquivado' && dias < 0;
+                const alerta  = dias !== null && p.stat !== 'finalizado' && p.stat !== 'arquivado' && dias >= 0 && dias < 3;
+                const urgClass = vencido ? 'row-vencido' : alerta ? 'row-alerta' : '';
+                const urgIcon = (vencido || alerta) ? `<svg class="urgencia-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` : '';
+                const prazoTitle = vencido ? `title="Prazo vencido"` : alerta ? `title="Prazo próximo do vencimento"` : '';
                 const tr = document.createElement('tr');
+                if (urgClass) tr.classList.add(urgClass);
                 tr.innerHTML = `
                     <td>
                         <div style="font-weight: 700; color: var(--text-primary);">${sanitizeHTML(p.num)}</div>
@@ -749,7 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </td>
                     <td>${sanitizeHTML(p.obj) || '—'}</td>
                     <td style="text-align:center"><span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(sTxt)}</span></td>
-                    <td style="text-align:center">${p.prazo ? fmtBR(p.prazo) : '—'}</td>
+                    <td style="text-align:center" ${prazoTitle}><span class="prazo-cell ${urgClass}">${urgIcon}${p.prazo ? fmtBR(p.prazo) : '—'}</span></td>
                     <td style="text-align:center">
                         <div class="action-buttons" style="display:flex; gap: 4px; justify-content:center;">
                             <button class="icon-btn" data-view-proc="${p.id}" title="Visualizar"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -761,7 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tbody.appendChild(tr);
 
                 const card = document.createElement('div');
-                card.className = 'proc-card';
+                card.className = `proc-card ${urgClass}`;
                 card.innerHTML = `
                     <div class="proc-card-header">
                         <span class="num">${sanitizeHTML(p.num)}</span>
@@ -773,7 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="proc-card-body">
                         <div class="item"><strong>Interessado:</strong> ${sanitizeHTML(p.int)}</div>
                         <div class="item"><strong>Objeto:</strong> ${sanitizeHTML(p.obj) || '—'}</div>
-                        <div class="item"><strong>Prazo:</strong> ${p.prazo ? fmtBR(p.prazo) : '—'}</div>
+                        <div class="item"><strong>Prazo:</strong> <span class="prazo-cell ${urgClass}">${urgIcon}${p.prazo ? fmtBR(p.prazo) : '—'}</span></div>
                     </div>
                     <div class="proc-card-footer">
                         <button class="btn secondary" data-view-proc="${p.id}">Ver</button>
@@ -1812,9 +1819,107 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#new_evt').onclick=()=>openEvt({id:null,data:ymd(CUR),hora:'',desc:'',cat:'g'}); $$('.side input').forEach(el => el.onchange = drawView);
 
   function getEventList(){ const F={g:$('#f_g').checked,a:$('#f_a').checked,e:$('#f_e').checked,o:$('#f_o').checked,r:$('#f_r').checked,p:$('#f_p').checked,u:$('#f_u').checked}; let list=CAL.filter(e=>F[e.cat]); if($('#f_sync').checked){DB.forEach(pr=>{if(pr.prazo&&pr.stat!=='finalizado'&&pr.stat!=='arquivado'&&F.p)list.push({id:`pr-${pr.id}`,data:pr.prazo,hora:'',desc:`Prazo: ${pr.num}`,cat:'p',readonly:true});});} return list; }
-  function shift(delta){ if(VIEW==='month')CUR.setMonth(CUR.getMonth()+delta); else if(VIEW==='year')CUR.setFullYear(CUR.getFullYear()+delta); drawView(); }
-  function drawView(){ calBody.innerHTML=''; if(VIEW==='month')drawMonth(); else drawYear();}
-  
+  function shift(delta){
+      if(VIEW==='month') CUR.setMonth(CUR.getMonth()+delta);
+      else if(VIEW==='week') CUR.setDate(CUR.getDate()+7*delta);
+      else CUR.setDate(CUR.getDate()+delta);
+      drawView();
+  }
+  function drawView(){ calBody.innerHTML=''; if(VIEW==='month')drawMonth(); else if(VIEW==='week')drawWeek(); else drawDay(); }
+  function setCalView(v){
+      VIEW = v;
+      $$('.cal-view-toggle .btn').forEach(b => b.classList.toggle('active', b.dataset.calView === v));
+      drawView();
+  }
+  $('#c_view_month').onclick = () => setCalView('month');
+  $('#c_view_week').onclick  = () => setCalView('week');
+  $('#c_view_day').onclick   = () => setCalView('day');
+
+  function openEventOrProc(evt){
+      if (String(evt.id).startsWith('pr-')) {
+          const procId = String(evt.id).replace('pr-', ''), processo = DB.find(p => p.id == procId);
+          if (processo) showTab('proc', { filterBy: { text: processo.num } });
+      } else {
+          openEvt(evt);
+      }
+  }
+
+  function startOfWeek(d){ const r=new Date(d); r.setDate(r.getDate()-r.getDay()); r.setHours(0,0,0,0); return r; }
+  const MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  function formatWeekTitle(start){
+      const end=new Date(start); end.setDate(end.getDate()+6);
+      const sameMonth = start.getMonth()===end.getMonth() && start.getFullYear()===end.getFullYear();
+      if (sameMonth) return `${start.getDate()} – ${end.getDate()} de ${MESES_ABREV[start.getMonth()]}. ${start.getFullYear()}`;
+      const sameYear = start.getFullYear()===end.getFullYear();
+      if (sameYear) return `${start.getDate()} ${MESES_ABREV[start.getMonth()]}. – ${end.getDate()} ${MESES_ABREV[end.getMonth()]}. ${end.getFullYear()}`;
+      return `${start.getDate()} ${MESES_ABREV[start.getMonth()]}. ${start.getFullYear()} – ${end.getDate()} ${MESES_ABREV[end.getMonth()]}. ${end.getFullYear()}`;
+  }
+
+  // Grade de horas compartilhada pelas visões Semana e Dia
+  function renderTimeGrid(days){
+      const list = getEventList();
+      const container = document.createElement('div'); container.className = 'time-view';
+      const cols = `56px repeat(${days.length}, 1fr)`;
+
+      const head = document.createElement('div'); head.className = 'time-head'; head.style.gridTemplateColumns = cols;
+      head.appendChild(document.createElement('div')).className = 'time-head-corner';
+      days.forEach(d => {
+          const h = document.createElement('div'); h.className = 'time-head-day';
+          const tdy = ymd(new Date()) === ymd(d);
+          h.innerHTML = `<span class="thd-wd">${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]}</span><span class="thd-num ${tdy?'today':''}">${d.getDate()}</span>`;
+          head.appendChild(h);
+      });
+
+      const alldayRow = document.createElement('div'); alldayRow.className = 'time-allday-row'; alldayRow.style.gridTemplateColumns = cols;
+      const alldayLabel = document.createElement('div'); alldayLabel.className = 'time-allday-label'; alldayLabel.textContent = 'Dia todo'; alldayRow.appendChild(alldayLabel);
+      days.forEach(d => {
+          const ds = ymd(d);
+          const cell = document.createElement('div'); cell.className = 'time-allday-cell';
+          list.filter(e => e.data === ds && !e.hora).forEach(evt => {
+              const chip = document.createElement('div'); chip.className = `time-chip ${safeCSSClass(evt.cat, VALID_CAT)}`;
+              chip.textContent = evt.desc; chip.title = sanitizeHTML(evt.desc);
+              chip.onclick = () => openEventOrProc(evt);
+              cell.appendChild(chip);
+          });
+          cell.ondblclick = () => openEvt({ id: null, data: ds, hora: '', desc: '', cat: 'g' });
+          alldayRow.appendChild(cell);
+      });
+
+      const grid = document.createElement('div'); grid.className = 'time-grid'; grid.style.gridTemplateColumns = cols;
+      for (let hour = 0; hour < 24; hour++) {
+          const label = document.createElement('div'); label.className = 'time-hour-label'; label.textContent = `${String(hour).padStart(2,'0')}:00`;
+          grid.appendChild(label);
+          days.forEach(d => {
+              const ds = ymd(d);
+              const cell = document.createElement('div'); cell.className = 'time-hour-cell';
+              list.filter(e => e.data === ds && e.hora && Number(e.hora.split(':')[0]) === hour).forEach(evt => {
+                  const chip = document.createElement('div'); chip.className = `time-chip ${safeCSSClass(evt.cat, VALID_CAT)}`;
+                  chip.innerHTML = `<strong>${sanitizeHTML(evt.hora)}</strong> ${sanitizeHTML(evt.desc)}`;
+                  chip.title = sanitizeHTML(evt.desc);
+                  chip.onclick = (e) => { e.stopPropagation(); openEventOrProc(evt); };
+                  cell.appendChild(chip);
+              });
+              cell.ondblclick = () => openEvt({ id: null, data: ds, hora: `${String(hour).padStart(2,'0')}:00`, desc: '', cat: 'g' });
+              grid.appendChild(cell);
+          });
+      }
+
+      container.append(head, alldayRow, grid);
+      return container;
+  }
+
+  function drawWeek(){
+      const start = startOfWeek(CUR);
+      calTitle.textContent = formatWeekTitle(start);
+      const days = Array.from({length:7}, (_,i) => { const d=new Date(start); d.setDate(d.getDate()+i); return d; });
+      calBody.appendChild(renderTimeGrid(days));
+  }
+  function drawDay(){
+      const t = CUR.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      calTitle.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+      calBody.appendChild(renderTimeGrid([new Date(CUR)]));
+  }
+
   function drawMonth(){
     const y=CUR.getFullYear(),m=CUR.getMonth();const n=new Date(y,m,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});calTitle.textContent=n.charAt(0).toUpperCase()+n.slice(1);
     const f=new Date(y,m,1);const s=new Date(f);s.setDate(f.getDate()-f.getDay());const l=new Date(y,m+1,0);const e=new Date(l);e.setDate(l.getDate()+(6-l.getDay()));
@@ -1828,7 +1933,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dotsContainer = document.createElement('div'); dotsContainer.className = 'event-dots-container';
         evts.forEach(evt => {
             const dot = document.createElement('div'); dot.className = `event-dot ${safeCSSClass(evt.cat, VALID_CAT)}`; dot.textContent = initialsMap[evt.cat] || '?'; dot.title = sanitizeHTML(evt.desc);
-            dot.onclick = () => { if (String(evt.id).startsWith('pr-')) { const procId = String(evt.id).replace('pr-', ''), processo = DB.find(p => p.id == procId); if (processo) { showTab('proc', { filterBy: { text: processo.num } }); } } else { openEvt(evt); } };
+            dot.onclick = () => openEventOrProc(evt);
             dotsContainer.appendChild(dot);
         });
         eventsWrapper.appendChild(dotsContainer); c.appendChild(eventsWrapper); c.ondblclick=()=>openEvt({id:null,data:ds,hora:'',desc:'',cat:'g'}); g.appendChild(c);p.setDate(p.getDate()+1);
@@ -1836,7 +1941,6 @@ document.addEventListener('DOMContentLoaded', () => {
     calBody.append(w,g);
   }
 
-  function drawYear() { /* ... Lógica para visão anual ... */ }
   function openEvt(evt){
     const m=$('#m_evt');m.style.display='flex';
     const t=$('#m_evt_t'),id=$('#fe_id'),d=$('#fe_data'),h=$('#fe_hora'),de=$('#fe_desc'),c=$('#fe_cat'),dl=$('#fe_del');
@@ -2046,7 +2150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     document.addEventListener('click', (e) => { if (!notificationBell.contains(e.target)) { notificationPanel.classList.remove('active'); } });
-    function navigateToDate(dateString) { CUR = parse(dateString); VIEW = 'month'; drawView(); }
+    function navigateToDate(dateString) { CUR = parse(dateString); setCalView('month'); }
     notificationList.addEventListener('click', async (e) => {
         const closeBtn = e.target.closest('.notification-close-btn'), content = e.target.closest('.notification-content');
         if (closeBtn) {
@@ -2066,6 +2170,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const themeToggleButton = $('#theme-toggle-btn');
   const themeMenu = $('#theme-menu');
 
+  const themeLabels = { light: 'Claro', dark: 'Escuro', system: 'Automático' };
+
   function applyTheme(themeValue) {
     let finalTheme = themeValue;
     if (themeValue === 'system') {
@@ -2074,7 +2180,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.dataset.theme = finalTheme;
     $('.sun').style.display = finalTheme === 'dark' ? 'none' : 'block';
     $('.moon').style.display = finalTheme === 'dark' ? 'block' : 'none';
-    
+
+    const themeToggleLabel = $('#theme-toggle-label');
+    if (themeToggleLabel) themeToggleLabel.textContent = themeLabels[themeValue] || 'Tema';
+    if (themeToggleButton) themeToggleButton.title = `Tema atual: ${themeLabels[themeValue] || themeValue}. Clique para alterar.`;
+
     $$('.theme-menu-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.themeValue === CFG.theme);
     });
