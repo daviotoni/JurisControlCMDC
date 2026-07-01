@@ -226,8 +226,13 @@ document.addEventListener('DOMContentLoaded', () => {
     loginPass.value = '';
     appLayout.style.display = 'none';
     welcomeMsg.textContent = '';
-    sessionStorage.removeItem('loggedInUser');
     loginUser.focus();
+  }
+
+  async function fazerLogout() {
+    sessionStorage.removeItem('loggedInUser');
+    try { await logoutFirebase(); } catch (e) { console.warn('Erro ao encerrar sessão no Firebase:', e); }
+    showLogin();
   }
 
   async function tentarEntrar() {
@@ -259,13 +264,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function checkLoginState() {
-      const loggedInUser = sessionStorage.getItem('loggedInUser');
-      if (loggedInUser) {
-          showApp(JSON.parse(loggedInUser));
-      } else {
+  // Sessão do app é validada contra o estado real do Firebase Auth (persistente entre reloads/deploys),
+  // não só contra o sessionStorage — senão um simples refresh de página (ex.: após um deploy) desloga o usuário.
+  function checkLoginState(firebaseUser) {
+      if (!firebaseUser) {
+          sessionStorage.removeItem('loggedInUser');
           showLogin();
+          return;
       }
+      const stored = sessionStorage.getItem('loggedInUser');
+      let loggedInUser = stored ? JSON.parse(stored) : null;
+      if (!loggedInUser) {
+          loggedInUser = {
+              id: firebaseUser.uid,
+              name: firebaseUser.email.split('@')[0],
+              login: firebaseUser.email,
+              role: 'user'
+          };
+          sessionStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
+      }
+      showApp(loggedInUser);
   }
   
   const getDoc = (docId) => DB_DOCS.find(d => d.id === docId);
@@ -2156,7 +2174,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function setupEventListeners() {
     btnEntrar.onclick = tentarEntrar;
     loginOverlay.onkeydown = (e) => { if (e.key === 'Enter') tentarEntrar(); };
-    btnSair.onclick = showLogin;
+    btnSair.onclick = fazerLogout;
 
     setupEnhancedNav();
 
@@ -2328,13 +2346,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                                         await loadAllData();
                                                                         initTheme();
                                                         await initializeUsers();
-                                                        checkLoginState();
+                                                        checkLoginState(user);
                                         } catch (err) {
                                                         console.error('Erro ao carregar dados após autenticação:', err);
                                                         showLogin();
                                         }
                           } else {
-                                        checkLoginState();
+                                        checkLoginState(null);
                           }
               });
     } catch (error) {
