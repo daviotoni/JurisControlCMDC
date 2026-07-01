@@ -572,6 +572,7 @@
         .status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; font-weight: 600; font-size: 0.75rem; color: #fff; }
         .status.em-analise{background:#f59e0b;} .status.pendente{background:#ef4444;} .status.finalizado{background:#22c55e;}
         .status.aguardando-documentacao{background:#3b82f6;} .status.em-diligencia{background:#8b5cf6;} .status.arquivado{background:#64748b;}
+        .status.rascunho{background:#f59e0b;} .status.emitido{background:#22c55e;}
 
         /* ===== Indicador de urgência de prazo (lista e cards) ===== */
         tbody tr.row-vencido { box-shadow: inset 4px 0 0 #ef4444; }
@@ -865,7 +866,22 @@
         .dialog-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
         .dialog-body { padding: 1.5rem; flex-grow: 1; }
         .dialog-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.75rem; background-color: var(--bg-color-only); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; flex-wrap: wrap; }
-        
+
+        .parecer-dialog .dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .parecer-timbre-topo, .parecer-timbre-rodape {
+            text-align: center; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 10px;
+            background-color: var(--bg-color-only); color: var(--text-primary); margin-bottom: 1rem;
+        }
+        .parecer-timbre-topo strong { display: block; font-size: 0.85rem; letter-spacing: 0.02em; }
+        .parecer-timbre-rodape { margin-top: 1rem; margin-bottom: 0; font-size: 0.75rem; color: var(--text-muted); }
+        .parecer-body .ql-toolbar { border-color: var(--border-color); background-color: var(--bg-color-only); border-top-left-radius: 10px; border-top-right-radius: 10px; }
+        .parecer-body .ql-container { border-color: var(--border-color); background-color: var(--card-bg); color: var(--text-primary); min-height: 320px; font-size: 1rem; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
+        .parecer-body .ql-editor.ql-blank::before { color: var(--text-muted); }
+        body[data-theme="dark"] .parecer-body .ql-picker-label { color: var(--text-primary); }
+        body[data-theme="dark"] .parecer-body .ql-stroke { stroke: var(--text-primary); }
+        body[data-theme="dark"] .parecer-body .ql-fill { fill: var(--text-primary); }
+        body[data-theme="dark"] .parecer-body .ql-picker-options { background-color: var(--card-bg); color: var(--text-primary); }
+
         .confirm-dialog-header { display: flex; align-items: center; gap: 0.75rem; }
         .confirm-icon {
             display: flex; align-items: center; justify-content: center;
@@ -956,6 +972,9 @@
         .historico-icon.criado { background: var(--success-bg); color: var(--success); border-color: var(--success); }
         .historico-icon.editado { background: var(--info-bg); color: var(--info); border-color: var(--info); }
         .historico-icon.excluido { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+        .historico-icon.parecer-criado, .historico-icon.parecer-editado { background: var(--info-bg); color: var(--info); border-color: var(--info); }
+        .historico-icon.parecer-emitido { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+        .historico-icon.parecer-reaberto { background: var(--warning-bg); color: var(--warning); border-color: var(--warning); }
         .historico-content { flex: 1; background: var(--bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.875rem 1rem; }
         .historico-header { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
         .historico-action { font-weight: 700; color: var(--text-primary); font-size: 0.9rem; }

@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Whitelist de valores válidos para classes CSS dinâmicas (evita injeção via Firestore)
   const VALID_STATS = new Set(['pendente','em-analise','aguardando-documentacao','em-diligencia','finalizado','arquivado']);
-  const VALID_ACAO  = new Set(['criado','editado','excluido']);
+  const VALID_ACAO  = new Set(['criado','editado','excluido','parecer-criado','parecer-editado','parecer-emitido','parecer-reaberto']);
   const VALID_CAT   = new Set(['g','a','r','p','u','e','o']);
   const safeCSSClass = (value, whitelist) => whitelist.has(value) ? value : '';
 
@@ -83,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const dbHelper = window.dbHelper;
   // Variáveis de dados em memória
   let DB_USERS = [], DB = [], CAL = [], DB_DOCS = [], DB_VERSOES = [], DB_MODELOS = [], DB_EMISSORES = [], DB_LEIS = [];
+  let DB_PARECERES = [], DB_PARECER_VERSOES = [];
   let CFG;
   let allNotifications = [];
   
@@ -114,6 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
       DB_MODELOS = await dbHelper.getAll('modelos');
       DB_EMISSORES = await dbHelper.getAll('emissores');
       DB_LEIS = await dbHelper.getAll('leis');
+      DB_PARECERES = await dbHelper.getAll('pareceres');
+      DB_PARECER_VERSOES = await dbHelper.getAll('parecerVersoes');
       
       const loadedCfg = await dbHelper.get('config', 'main_cfg');
       CFG = loadedCfg ? { ...defaultConfig, ...loadedCfg.value } : defaultConfig;
@@ -369,15 +372,32 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     
+  function normalizeParecerParaLista(item, tipo) {
+      if (tipo === 'estruturado') {
+          return {
+              id: `pz-${item.id}`, tipo: 'estruturado',
+              titulo: `Parecer — Processo ${item.processoNum || 's/ nº'}`,
+              status: item.status, dataRef: item.atualizadoEm || item.criadoEm, ref: item
+          };
+      }
+      return { id: `doc-${item.id}`, tipo: 'legado', titulo: item.nomePrincipal, status: null, dataRef: item.criadoEm, ref: item };
+  }
+
+  function buildPareceresListaCombinada() {
+      const legado = DB_DOCS.map(d => normalizeParecerParaLista(d, 'legado'));
+      const estruturados = DB_PARECERES.map(pz => normalizeParecerParaLista(pz, 'estruturado'));
+      return [...legado, ...estruturados].sort((a, b) => new Date(b.dataRef) - new Date(a.dataRef));
+  }
+
   function drawPareceres(resetPage = false) {
     if (resetPage) parecerCurrentPage = 1;
     const list = $('#parecerList');
     const paginationContainer = $('#parecerPagination');
     if(!list || !paginationContainer) return;
-    
+
     list.innerHTML='';
     paginationContainer.innerHTML = '';
-    
+
     if(!currentlyDisplayedPareceres.length){
         list.innerHTML = `<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg><h3>Nenhum parecer encontrado</h3><p>Pareceres vinculados a processos aparecem aqui.</p></div>`;
         return;
@@ -385,28 +405,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const pageItems = currentlyDisplayedPareceres.slice((parecerCurrentPage - 1) * itemsPerPageDocs, parecerCurrentPage * itemsPerPageDocs);
 
-    pageItems.forEach(doc=>{
+    pageItems.forEach(item=>{
+        const el = document.createElement('div');
+        el.className = 'doc-item';
+
+        if (item.tipo === 'estruturado') {
+            const pz = item.ref;
+            const emitido = pz.status === 'emitido';
+            el.innerHTML = `
+            <div>
+              <span class="name" title="${sanitizeHTML(item.titulo)}">${sanitizeHTML(item.titulo)}</span>
+              <span class="status ${emitido ? 'emitido' : 'rascunho'}" style="margin-top: 4px; display: inline-block;">${emitido ? 'Emitido' : 'Rascunho'}</span>
+            </div>
+            <div class="actions">
+              <button class="btn" data-abrir-parecer="${pz.processoId}">Abrir</button>
+            </div>`;
+            list.appendChild(el);
+            return;
+        }
+
+        const doc = item.ref;
         const currentVersion = getCurrentVersion(doc.id);
         const allVersions = getVersionsOfDoc(doc.id);
-        
+
         const processoVinculado = DB.find(proc => String(proc.docId) === String(doc.id));
-        const processoInfo = processoVinculado 
+        const processoInfo = processoVinculado
             ? `<span style="font-size: 0.8em; color: var(--text-muted); display: block; margin-top: 4px;">Proc: ${sanitizeHTML(processoVinculado.num)}</span>`
             : `<span style="font-size: 0.8em; color: var(--text-muted); display: block; margin-top: 4px;">Não vinculado</span>`;
 
-        const item=document.createElement('div');
-        item.className='doc-item';
-        item.innerHTML = `
+        el.innerHTML = `
         <div>
           <span class="name" title="${sanitizeHTML(doc.nomePrincipal)}">${sanitizeHTML(doc.nomePrincipal)}</span>
           ${processoInfo}
         </div>
         <div class="actions">
-          ${currentVersion ? `<button class="btn" data-download-version="${currentVersion.id}">Abrir Atual</button>` : ''} 
-          <button class="btn secondary" data-versions-for="${doc.id}">Versões (${allVersions.length})</button> 
+          ${currentVersion ? `<button class="btn" data-download-version="${currentVersion.id}">Abrir Atual</button>` : ''}
+          <button class="btn secondary" data-versions-for="${doc.id}">Versões (${allVersions.length})</button>
           <button class="btn danger" data-del-doc="${doc.id}">Excluir</button>
         </div>`;
-        list.appendChild(item);
+        list.appendChild(el);
     });
 
     renderPagination(paginationContainer, currentlyDisplayedPareceres.length, parecerCurrentPage, itemsPerPageDocs, (newPage) => {
@@ -449,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   await dbHelper.put('documentos', doc);
 
                   openVersionsModal(docId); 
-                  currentlyDisplayedPareceres = DB_DOCS.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+                  currentlyDisplayedPareceres = buildPareceresListaCombinada();
                   drawPareceres();
                   showToast('Nova versão adicionada!');
               };
@@ -458,7 +495,160 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       if(mVersoes) mVersoes.style.display = 'flex';
   }
-  
+
+  // ===== Editor de Parecer Jurídico Interno (Fase 1 — sem PDF, ver Fase 2 no plano) =====
+  const mParecer = $('#m_parecer');
+  let parecerQuill = null;
+  let currentParecerRecord = null;
+  let currentParecerProcesso = null;
+
+  const getParecer = (processoId) => DB_PARECERES.find(pz => String(pz.processoId) === String(processoId));
+  const getParecerVersoes = (parecerId) => DB_PARECER_VERSOES.filter(v => String(v.parecerId) === String(parecerId)).sort((a, b) => b.versao - a.versao);
+
+  function currentUserName() {
+      try {
+          const u = JSON.parse(sessionStorage.getItem('loggedInUser'));
+          return u?.name || u?.login || 'Sistema';
+      } catch (e) { return 'Sistema'; }
+  }
+
+  function buildParecerSeedDelta(processo) {
+      const numTxt = (processo && processo.num) ? processo.num : '';
+      return {
+          ops: [
+              { insert: 'PARECER JURÍDICO' },
+              { insert: '\n', attributes: { header: 2, align: 'center' } },
+              { insert: `Processo n. ${numTxt}` },
+              { insert: '\n', attributes: { align: 'center' } },
+              { insert: '\n' },
+              { insert: 'I. RELATÓRIO', attributes: { bold: true } },
+              { insert: '\n' }, { insert: '\n' },
+              { insert: 'II. DA ANÁLISE JURÍDICA', attributes: { bold: true } },
+              { insert: '\n' }, { insert: '\n' },
+              { insert: 'III. CONCLUSÃO', attributes: { bold: true } },
+              { insert: '\n' }, { insert: '\n' }
+          ]
+      };
+  }
+
+  function ensureParecerQuill() {
+      if (parecerQuill) return parecerQuill;
+      parecerQuill = new Quill('#parecerEditor', {
+          theme: 'snow',
+          modules: {
+              toolbar: [
+                  ['bold', 'italic', 'underline'],
+                  [{ header: [1, 2, 3, false] }],
+                  [{ align: [] }],
+                  [{ list: 'ordered' }, { list: 'bullet' }],
+                  ['clean']
+              ]
+          }
+      });
+      return parecerQuill;
+  }
+
+  function updateParecerModalUI(pz) {
+      const emitido = pz.status === 'emitido';
+      const statusEl = $('#m_parecer_status');
+      statusEl.textContent = emitido ? 'Emitido' : 'Rascunho';
+      statusEl.className = `status ${emitido ? 'emitido' : 'rascunho'}`;
+      $('#pz_ementa').value = pz.ementa || '';
+      $('#pz_ementa').disabled = emitido;
+      $('#btnSalvarRascunho').style.display = emitido ? 'none' : '';
+      $('#btnEmitirParecer').style.display = emitido ? 'none' : '';
+      $('#btnReabrirParecer').style.display = emitido ? '' : 'none';
+      if (parecerQuill) parecerQuill.enable(!emitido);
+  }
+
+  function openParecerModal(processo) {
+      currentParecerProcesso = processo;
+      const quill = ensureParecerQuill();
+      let pz = getParecer(processo.id);
+      if (!pz) {
+          pz = {
+              id: Date.now(),
+              processoId: processo.id,
+              processoNum: processo.num,
+              status: 'rascunho',
+              ementa: '',
+              delta: buildParecerSeedDelta(processo),
+              textoBusca: '',
+              criadoEm: new Date().toISOString(),
+              criadoPor: currentUserName(),
+              atualizadoEm: null,
+              emitidoEm: null, emitidoPor: null,
+              reabertoEm: null, reabertoPor: null
+          };
+      }
+      currentParecerRecord = pz;
+      quill.setContents(pz.delta);
+      updateParecerModalUI(pz);
+      $('#m_parecer_t').textContent = `Parecer Jurídico — Processo ${sanitizeHTML(processo.num || '')}`;
+      mParecer.style.display = 'flex';
+  }
+
+  async function salvarRascunhoParecer(silent = false) {
+      if (!currentParecerRecord || !parecerQuill) return null;
+      const pz = currentParecerRecord;
+      const isNew = !DB_PARECERES.some(x => x.id === pz.id);
+      pz.ementa = $('#pz_ementa').value.trim();
+      pz.delta = { ops: parecerQuill.getContents().ops };
+      pz.textoBusca = parecerQuill.getText().toLowerCase();
+      pz.atualizadoEm = new Date().toISOString();
+      if (isNew) DB_PARECERES.push(pz);
+      await dbHelper.put('pareceres', pz);
+      await logHistorico(currentParecerProcesso.id, currentParecerProcesso.num, isNew ? 'parecer-criado' : 'parecer-editado', []);
+      if (!silent) showToast('Rascunho salvo com sucesso!');
+      return pz;
+  }
+
+  async function emitirParecer() {
+      if (!currentParecerRecord) return;
+      const ok = await confirmDialog('Ao emitir, o parecer ficará <strong>somente leitura</strong>. Deseja continuar?', { title: 'Emitir Parecer', confirmLabel: 'Emitir' });
+      if (!ok) return;
+      const pz = await salvarRascunhoParecer(true);
+      if (!pz) return;
+      pz.status = 'emitido';
+      pz.emitidoEm = new Date().toISOString();
+      pz.emitidoPor = currentUserName();
+      await dbHelper.put('pareceres', pz);
+
+      const versoesExistentes = getParecerVersoes(pz.id);
+      const novaVersao = {
+          id: Date.now() + 1, parecerId: pz.id, versao: (versoesExistentes[0]?.versao ?? 0) + 1,
+          delta: pz.delta, textoBusca: pz.textoBusca, emitidoEm: pz.emitidoEm, emitidoPor: pz.emitidoPor
+      };
+      DB_PARECER_VERSOES.push(novaVersao);
+      await dbHelper.put('parecerVersoes', novaVersao);
+
+      await logHistorico(currentParecerProcesso.id, currentParecerProcesso.num, 'parecer-emitido', []);
+      updateParecerModalUI(pz);
+      showToast('Parecer emitido com sucesso!');
+      openProcDetails(currentParecerProcesso.id);
+  }
+
+  async function reabrirParecer() {
+      if (!currentParecerRecord) return;
+      const ok = await confirmDialog('O parecer voltará a ficar editável como rascunho. Deseja continuar?', { title: 'Reabrir Parecer', confirmLabel: 'Reabrir' });
+      if (!ok) return;
+      const pz = currentParecerRecord;
+      pz.status = 'rascunho';
+      pz.reabertoEm = new Date().toISOString();
+      pz.reabertoPor = currentUserName();
+      await dbHelper.put('pareceres', pz);
+      await logHistorico(currentParecerProcesso.id, currentParecerProcesso.num, 'parecer-reaberto', []);
+      updateParecerModalUI(pz);
+      showToast('Parecer reaberto para edição.', 'info');
+      openProcDetails(currentParecerProcesso.id);
+  }
+
+  $('#btnSalvarRascunho').onclick = () => salvarRascunhoParecer();
+  $('#btnEmitirParecer').onclick = () => emitirParecer();
+  $('#btnReabrirParecer').onclick = () => reabrirParecer();
+  $$('[data-close-parecer]').forEach(x => x.onclick = () => { mParecer.style.display = 'none'; });
+  if (mParecer) mParecer.onclick = (e) => { if (e.target === mParecer) mParecer.style.display = 'none'; };
+
   function renderModelos(resetPage = false) {
     if (resetPage) modeloCurrentPage = 1;
     const list = $('#modeloList');
@@ -496,10 +686,10 @@ document.addEventListener('DOMContentLoaded', () => {
   
   $('#buscaConteudo').oninput = async () => {
       const searchTerm = $('#buscaConteudo').value.toLowerCase().trim();
-      if (!searchTerm) { 
-          currentlyDisplayedPareceres = DB_DOCS.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+      if (!searchTerm) {
+          currentlyDisplayedPareceres = buildPareceresListaCombinada();
           drawPareceres(true);
-          return; 
+          return;
       }
       const matchingDocIds = new Set();
       for (const version of DB_VERSOES) {
@@ -511,7 +701,11 @@ document.addEventListener('DOMContentLoaded', () => {
               if (text.toLowerCase().includes(searchTerm)) matchingDocIds.add(version.idDocumento);
           } catch (e) { console.warn(`Erro ao ler ${version.nomeArquivo}:`, e); }
       }
-      currentlyDisplayedPareceres = DB_DOCS.filter(d => matchingDocIds.has(d.id));
+      const matchingLegado = DB_DOCS.filter(d => matchingDocIds.has(d.id)).map(d => normalizeParecerParaLista(d, 'legado'));
+      const matchingEstruturados = DB_PARECERES
+          .filter(pz => (pz.textoBusca || '').includes(searchTerm) || (pz.ementa || '').toLowerCase().includes(searchTerm))
+          .map(pz => normalizeParecerParaLista(pz, 'estruturado'));
+      currentlyDisplayedPareceres = [...matchingLegado, ...matchingEstruturados].sort((a, b) => new Date(b.dataRef) - new Date(a.dataRef));
       drawPareceres(true);
   };
 
@@ -552,7 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(key==='proc') renderProc(true, options.filterBy);
     if(key==='cal') drawView();
     if(key==='docs') {
-        currentlyDisplayedPareceres = DB_DOCS.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+        currentlyDisplayedPareceres = buildPareceresListaCombinada();
         drawPareceres(true);
         renderModelos(true);
     }
@@ -1169,7 +1363,19 @@ document.addEventListener('DOMContentLoaded', () => {
     tramGrid.appendChild(parecerItem);
     
     const parecerContainer = $('#view-parecer-details');
-    if (p.docId) {
+    const parecerEstruturado = getParecer(p.id);
+    if (parecerEstruturado) {
+        const emitido = parecerEstruturado.status === 'emitido';
+        const dataInfo = emitido
+            ? `Emitido em ${fmtBR(parecerEstruturado.emitidoEm)}`
+            : `Última atualização: ${fmtBR(parecerEstruturado.atualizadoEm || parecerEstruturado.criadoEm)}`;
+        parecerContainer.innerHTML = `
+            <span class="status ${emitido ? 'emitido' : 'rascunho'}">${emitido ? 'Emitido' : 'Rascunho'}</span>
+            <p style="margin:0; font-weight: 600;">${sanitizeHTML(dataInfo)}</p>
+            <button id="btnAbrirParecerView" class="btn primary">${emitido ? 'Ver Parecer' : 'Continuar Redigindo'}</button>
+        `;
+        $('#btnAbrirParecerView').onclick = () => openParecerModal(p);
+    } else if (p.docId) {
         const parecerDoc = getDoc(p.docId);
         if (parecerDoc) {
             const currentVersion = getCurrentVersion(parecerDoc.id);
@@ -1186,9 +1392,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } else {
         parecerContainer.innerHTML = `
-            <p style="margin:0;">Nenhum parecer anexado.</p>
-            <button id="btnAnexarParecerView" class="btn primary">Anexar Agora</button>
+            <p style="margin:0;">Nenhum parecer redigido para este processo.</p>
+            <button id="btnRedigirParecerView" class="btn primary">Redigir Parecer</button>
+            <button id="btnAnexarParecerView" class="btn secondary">Anexar Word (legado)</button>
         `;
+        $('#btnRedigirParecerView').onclick = () => openParecerModal(p);
         $('#btnAnexarParecerView').onclick = () => $('#anexarParecerFile').click();
     }
     
@@ -1289,9 +1497,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const acaoIcons = {
           criado: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>`,
           editado: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
-          excluido: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`
+          excluido: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+          'parecer-criado': `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`,
+          'parecer-editado': `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+          'parecer-emitido': `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+          'parecer-reaberto': `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>`
       };
-      const acaoLabels = { criado: 'Processo criado', editado: 'Processo editado', excluido: 'Processo excluído' };
+      const acaoLabels = {
+          criado: 'Processo criado', editado: 'Processo editado', excluido: 'Processo excluído',
+          'parecer-criado': 'Parecer criado', 'parecer-editado': 'Parecer editado',
+          'parecer-emitido': 'Parecer emitido', 'parecer-reaberto': 'Parecer reaberto para edição'
+      };
+      const acaoTextoSemCampos = {
+          criado: 'Processo cadastrado no sistema.', excluido: 'Processo removido do sistema.'
+      };
 
       try {
           const snapshot = await window.db.collection('historico')
@@ -1323,8 +1542,8 @@ document.addEventListener('DOMContentLoaded', () => {
                       return `<li><span class="campo">${sanitizeHTML(label)}:</span> <span class="de">${sanitizeHTML(de)}</span> <span style="color:var(--text-muted)">→</span> <span class="para">${sanitizeHTML(para)}</span></li>`;
                   }).join('');
                   changesHtml = `<ul class="historico-changes">${items}</ul>`;
-              } else {
-                  changesHtml = `<p style="font-size:0.82rem;color:var(--text-muted);margin:0;">${entry.acao === 'criado' ? 'Processo cadastrado no sistema.' : 'Processo removido do sistema.'}</p>`;
+              } else if (acaoTextoSemCampos[entry.acao]) {
+                  changesHtml = `<p style="font-size:0.82rem;color:var(--text-muted);margin:0;">${acaoTextoSemCampos[entry.acao]}</p>`;
               }
               const div = document.createElement('div');
               div.className = 'historico-entry';
@@ -1382,8 +1601,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 doc.setTextColor(255, 255, 255); doc.text(statusText, margin + 52, y + 5.5); y += 9;
             });
             
+            const parecerEstruturadoPdf = getParecer(p.id);
             const parecerDoc = p.docId ? getDoc(p.docId) : null;
-            const parecerName = parecerDoc ? parecerDoc.nomePrincipal.replace(/\.(docx|doc)$/i, '') : 'Nenhum parecer anexado';
+            const parecerName = parecerEstruturadoPdf
+                ? `Parecer redigido no sistema (${parecerEstruturadoPdf.status === 'emitido' ? 'Emitido' : 'Rascunho'})`
+                : (parecerDoc ? parecerDoc.nomePrincipal.replace(/\.(docx|doc)$/i, '') : 'Nenhum parecer anexado');
             drawSection('PARECER', () => { drawDataRow('DOCUMENTO:', parecerName); });
 
             
@@ -1999,9 +2221,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const pareceresPorMes = Array(12).fill(0);
     DB.forEach(p => {
-        if (p.docId && p.saida) { 
+        if (p.docId && p.saida) {
             const saidaDate = parse(p.saida);
             if (saidaDate) { const mes = saidaDate.getUTCMonth(); pareceresPorMes[mes]++; }
+        }
+    });
+    DB_PARECERES.forEach(pz => {
+        if (pz.status === 'emitido' && pz.emitidoEm) {
+            const emitidoDate = new Date(pz.emitidoEm);
+            if (!isNaN(emitidoDate)) pareceresPorMes[emitidoDate.getUTCMonth()]++;
         }
     });
     const pareceresMesConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Nº de Pareceres', data: pareceresPorMes, backgroundColor: '#26c6da' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: {} } } };
@@ -2315,13 +2543,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     $('#parecerList').onclick = async (e) => {
-      const delBtn = e.target.closest('[data-del-doc]'); const versionsBtn = e.target.closest('[data-versions-for]'); const downloadBtn = e.target.closest('[data-download-version]');
+      const delBtn = e.target.closest('[data-del-doc]'); const versionsBtn = e.target.closest('[data-versions-for]'); const downloadBtn = e.target.closest('[data-download-version]'); const abrirParecerBtn = e.target.closest('[data-abrir-parecer]');
+      if (abrirParecerBtn) {
+          const proc = DB.find(p => String(p.id) === String(abrirParecerBtn.dataset.abrirParecer));
+          if (proc) openParecerModal(proc); else showToast('Processo vinculado não encontrado.', 'danger');
+          return;
+      }
       if (delBtn) {
           const docId = Number(delBtn.dataset.delDoc); if (confirm('Excluir este parecer e TODO o seu histórico?')) {
               const versionsToDelete = getVersionsOfDoc(docId); DB_DOCS = DB_DOCS.filter(d => d.id !== docId); DB_VERSOES = DB_VERSOES.filter(v => v.idDocumento !== docId);
               const procsToUpdate = DB.filter(p => String(p.docId) === String(docId));
               await dbHelper.delete('documentos', docId); for(const v of versionsToDelete) await dbHelper.delete('versoes', v.id); for(const p of procsToUpdate) { p.docId = null; await dbHelper.put('processos', p); }
-              DB = await dbHelper.getAll('processos'); currentlyDisplayedPareceres = DB_DOCS.sort((a,b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+              DB = await dbHelper.getAll('processos'); currentlyDisplayedPareceres = buildPareceresListaCombinada();
               $('#buscaConteudo').value = ''; drawPareceres(true); showToast('Parecer excluído.', 'danger');
           }
       }
@@ -2371,6 +2604,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 modelos: await dbHelper.getAll('modelos'),
                 emissores: await dbHelper.getAll('emissores'),
                 leis: await dbHelper.getAll('leis'),
+                pareceres: await dbHelper.getAll('pareceres'),
+                parecerVersoes: await dbHelper.getAll('parecerVersoes'),
                 config: (await dbHelper.get('config', 'main_cfg'))?.value
             };
             const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
