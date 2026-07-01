@@ -468,14 +468,12 @@
 
         .login-overlay {
             position: fixed; inset: 0;
-            background: var(--bg-light);
-            display: flex; align-items: center; justify-content: center; z-index: 2001;
-            padding: 1.5rem;
+            background: #fff;
+            display: flex; z-index: 2001;
         }
         .login-card {
-            width: min(960px, 100%); max-height: calc(100vh - 3rem);
-            background: #fff; border-radius: 20px; overflow: hidden;
-            box-shadow: 0 20px 60px rgba(9, 54, 111, 0.25);
+            width: 100%; height: 100%;
+            background: #fff;
             display: flex;
         }
         .login-hero {
@@ -483,20 +481,19 @@
             background: linear-gradient(160deg, #092c52 0%, #0a3d73 55%, #0e4a89 100%);
             color: #fff;
             display: flex; flex-direction: column; justify-content: center;
-            padding: 3rem 3.25rem;
+            padding: 3rem 5vw;
         }
-        .login-hero-shield { width: 100px; filter: brightness(0) invert(1); opacity: 0.95; margin-bottom: 1.75rem; }
+        .login-hero-shield { width: 110px; filter: brightness(0) invert(1); opacity: 0.95; margin-bottom: 1.75rem; }
         .login-hero-eyebrow {
             font-size: 0.8125rem; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase;
             color: #9fc0e8; margin: 0 0 0.625rem;
         }
-        .login-hero-title { font-size: 2.75rem; font-weight: 700; letter-spacing: -1px; line-height: 1.15; color: #fff; margin: 0 0 1rem; }
-        .login-hero-tagline { font-size: 1.0625rem; color: #c7d9ef; line-height: 1.6; max-width: 420px; margin: 0; }
+        .login-hero-title { font-size: 3rem; font-weight: 700; letter-spacing: -1px; line-height: 1.15; color: #fff; margin: 0; }
         .login-panel {
-            flex: 0 0 400px; max-width: 400px;
+            flex: 0 0 420px; max-width: 420px;
             background: #fff;
             display: flex; flex-direction: column; justify-content: center;
-            padding: 3rem 2.75rem;
+            padding: 3rem 4vw;
             overflow-y: auto;
             text-align: left;
         }
@@ -518,8 +515,8 @@
         .login-panel .input:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(10, 61, 115, 0.15); }
         @media (max-width: 800px) {
             .login-hero { display: none; }
-            .login-card { max-width: 420px; }
-            .login-panel { flex: 1 1 auto; max-width: none; }
+            .login-panel { flex: 1 1 auto; max-width: none; align-items: center; }
+            .login-panel > * { width: 100%; max-width: 380px; }
         }
 
         .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 1.5rem; }
