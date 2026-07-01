@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JurisControl</title>
-        <link rel="stylesheet" href="style.css?v=20260701-filtros">
+        <link rel="stylesheet" href="style.css?v=20260701-paginacao">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -222,7 +222,18 @@
                     </table>
                   </div>
                   <div id="mobile-cards-container" class="mobile-cards-container"></div>
-                  <div id="pagination-container" class="pagination-container"></div>
+                  <div id="pagination-bar" class="pagination-bar">
+                    <div class="items-per-page">
+                        <label for="itemsPerPage">Itens por página</label>
+                        <select id="itemsPerPage" class="select">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    <div id="pagination-container" class="pagination-container"></div>
+                  </div>
                   <div id="kanban-container" class="kanban-board" style="display:none;"></div>
                 </section>
                 
@@ -501,7 +512,7 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/app.js?v=20260701-filtros"></script>
+    <script src="js/app.js?v=20260701-paginacao"></script>
 
 </body>
 </html>

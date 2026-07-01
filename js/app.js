@@ -96,13 +96,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   async function loadAllData() {
-      const defaultConfig = { 
-          sync: true, 
-          rowH: 140, 
+      const defaultConfig = {
+          sync: true,
+          rowH: 140,
           theme: 'system',
-          readNotifications: [], 
-          dismissedNotifications: [], 
-          sidebarCollapsed: false 
+          readNotifications: [],
+          dismissedNotifications: [],
+          sidebarCollapsed: false,
+          procItemsPerPage: 10
       };
       
       DB_USERS = await dbHelper.getAll('users');
@@ -323,10 +324,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalPages = Math.ceil(totalItems / itemsPerPage);
         if (totalPages <= 1) return;
 
-        let paginationHTML = `<button class="page-link ${currentPage === 1 ? 'disabled' : ''}" data-page="${currentPage - 1}">Anterior</button>`;
+        // Com muitas páginas, mostra apenas uma janela ao redor da página atual (+ extremos) para não poluir a tela
+        const pages = [];
+        const windowSize = 1;
         for (let i = 1; i <= totalPages; i++) {
-            paginationHTML += `<button class="page-link ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+            if (i === 1 || i === totalPages || (i >= currentPage - windowSize && i <= currentPage + windowSize)) {
+                pages.push(i);
+            }
         }
+
+        let paginationHTML = `<button class="page-link ${currentPage === 1 ? 'disabled' : ''}" data-page="${currentPage - 1}">Anterior</button>`;
+        let prev = 0;
+        pages.forEach(i => {
+            if (prev && i - prev > 1) paginationHTML += `<span class="page-link ellipsis">…</span>`;
+            paginationHTML += `<button class="page-link ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+            prev = i;
+        });
         paginationHTML += `<button class="page-link ${currentPage === totalPages ? 'disabled' : ''}" data-page="${currentPage + 1}">Próximo</button>`;
         container.innerHTML = paginationHTML;
 
@@ -623,9 +636,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const q = $('#q'), ord = $('#ord'), tbody = $('#tbl-body'), mobileContainer = $('#mobile-cards-container'), paginationProcessesContainer = $('#pagination-container');
     const btnToggleFiltros = $('#btnToggleFiltros'), filtrosPanel = $('#filtrosPanel'), filtrosCount = $('#filtrosCount'), btnLimparFiltros = $('#btnLimparFiltros');
     const filtroStatus = $('#filtroStatus'), filtroSetor = $('#filtroSetor'), filtroTipo = $('#filtroTipo'), filtroEmissor = $('#filtroEmissor'), filtroEntradaDe = $('#filtroEntradaDe'), filtroEntradaAte = $('#filtroEntradaAte');
+    const itemsPerPageSel = $('#itemsPerPage');
 
     let currentPage = 1;
-    const itemsPerPage = 10;
+    itemsPerPageSel.value = String(CFG.procItemsPerPage || 10);
+    let itemsPerPage = Number(itemsPerPageSel.value) || 10;
 
     if (initialFilter) {
         q.value = '';
@@ -759,7 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let viewMode = 'lista';
     const kanbanContainer = $('#kanban-container');
-    const paginationEl = $('#pagination-container');
+    const paginationEl = $('#pagination-bar');
 
     const KANBAN_COLS = [
         { key: 'pendente',                label: 'Pendente',               color: '#ef4444' },
@@ -930,6 +945,14 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshView();
     };
     updateFiltrosUI();
+
+    itemsPerPageSel.onchange = async () => {
+        itemsPerPage = Number(itemsPerPageSel.value) || 10;
+        CFG.procItemsPerPage = itemsPerPage;
+        await saveCFG();
+        currentPage = 1;
+        draw();
+    };
 
     $('#add').onclick = () => openProc('new');
     $('#exportCsv').onclick = () => exportCSV(filterSort());
