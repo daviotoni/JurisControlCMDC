@@ -46,6 +46,38 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
+  // Modal de confirmação genérico (substitui window.confirm). messageHtml já deve vir sanitizado.
+  function confirmDialog(messageHtml, { title = 'Confirmar ação', confirmLabel = 'Confirmar' } = {}) {
+      return new Promise((resolve) => {
+          const modal = $('#m_confirm');
+          if (!modal) { resolve(window.confirm(messageHtml.replace(/<[^>]+>/g, ''))); return; }
+          $('#confirm-title').textContent = title;
+          $('#confirm-message').innerHTML = messageHtml;
+          const okBtn = $('#confirm-ok'), cancelBtn = $('#confirm-cancel');
+          okBtn.textContent = confirmLabel;
+          modal.style.display = 'flex';
+
+          let settled = false;
+          const cleanup = () => {
+              modal.style.display = 'none';
+              okBtn.removeEventListener('click', onOk);
+              cancelBtn.removeEventListener('click', onCancel);
+              modal.removeEventListener('click', onOverlay);
+              document.removeEventListener('keydown', onKey);
+          };
+          const finish = (result) => { if (settled) return; settled = true; cleanup(); resolve(result); };
+          const onOk = () => finish(true);
+          const onCancel = () => finish(false);
+          const onOverlay = (e) => { if (e.target === modal) finish(false); };
+          const onKey = (e) => { if (e.key === 'Escape') finish(false); };
+
+          okBtn.addEventListener('click', onOk);
+          cancelBtn.addEventListener('click', onCancel);
+          modal.addEventListener('click', onOverlay);
+          document.addEventListener('keydown', onKey);
+      });
+  }
+
     // ===== Usando dbHelper do Firestore (definido em js/firestoreHelper.js) =====
       // O window.dbHelper aponta automaticamente para o Firestore via firestoreHelper.js
       const dbHelper = window.dbHelper;
@@ -850,7 +882,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!rawId || rawId === 'undefined') { showToast('ID inválido. Recarregue a página.', 'danger'); return; }
             const id = Number(rawId);
             const procToDelete = DB.find(p => p.id == id);
-            if (confirm('Tem certeza que deseja excluir este processo?')) {
+            const msg = `Tem certeza que deseja excluir o processo <strong>${sanitizeHTML(procToDelete?.num || String(id))}</strong>?<br>Esta ação não pode ser desfeita.`;
+            if (await confirmDialog(msg, { title: 'Excluir processo', confirmLabel: 'Excluir' })) {
                 await logHistorico(id, procToDelete?.num, 'excluido');
                 DB = DB.filter(p => p.id != id);
                 await dbHelper.delete('processos', id);
@@ -930,7 +963,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const idVal = Number(form.elements.id.value);
         if (!idVal) return;
         const procToDelete = DB.find(p => p.id == idVal);
-        if (confirm('Tem certeza?')) {
+        const msg = `Tem certeza que deseja excluir o processo <strong>${sanitizeHTML(procToDelete?.num || String(idVal))}</strong>?<br>Esta ação não pode ser desfeita.`;
+        if (await confirmDialog(msg, { title: 'Excluir processo', confirmLabel: 'Excluir' })) {
             await logHistorico(idVal, procToDelete?.num, 'excluido');
             DB = DB.filter(x => x.id != idVal);
             await dbHelper.delete('processos', idVal);

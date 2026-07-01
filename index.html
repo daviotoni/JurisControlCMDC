@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JurisControl</title>
-        <link rel="stylesheet" href="style.css?v=20260701-dnd">
+        <link rel="stylesheet" href="style.css?v=20260701-confirm">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -441,9 +441,27 @@
         </div>
     </div>
 
+    <div id="m_confirm" class="modal">
+        <div class="dialog confirm-dialog" style="max-width: 440px;">
+            <div class="dialog-header confirm-dialog-header">
+                <div class="confirm-icon" id="confirm-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <h3 id="confirm-title">Confirmar ação</h3>
+            </div>
+            <div class="dialog-body">
+                <p id="confirm-message"></p>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="btn secondary" id="confirm-cancel">Cancelar</button>
+                <button type="button" class="btn danger" id="confirm-ok">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
 
-    <script src="js/app.js?v=20260701-dnd"></script>
+    <script src="js/app.js?v=20260701-confirm"></script>
 
 </body>
 </html>
