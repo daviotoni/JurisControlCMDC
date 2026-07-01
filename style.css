@@ -563,11 +563,22 @@
         .lei-card-ementa { flex-grow: 1; font-size: 0.9rem; margin-bottom: 1rem; }
         .lei-card-actions { display: flex; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color); }
 
-        .pagination-container { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1.5rem; }
+        .pagination-container { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap; }
         .page-link { border: 1px solid var(--border-color); background-color: var(--card-bg); color: var(--text-secondary); font-weight: 600; border-radius: 8px; padding: 0.5rem 0.8rem; cursor: pointer; transition: all var(--transition-speed); }
         .page-link:hover { border-color: var(--brand-500); color: var(--brand-600); background-color: var(--brand-50); }
         .page-link.active { background-color: var(--brand-600); border-color: var(--brand-600); color: #fff; }
         .page-link.disabled { opacity: 0.5; cursor: not-allowed; }
+        .page-link.ellipsis { border: none; background: none; cursor: default; padding: 0.5rem 0.3rem; color: var(--text-muted); }
+        .page-link.ellipsis:hover { border: none; background: none; color: var(--text-muted); }
+
+        .pagination-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem;
+        }
+        .pagination-bar .pagination-container { margin-top: 0; justify-content: flex-start; flex: 1; }
+        .items-per-page { display: flex; align-items: center; gap: 0.5rem; }
+        .items-per-page label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+        .items-per-page .select { width: auto; min-width: 72px; padding: 0.4rem 1.8rem 0.4rem 0.6rem; }
 
         #mobile-menu-toggle { display: none; }
         .mobile-cards-container { display: none; gap: 1rem; flex-direction: column; }
