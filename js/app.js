@@ -1723,7 +1723,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const margin = 15;
       let y = 12;
 
-      doc.addImage(BRASAO_DUQUE_DE_CAXIAS_B64, 'PNG', margin, y - 4, 16, 20);
+      const imgY = y - 4, imgH = 20;
+      doc.addImage(BRASAO_DUQUE_DE_CAXIAS_B64, 'PNG', margin, imgY, 16, imgH);
 
       doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 30, 30);
       doc.text('ESTADO DO RIO DE JANEIRO', pageW / 2, y, { align: 'center' }); y += 5;
@@ -1731,13 +1732,16 @@ document.addEventListener('DOMContentLoaded', () => {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
       doc.text('PROCURADORIA-GERAL', pageW / 2, y, { align: 'center' }); y += 3;
 
+      // A linha precisa ficar abaixo do brasão inteiro, não só do bloco de texto — o brasão
+      // (imgH=20mm) é mais alto que o texto do cabeçalho, então usar só "y" cortava a imagem.
+      const lineY = Math.max(y + 2, imgY + imgH + 2);
       doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.4);
-      doc.line(margin, y + 2, pageW - margin, y + 2);
+      doc.line(margin, lineY, pageW - margin, lineY);
 
       doc.setFontSize(8); doc.setTextColor(140, 140, 140);
       doc.text(`Página ${pageNum}`, pageW - margin, pageH - 10, { align: 'right' });
 
-      return y + 10;
+      return lineY + 8;
   }
 
   // Cursor de escrita com quebra de página automática, chamando drawParecerTimbre() a cada
