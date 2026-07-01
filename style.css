@@ -774,6 +774,15 @@
         .dialog-body { padding: 1.5rem; flex-grow: 1; }
         .dialog-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.75rem; background-color: var(--bg-color-only); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; flex-wrap: wrap; }
         
+        .confirm-dialog-header { display: flex; align-items: center; gap: 0.75rem; }
+        .confirm-icon {
+            display: flex; align-items: center; justify-content: center;
+            width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+            background: rgba(239,68,68,0.12); color: #ef4444;
+        }
+        #confirm-message { margin: 0; color: var(--text-primary); line-height: 1.5; }
+        #confirm-message strong { color: var(--text-primary); }
+
         .form-grid { display: grid; gap: 1rem; }
         .form-grid.two-cols { grid-template-columns: 1fr 1fr; }
         .form-grid.three-cols { grid-template-columns: repeat(3, 1fr); }
