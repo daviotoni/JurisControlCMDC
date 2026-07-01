@@ -1770,10 +1770,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Converte um Quill Delta ({ ops: [...] }) em texto desenhado no PDF, respeitando bold/italic/
-  // header(1-3)/align/list (ordered numerado de verdade, reiniciando quando a sequência quebra).
+  // header(1-3)/align/list (ordered numerado de verdade, reiniciando quando a sequência quebra;
+  // recuo cresce por nível de indentação — lineAttrs.indent).
   // Limitações aceitas (não são bugs): 'underline' não tem equivalente simples em texto jsPDF puro
   // (sai sem sublinhado); 'justify' vira 'left' (jsPDF não tem justificação nativa de texto);
-  // níveis de indentação aninhada de lista não são diferenciados (todo item usa o mesmo recuo).
+  // a numeração de lista ordenada não reinicia por nível de indentação (contador único, achatado).
   // Simplificação assumida: se qualquer trecho da linha for bold/italic, a linha inteira sai
   // bold/italic (sem rich-text por run no jsPDF).
   function renderParecerDeltaToPdf(doc, writer, delta) {
@@ -1791,7 +1792,8 @@ document.addEventListener('DOMContentLoaded', () => {
           orderedListCounter = listType === 'ordered' ? orderedListCounter + 1 : 0;
           const isListItem = !!listType;
           const prefix = listType === 'bullet' ? '• ' : listType === 'ordered' ? `${orderedListCounter}. ` : '';
-          const indent = isListItem ? 5 : 0;
+          const indentLevel = (lineAttrs && lineAttrs.indent) || 0;
+          const indent = isListItem ? 5 + indentLevel * 5 : 0;
           const maxWidth = writer.pageW - writer.margin * 2 - indent;
 
           const anyBold = lineBuffer.some(r => r.bold) || !!header;
@@ -1813,7 +1815,7 @@ document.addEventListener('DOMContentLoaded', () => {
           doc.setFont('helvetica', fontStyle);
           doc.setFontSize(fontSize);
           doc.setTextColor(20, 20, 20);
-          const x = align === 'center' ? writer.pageW / 2 : align === 'right' ? writer.pageW - writer.margin : writer.margin + indent;
+          const x = align === 'center' ? writer.pageW / 2 : align === 'right' ? writer.pageW - writer.margin - indent : writer.margin + indent;
           doc.text(lines, x, writer.y + fontSize * 0.35, { align: align === 'justify' ? 'left' : align });
           writer.y += neededHeight;
           lineBuffer = [];
