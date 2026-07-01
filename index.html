@@ -465,11 +465,21 @@
                     <label for="pz_ementa">Ementa</label>
                     <textarea id="pz_ementa" class="input" rows="2" placeholder="Resumo do parecer em caixa alta (ex: CONTRATO ADMINISTRATIVO. PRORROGAÇÃO DE PRAZO...)"></textarea>
                 </div>
+                <div class="form-group parecer-modelo-picker" id="parecerModeloPicker">
+                    <label for="pz_modelo_select">Carregar a partir de um modelo</label>
+                    <div style="display:flex; gap:0.5rem;">
+                        <select id="pz_modelo_select" class="select" style="flex:1;">
+                            <option value="">Selecione um modelo...</option>
+                        </select>
+                        <button type="button" class="btn secondary" id="btnCarregarModelo">Carregar</button>
+                    </div>
+                </div>
                 <div id="parecerEditor" class="parecer-editor"></div>
                 <div class="parecer-timbre-rodape">Página 1</div>
             </div>
             <div class="dialog-footer">
                 <button type="button" class="btn danger" id="btnReabrirParecer" style="display:none; margin-right:auto;">Reabrir para edição</button>
+                <button type="button" class="btn secondary" id="btnGerarPdfParecer" style="display:none;">Gerar PDF Oficial</button>
                 <button type="button" class="btn secondary" data-close-parecer>Fechar</button>
                 <button type="button" class="btn secondary" id="btnSalvarRascunho">Salvar Rascunho</button>
                 <button type="button" class="btn primary" id="btnEmitirParecer">Emitir Parecer</button>
@@ -548,7 +558,7 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/app.js?v=20260701-parecer"></script>
+    <script src="js/app.js?v=20260701-parecer-fase2"></script>
 
 </body>
 </html>
