@@ -593,7 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const pz = currentParecerRecord;
       const isNew = !DB_PARECERES.some(x => x.id === pz.id);
       pz.ementa = $('#pz_ementa').value.trim();
-      pz.delta = parecerQuill.getContents();
+      pz.delta = { ops: parecerQuill.getContents().ops };
       pz.textoBusca = parecerQuill.getText().toLowerCase();
       pz.atualizadoEm = new Date().toISOString();
       if (isNew) DB_PARECERES.push(pz);
@@ -616,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const versoesExistentes = getParecerVersoes(pz.id);
       const novaVersao = {
-          id: Date.now() + 1, parecerId: pz.id, versao: (versoesExistentes[0]?.versao || 0) + 1,
+          id: Date.now() + 1, parecerId: pz.id, versao: (versoesExistentes[0]?.versao ?? 0) + 1,
           delta: pz.delta, textoBusca: pz.textoBusca, emitidoEm: pz.emitidoEm, emitidoPor: pz.emitidoPor
       };
       DB_PARECER_VERSOES.push(novaVersao);
@@ -1601,8 +1601,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 doc.setTextColor(255, 255, 255); doc.text(statusText, margin + 52, y + 5.5); y += 9;
             });
             
+            const parecerEstruturadoPdf = getParecer(p.id);
             const parecerDoc = p.docId ? getDoc(p.docId) : null;
-            const parecerName = parecerDoc ? parecerDoc.nomePrincipal.replace(/\.(docx|doc)$/i, '') : 'Nenhum parecer anexado';
+            const parecerName = parecerEstruturadoPdf
+                ? `Parecer redigido no sistema (${parecerEstruturadoPdf.status === 'emitido' ? 'Emitido' : 'Rascunho'})`
+                : (parecerDoc ? parecerDoc.nomePrincipal.replace(/\.(docx|doc)$/i, '') : 'Nenhum parecer anexado');
             drawSection('PARECER', () => { drawDataRow('DOCUMENTO:', parecerName); });
 
             
