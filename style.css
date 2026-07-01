@@ -513,7 +513,35 @@
         .toolbar { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
         .toolbar .input { max-width: 350px; flex-grow: 1;}
         .toolbar .select { max-width: 200px;}
-        .toolbar .actions-group { margin-left: auto; display: flex; gap: 1rem; flex-wrap: wrap; } 
+        .toolbar .actions-group { margin-left: auto; display: flex; gap: 1rem; flex-wrap: wrap; }
+
+        #btnToggleFiltros { position: relative; }
+        #btnToggleFiltros.active { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
+        .filtros-count {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+            background: #ef4444; color: #fff; font-size: 0.68rem; font-weight: 800;
+        }
+        .filtros-panel {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 1.1rem 1.25rem; margin-bottom: 1.5rem;
+        }
+        .filtros-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+        .filtros-grid .form-group label {
+            font-size: 0.76rem; font-weight: 700; color: var(--text-muted);
+            margin-bottom: 0.3rem; display: block;
+        }
+        .filtros-grid .select, .filtros-grid .input { width: 100%; }
+        .filtros-footer {
+            display: flex; justify-content: flex-end; margin-top: 1rem;
+            padding-top: 0.9rem; border-top: 1px solid var(--border-color);
+        }
+        @media (max-width: 640px) {
+            .filtros-grid { grid-template-columns: 1fr 1fr; }
+        } 
         
         .table-wrap { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
