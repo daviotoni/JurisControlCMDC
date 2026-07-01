@@ -572,6 +572,43 @@ document.addEventListener('DOMContentLoaded', () => {
       return null;
   }
 
+  // Confirma e exclui um processo, apagando em cascata o parecer vinculado a ele (estruturado
+  // ou Word legado, com todo o histórico de versões) — sem isso o parecer ficava "órfão" no
+  // Firestore pra sempre. Usado pelos dois pontos de exclusão de processo (lista e modal de
+  // edição). Retorna true se o processo foi excluído, false se o usuário cancelou.
+  async function excluirProcessoEmCascata(id, procToDelete) {
+      const parecerInfo = procToDelete ? getParecerInfo(procToDelete) : null;
+      let avisoParecer = '';
+      if (parecerInfo?.tipo === 'estruturado') {
+          avisoParecer = `<br><br>Este processo tem um parecer <strong>${parecerInfo.emitido ? 'emitido' : 'em rascunho'}</strong> vinculado — ele também será excluído, junto com todo o seu histórico de versões.`;
+      } else if (parecerInfo?.tipo === 'legado') {
+          avisoParecer = `<br><br>Este processo tem um parecer (Word) vinculado — ele também será excluído, junto com todo o seu histórico de versões.`;
+      }
+      const msg = `Tem certeza que deseja excluir o processo <strong>${sanitizeHTML(procToDelete?.num || String(id))}</strong>?${avisoParecer}<br><br>Esta ação não pode ser desfeita.`;
+      if (!(await confirmDialog(msg, { title: 'Excluir processo', confirmLabel: 'Excluir' }))) return false;
+
+      if (parecerInfo?.tipo === 'estruturado') {
+          const pz = parecerInfo.parecer;
+          const versoes = getParecerVersoes(pz.id);
+          DB_PARECERES = DB_PARECERES.filter(x => x.id !== pz.id);
+          DB_PARECER_VERSOES = DB_PARECER_VERSOES.filter(v => v.parecerId !== pz.id);
+          await dbHelper.delete('pareceres', pz.id);
+          for (const v of versoes) await dbHelper.delete('parecerVersoes', v.id);
+      } else if (parecerInfo?.tipo === 'legado') {
+          const docLegado = parecerInfo.docLegado;
+          const versoes = getVersionsOfDoc(docLegado.id);
+          DB_DOCS = DB_DOCS.filter(d => d.id !== docLegado.id);
+          DB_VERSOES = DB_VERSOES.filter(v => v.idDocumento !== docLegado.id);
+          await dbHelper.delete('documentos', docLegado.id);
+          for (const v of versoes) await dbHelper.delete('versoes', v.id);
+      }
+
+      await logHistorico(id, procToDelete?.num, 'excluido');
+      DB = DB.filter(p => p.id != id);
+      await dbHelper.delete('processos', id);
+      return true;
+  }
+
   function currentUserName() {
       try {
           const u = JSON.parse(sessionStorage.getItem('loggedInUser'));
@@ -1302,11 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!rawId || rawId === 'undefined') { showToast('ID inválido. Recarregue a página.', 'danger'); return; }
             const id = Number(rawId);
             const procToDelete = DB.find(p => p.id == id);
-            const msg = `Tem certeza que deseja excluir o processo <strong>${sanitizeHTML(procToDelete?.num || String(id))}</strong>?<br>Esta ação não pode ser desfeita.`;
-            if (await confirmDialog(msg, { title: 'Excluir processo', confirmLabel: 'Excluir' })) {
-                await logHistorico(id, procToDelete?.num, 'excluido');
-                DB = DB.filter(p => p.id != id);
-                await dbHelper.delete('processos', id);
+            if (await excluirProcessoEmCascata(id, procToDelete)) {
                 draw(true);
                 renderDashboard();
                 showToast('Processo excluído.', 'danger');
@@ -1383,11 +1416,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const idVal = Number(form.elements.id.value);
         if (!idVal) return;
         const procToDelete = DB.find(p => p.id == idVal);
-        const msg = `Tem certeza que deseja excluir o processo <strong>${sanitizeHTML(procToDelete?.num || String(idVal))}</strong>?<br>Esta ação não pode ser desfeita.`;
-        if (await confirmDialog(msg, { title: 'Excluir processo', confirmLabel: 'Excluir' })) {
-            await logHistorico(idVal, procToDelete?.num, 'excluido');
-            DB = DB.filter(x => x.id != idVal);
-            await dbHelper.delete('processos', idVal);
+        if (await excluirProcessoEmCascata(idVal, procToDelete)) {
             m.style.display = 'none';
             renderProc(true);
             renderDashboard();
