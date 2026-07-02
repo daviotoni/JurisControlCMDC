@@ -1090,11 +1090,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const urgClass = vencido ? 'row-vencido' : alerta ? 'row-alerta' : '';
                 const urgIcon = (vencido || alerta) ? `<svg class="urgencia-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` : '';
                 const prazoTitle = vencido ? `title="Prazo vencido"` : alerta ? `title="Prazo próximo do vencimento"` : '';
+                const badgeHtml = p.anotacoes && p.anotacoes.length > 0
+                    ? `<span class="anotacoes-badge" data-anot="${p.id}" aria-label="${p.anotacoes.length} anotação(ões)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${p.anotacoes.length}</span>` : '';
                 const tr = document.createElement('tr');
                 if (urgClass) tr.classList.add(urgClass);
                 tr.innerHTML = `
                     <td>
-                        <div style="font-weight: 700; color: var(--text-primary);">${sanitizeHTML(p.num)}</div>
+                        <div style="font-weight: 700; color: var(--text-primary); display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">${sanitizeHTML(p.num)}${badgeHtml}</div>
                         <div>${sanitizeHTML(p.int)}</div>
                     </td>
                     <td>${sanitizeHTML(p.obj) || '—'}</td>
