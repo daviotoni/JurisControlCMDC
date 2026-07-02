@@ -3,15 +3,15 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ConfirmSheet, SheetModal } from '../components/form';
 import { NavyHeader } from '../components/NavyHeader';
-import { Card, GroupLabel, Pill, PrimaryButton, SecondaryButton, StatusPill } from '../components/ui';
+import { Avatar, Card, GroupLabel, Pill, PrimaryButton, SecondaryButton, StatusPill } from '../components/ui';
 import { useData } from '../data/DataContext';
 import { db } from '../lib/firebase';
 import { fmtBR } from '../lib/dates';
 import { prazoInfo } from '../lib/model';
-import { AcaoHistorico, HistoricoEntry } from '../lib/types';
+import { AcaoHistorico, Anotacao, HistoricoEntry } from '../lib/types';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../theme/ThemeContext';
 import { fonts } from '../theme/tokens';
@@ -47,6 +47,29 @@ export function ProcessoDetalheScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [parecerOpen, setParecerOpen] = useState(false);
+  const [novaAnotacao, setNovaAnotacao] = useState('');
+  const [salvandoAnotacao, setSalvandoAnotacao] = useState(false);
+
+  // Anotações mais recentes primeiro (mesma ordenação do web).
+  const anotacoes = useMemo(
+    () => [...(p?.anotacoes ?? [])].sort((a, b) => b.id - a.id),
+    [p?.anotacoes]
+  );
+
+  const registrarAnotacao = async () => {
+    const texto = novaAnotacao.trim();
+    if (!texto || !p) return;
+    setSalvandoAnotacao(true);
+    const entrada: Anotacao = { id: Date.now(), usuario: userName, dt: new Date().toISOString(), texto };
+    try {
+      // Mesmo gravar do web: append no array e put('processos', p) — sem log de histórico.
+      await putRecord('processos', { ...p, anotacoes: [...(p.anotacoes ?? []), entrada] });
+      setNovaAnotacao('');
+    } catch (e) {
+      console.warn('Erro ao registrar anotação:', e);
+    }
+    setSalvandoAnotacao(false);
+  };
 
   useEffect(() => {
     if (p) loadHistorico(p.id).then(setHistorico);
@@ -130,7 +153,16 @@ export function ProcessoDetalheScreen() {
         </View>
       </NavyHeader>
 
-      <ScrollView contentContainerStyle={{ padding: 18, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={90}
+      >
+      <ScrollView
+        contentContainerStyle={{ padding: 18, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {p.prazo && info.dias !== null ? (
           <View
             style={[
@@ -212,6 +244,70 @@ export function ProcessoDetalheScreen() {
           ) : null}
         </Card>
 
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 10 }}>
+          <Text style={{ fontFamily: fonts.bold, fontSize: 15, color: colors.text }}>Anotações e pendências</Text>
+          {anotacoes.length > 0 ? (
+            <View style={[styles.anotBadge, { backgroundColor: colors.iconSquare }]}>
+              <Feather name="message-square" size={11} color={colors.primary} />
+              <Text style={{ fontFamily: fonts.bold, fontSize: 11, color: colors.primary }}>{anotacoes.length}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Card>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end' }}>
+            <TextInput
+              value={novaAnotacao}
+              onChangeText={setNovaAnotacao}
+              placeholder="Registrar anotação, pendência ou atualização…"
+              placeholderTextColor={colors.mutedLight}
+              multiline
+              style={[
+                styles.anotInput,
+                {
+                  backgroundColor: colors.card === '#ffffff' ? '#f5f7fb' : colors.input,
+                  borderColor: colors.inputBorder,
+                  color: colors.text,
+                },
+              ]}
+            />
+            <Pressable
+              onPress={registrarAnotacao}
+              disabled={!novaAnotacao.trim() || salvandoAnotacao}
+              style={[
+                styles.anotSendBtn,
+                { backgroundColor: isDark ? '#1c5f9e' : '#0a3d73', opacity: !novaAnotacao.trim() || salvandoAnotacao ? 0.5 : 1 },
+              ]}
+            >
+              <Feather name="send" size={17} color="#fff" />
+            </Pressable>
+          </View>
+
+          {anotacoes.length === 0 ? (
+            <Text style={{ fontFamily: fonts.medium, fontSize: 12.5, color: colors.muted, marginTop: 14 }}>
+              Nenhuma anotação registrada ainda.
+            </Text>
+          ) : (
+            <View style={{ marginTop: 16, gap: 14 }}>
+              {anotacoes.map((a) => (
+                <View key={a.id} style={{ flexDirection: 'row', gap: 10 }}>
+                  <Avatar name={a.usuario} size={32} />
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={{ fontFamily: fonts.semibold, fontSize: 12.5, color: colors.text }}>{a.usuario}</Text>
+                      <Text style={{ fontFamily: fonts.regular, fontSize: 10.5, color: colors.muted }}>
+                        {new Date(a.dt).toLocaleString('pt-BR')}
+                      </Text>
+                    </View>
+                    <Text style={{ fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 3, lineHeight: 18 }}>
+                      {a.texto}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </Card>
+
         <Text style={{ fontFamily: fonts.bold, fontSize: 15, color: colors.text, marginTop: 20, marginBottom: 10 }}>
           Histórico
         </Text>
@@ -256,6 +352,7 @@ export function ProcessoDetalheScreen() {
           <PrimaryButton label="Emitir parecer" onPress={() => setParecerOpen(true)} style={{ flex: 1 }} />
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Menu kebab */}
       <SheetModal visible={menuOpen} onClose={() => setMenuOpen(false)} title={`Processo ${p.num}`}>
@@ -348,6 +445,32 @@ const styles = StyleSheet.create({
   gridValue: { fontFamily: fonts.semibold, fontSize: 13.5, marginTop: 2 },
   timelineDot: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
   timelineLine: { width: 2, flex: 1, marginTop: 3 },
+  anotBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  anotInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: fonts.medium,
+    fontSize: 13.5,
+    minHeight: 44,
+    maxHeight: 120,
+  },
+  anotSendBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',

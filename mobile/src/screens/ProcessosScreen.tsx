@@ -189,10 +189,22 @@ export function ProcessosScreen() {
                           {p.obj}
                         </Text>
                       ) : null}
-                      {urg.texto ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 }}>
-                          <Feather name="clock" size={12} color={urgCor} />
-                          <Text style={{ fontFamily: fonts.semibold, fontSize: 11.5, color: urgCor }}>{urg.texto}</Text>
+                      {urg.texto || (p.anotacoes?.length ?? 0) > 0 ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                          {urg.texto ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                              <Feather name="clock" size={12} color={urgCor} />
+                              <Text style={{ fontFamily: fonts.semibold, fontSize: 11.5, color: urgCor }}>{urg.texto}</Text>
+                            </View>
+                          ) : null}
+                          {(p.anotacoes?.length ?? 0) > 0 ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                              <Feather name="message-square" size={11} color={colors.muted} />
+                              <Text style={{ fontFamily: fonts.semibold, fontSize: 11, color: colors.muted }}>
+                                {p.anotacoes!.length}
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
                       ) : null}
                     </View>
