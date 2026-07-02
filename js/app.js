@@ -1569,31 +1569,92 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (p.emissorId) { selectEmissorView.value = p.emissorId; }
 
+    let editingAnotId = null;
+    const ANOT_ICON_EDIT = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    const ANOT_ICON_DEL = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+
     const renderAnotacoes = () => {
         const timeline = $('#anotacoes-timeline');
         const lista = (p.anotacoes || []).slice().sort((a, b) => b.id - a.id);
         if (lista.length === 0) {
             timeline.innerHTML = '<p class="anotacoes-empty">Nenhuma anotação registrada ainda.</p>';
-        } else {
-            timeline.innerHTML = lista.map(a => {
-                const dt = new Date(a.dt);
-                const dateStr = dt.toLocaleDateString('pt-BR') + ' às ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                const initials = sanitizeHTML(a.usuario.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase());
-                return `
-                    <div class="anotacao-entry">
-                        <div class="anotacao-avatar">${initials}</div>
-                        <div class="anotacao-body">
-                            <div class="anotacao-meta">
-                                <span class="anotacao-user">${sanitizeHTML(a.usuario)}</span>
-                                <span class="anotacao-date">${sanitizeHTML(dateStr)}</span>
-                            </div>
-                            <p class="anotacao-texto">${sanitizeHTML(a.texto)}</p>
-                        </div>
-                    </div>`;
-            }).join('');
+            return;
         }
+        timeline.innerHTML = lista.map(a => {
+            const dt = new Date(a.dt);
+            const dateStr = dt.toLocaleDateString('pt-BR') + ' às ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const initials = sanitizeHTML(a.usuario.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase());
+            const editing = String(a.id) === editingAnotId;
+            const corpo = editing
+                ? `<textarea class="anotacao-textarea anotacao-edit-input" data-edit-input="${a.id}">${sanitizeHTML(a.texto)}</textarea>
+                   <div class="anotacao-edit-actions">
+                       <button class="btn" data-cancel-anot="${a.id}">Cancelar</button>
+                       <button class="btn primary" data-save-anot="${a.id}">Salvar</button>
+                   </div>`
+                : `<p class="anotacao-texto">${sanitizeHTML(a.texto)}</p>`;
+            const acoes = editing ? '' : `<div class="anotacao-acoes">
+                        <button class="anotacao-acao-btn" data-edit-anot="${a.id}" title="Editar" aria-label="Editar anotação">${ANOT_ICON_EDIT}</button>
+                        <button class="anotacao-acao-btn danger" data-del-anot="${a.id}" title="Excluir" aria-label="Excluir anotação">${ANOT_ICON_DEL}</button>
+                    </div>`;
+            return `
+                <div class="anotacao-entry">
+                    <div class="anotacao-avatar">${initials}</div>
+                    <div class="anotacao-body">
+                        <div class="anotacao-meta">
+                            <span class="anotacao-user">${sanitizeHTML(a.usuario)}</span>
+                            <div class="anotacao-meta-right">
+                                <span class="anotacao-date">${sanitizeHTML(dateStr)}</span>
+                                ${acoes}
+                            </div>
+                        </div>
+                        ${corpo}
+                    </div>
+                </div>`;
+        }).join('');
     };
     renderAnotacoes();
+
+    // Editar / excluir anotações (delegação — o container é fixo, só o innerHTML muda).
+    $('#anotacoes-timeline').onclick = async (e) => {
+        const editBtn = e.target.closest('[data-edit-anot]');
+        const cancelBtn = e.target.closest('[data-cancel-anot]');
+        const saveBtn = e.target.closest('[data-save-anot]');
+        const delBtn = e.target.closest('[data-del-anot]');
+
+        if (editBtn) {
+            editingAnotId = editBtn.dataset.editAnot;
+            renderAnotacoes();
+            const inp = $(`[data-edit-input="${editingAnotId}"]`);
+            if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+            return;
+        }
+        if (cancelBtn) { editingAnotId = null; renderAnotacoes(); return; }
+        if (saveBtn) {
+            const anotId = saveBtn.dataset.saveAnot;
+            const inp = $(`[data-edit-input="${anotId}"]`);
+            const novoTexto = inp ? inp.value.trim() : '';
+            if (!novoTexto) { showToast('A anotação não pode ficar vazia.', 'info'); return; }
+            const alvo = (p.anotacoes || []).find(a => String(a.id) === anotId);
+            if (alvo) { alvo.texto = novoTexto; await dbHelper.put('processos', p); }
+            editingAnotId = null;
+            renderAnotacoes();
+            renderProc();
+            showToast('Anotação atualizada!', 'success');
+            return;
+        }
+        if (delBtn) {
+            const anotId = delBtn.dataset.delAnot;
+            const ok = await confirmDialog('Esta anotação será removida permanentemente.', { title: 'Excluir anotação', confirmLabel: 'Excluir' });
+            if (!ok) return;
+            p.anotacoes = (p.anotacoes || []).filter(a => String(a.id) !== anotId);
+            await dbHelper.put('processos', p);
+            editingAnotId = null;
+            renderAnotacoes();
+            renderProc();
+            showToast('Anotação excluída.', 'danger');
+            return;
+        }
+    };
 
     $('#btnRegistrarAnotacao').onclick = async () => {
         const textarea = $('#nova-anotacao');
