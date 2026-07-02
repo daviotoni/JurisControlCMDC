@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "JurisControl CMDC",
+    "slug": "juriscontrol-cmdc",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/brasao-shield.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#082f57"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.gov.rj.cmdc.juriscontrol"
+    },
+    "android": {
+      "package": "br.gov.rj.cmdc.juriscontrol",
+      "adaptiveIcon": {
+        "backgroundColor": "#082f57",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
