@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -57,7 +57,11 @@ export function Field({
   );
 }
 
-/** Campo de data (dd/mm/aaaa) usando o picker nativo. Valor em YYYY-MM-DD. */
+/**
+ * Campo de data (dd/mm/aaaa). Valor em YYYY-MM-DD.
+ * Nativo: picker do sistema. Web: digitação dd/mm/aaaa (o picker nativo
+ * não é suportado no navegador).
+ */
 export function DateField({
   label,
   value,
@@ -71,7 +75,48 @@ export function DateField({
 }) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
+  const [texto, setTexto] = useState(value ? fmtBR(value) : '');
   const current = parseYMD(value) ?? new Date();
+
+  // Sincroniza o texto quando o valor muda por fora (ex.: limpar filtros).
+  useEffect(() => {
+    setTexto(value ? fmtBR(value) : '');
+  }, [value]);
+
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[{ marginBottom: 14 }, style]}>
+        <FieldLabel label={label} />
+        <TextInput
+          value={texto}
+          placeholder="dd/mm/aaaa"
+          placeholderTextColor={colors.mutedLight}
+          keyboardType="numeric"
+          maxLength={10}
+          onChangeText={(t) => {
+            // Auto-insere as barras enquanto digita.
+            const digits = t.replace(/\D/g, '').slice(0, 8);
+            let masked = digits;
+            if (digits.length > 4) masked = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+            else if (digits.length > 2) masked = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+            setTexto(masked);
+            const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(masked);
+            if (m) onChange(`${m[3]}-${m[2]}-${m[1]}`);
+            else if (!masked) onChange('');
+          }}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card === '#ffffff' ? '#fff' : colors.input,
+              borderColor: colors.inputBorder,
+              color: colors.text,
+            },
+          ]}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={[{ marginBottom: 14 }, style]}>
       <FieldLabel label={label} />

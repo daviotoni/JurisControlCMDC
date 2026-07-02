@@ -2,13 +2,12 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NavyHeader } from '../components/NavyHeader';
 import { Card, EmptyState, GroupLabel, IconSquare, Segmented } from '../components/ui';
 import { useData } from '../data/DataContext';
-import { shareDataUrl } from '../lib/files';
+import { readFileAsDataUrl, shareDataUrl } from '../lib/files';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../theme/ThemeContext';
 import { fonts } from '../theme/tokens';
@@ -42,9 +41,9 @@ export function DocumentosScreen() {
     if (res.canceled || !res.assets?.[0]) return;
     const file = res.assets[0];
     try {
-      const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
       // Mesmo formato do web: { id, name, data: dataURL }.
-      await putRecord('modelos', { id: Date.now(), name: file.name, data: `data:${file.mimeType || DOCX_MIME};base64,${base64}` });
+      const data = await readFileAsDataUrl(file.uri, file.mimeType || DOCX_MIME);
+      await putRecord('modelos', { id: Date.now(), name: file.name, data });
       setMsg('Modelo adicionado com sucesso.');
     } catch (e) {
       console.warn('Erro ao adicionar modelo:', e);

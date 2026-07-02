@@ -20,6 +20,21 @@ npx expo start        # abre no Expo Go (Android/iOS) ou emulador
 
 Login: as mesmas credenciais (e-mail/senha) do Firebase Auth usadas no site.
 
+## Versão web (publicada no site)
+
+O mesmo código roda como web app em **https://juriscontrolcmdc.com.br/app/**
+(pasta `/app` na raiz do repositório, servida pelo GitHub Pages da `main`).
+Para atualizar o site após mudar o código do app:
+
+```bash
+cd mobile
+npm run build:site    # regenera a pasta ../app
+# commit + push na main (o GitHub Pages publica sozinho)
+```
+
+O arquivo `.nojekyll` na raiz do repositório é obrigatório — sem ele o
+GitHub Pages ignora a pasta `app/_expo` (prefixo `_`).
+
 ## Stack
 
 - **Expo SDK 57** / React Native 0.86 / TypeScript

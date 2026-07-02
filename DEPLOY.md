@@ -37,6 +37,20 @@ isso evita o bug clássico de "publiquei mas o site não atualizou".
 que mudar esses arquivos, atualize o número de versão** na tag, senão o
 navegador serve a versão antiga em cache.
 
+## App mobile web (/app)
+
+A versão mobile do JurisControl vive em **https://juriscontrolcmdc.com.br/app/**.
+É o app React Native/Expo de `mobile/` exportado como web estático para a pasta
+`/app` da raiz (servida pelo mesmo GitHub Pages da `main`). Para atualizar:
+
+```bash
+cd mobile && npm run build:site   # regenera /app
+# commit + push na main
+```
+
+O `.nojekyll` na raiz é obrigatório (sem ele o Pages ignora `app/_expo`).
+Não edite `/app` na mão — é build gerado.
+
 ## Deploy no Firebase (manual)
 
 ```bash

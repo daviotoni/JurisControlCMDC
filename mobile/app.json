@@ -26,7 +26,16 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "JurisControl CMDC",
+      "shortName": "JurisControl",
+      "backgroundColor": "#082f57",
+      "themeColor": "#082f57"
+    },
+    "experiments": {
+      "baseUrl": "/app"
     }
   }
 }

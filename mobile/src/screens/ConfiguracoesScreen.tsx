@@ -2,7 +2,6 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import { collection, doc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -12,7 +11,7 @@ import { Card, PrimaryButton, Pill, SecondaryButton } from '../components/ui';
 import { useData } from '../data/DataContext';
 import { db } from '../lib/firebase';
 import { diffDays, fmtBR, parseYMD, todayUTC } from '../lib/dates';
-import { saveAndShare } from '../lib/files';
+import { readFileAsText, saveAndShare } from '../lib/files';
 import { Emissor, Usuario } from '../lib/types';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../theme/ThemeContext';
@@ -147,7 +146,7 @@ export function ConfiguracoesScreen() {
     const res = await DocumentPicker.getDocumentAsync({ type: 'application/json', copyToCacheDirectory: true });
     if (res.canceled || !res.assets?.[0]) return;
     try {
-      const text = await FileSystem.readAsStringAsync(res.assets[0].uri);
+      const text = await readFileAsText(res.assets[0].uri);
       const data = JSON.parse(text);
       if (!data.processos || !data.users) throw new Error('inválido');
       setRestoreData(data);

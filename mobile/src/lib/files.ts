@@ -27,3 +27,14 @@ export async function shareDataUrl(filename: string, dataUrl: string): Promise<v
   const mime = /^data:([^;]+);/.exec(dataUrl)?.[1];
   await saveAndShare(filename, base64, { base64: true, mimeType: mime });
 }
+
+/** Lê um arquivo escolhido pelo DocumentPicker como texto. */
+export async function readFileAsText(uri: string): Promise<string> {
+  return FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.UTF8 });
+}
+
+/** Lê um arquivo escolhido pelo DocumentPicker como dataURL base64. */
+export async function readFileAsDataUrl(uri: string, mime: string): Promise<string> {
+  const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  return `data:${mime};base64,${b64}`;
+}
