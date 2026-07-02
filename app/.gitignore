@@ -1,0 +1,3 @@
+# Build gerado pelo Expo — as fontes ficam em assets/node_modules/,
+# que o .gitignore da raiz ignoraria. Re-inclui aqui.
+!assets/node_modules/
