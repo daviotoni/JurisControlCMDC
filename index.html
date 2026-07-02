@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JurisControl</title>
-        <link rel="stylesheet" href="style.css?v=20260701-redesign-navy">
+        <link rel="stylesheet" href="style.css?v=20260702-mobile-fix">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,6 +33,11 @@
                 <h1 class="login-hero-title">JurisControl</h1>
             </div>
             <div class="login-panel">
+                <div class="login-mobile-brand">
+                    <img src="img/brasao-shield.png" alt="Brasão CMDC">
+                    <div class="login-mobile-eyebrow">Câmara Municipal de Duque de Caxias</div>
+                    <div class="login-mobile-title">JurisControl</div>
+                </div>
                 <h2>Acessar o sistema</h2>
                 <p class="login-panel-subtitle">Use suas credenciais institucionais</p>
                 <div class="grupo">
@@ -252,7 +257,7 @@
                 
                 <section id="secDoc" style="display:none">
                   <h2>Gestão de Documentos</h2>
-                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem">
+                  <div class="two-col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem">
                     <div class="card">
                         <h3>Modelos de Documento</h3>
                         <p style="font-size: 0.9em; color: var(--text-muted); margin-top: -0.5rem; margin-bottom: 1rem;">Documentos padrão (.docx) para usar como base.</p>
@@ -320,7 +325,7 @@
                 
                 <section id="secCfg" style="display:none">
                   <h2>Configurações</h2>
-                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem">
+                  <div class="two-col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem">
                      <div class="card">
                         <h3>Gerenciamento de Usuários</h3>
                         <div id="userList" class="list"></div>
