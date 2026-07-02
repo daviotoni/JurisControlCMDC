@@ -20,7 +20,15 @@ export interface Processo {
   saida?: string; // YYYY-MM-DD
   emissorId?: string;
   docId?: number | null;
-  anotacoes?: unknown[];
+  anotacoes?: Anotacao[];
+}
+
+/** Anotação/pendência de um processo (mesmo formato do web: id, usuario, dt, texto). */
+export interface Anotacao {
+  id: number;
+  usuario: string;
+  dt: string; // ISO
+  texto: string;
 }
 
 export interface EventoCal {
