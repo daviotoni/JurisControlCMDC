@@ -4,6 +4,19 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>JurisControl</title>
+    <script>
+        // Celulares são levados à versão mobile (/app/). O toggle
+        // "Site para computador" do navegador troca o user agent para
+        // desktop e traz esta versão de volta. Escape: ?desktop=1
+        (function () {
+            try {
+                var mobileUA = /Mobi|iPhone|iPod/i.test(navigator.userAgent);
+                if (mobileUA && location.search.indexOf('desktop=1') === -1) {
+                    location.replace('/app/');
+                }
+            } catch (e) { /* segue para o desktop */ }
+        })();
+    </script>
         <link rel="stylesheet" href="style.css?v=20260702-sidebar-brasao">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -16,6 +16,18 @@ import { ThemeProvider } from './src/theme/ThemeContext';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// Na web, /app/ é a versão mobile do site: se o navegador se apresenta como
+// desktop (ex.: toggle "Site para computador" ligado, ou um PC de verdade),
+// volta para a versão desktop na raiz. Escape para testes: ?mobile=1
+if (
+  Platform.OS === 'web' &&
+  typeof window !== 'undefined' &&
+  !/Mobi|iPhone|iPod/i.test(window.navigator.userAgent) &&
+  window.location.search.indexOf('mobile=1') === -1
+) {
+  window.location.replace('/');
+}
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     IBMPlexSans_400Regular,
