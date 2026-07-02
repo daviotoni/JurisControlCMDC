@@ -71,6 +71,38 @@ export function ProcessoDetalheScreen() {
     setSalvandoAnotacao(false);
   };
 
+  // Menu de ação (editar/excluir) e edição de uma anotação existente.
+  const [anotMenu, setAnotMenu] = useState<Anotacao | null>(null);
+  const [anotEdit, setAnotEdit] = useState<Anotacao | null>(null);
+  const [anotEditText, setAnotEditText] = useState('');
+  const [anotDel, setAnotDel] = useState<Anotacao | null>(null);
+
+  const salvarEdicaoAnotacao = async () => {
+    const texto = anotEditText.trim();
+    if (!texto || !p || !anotEdit) return;
+    const alvo = anotEdit;
+    setAnotEdit(null);
+    try {
+      // Mantém id/usuario/dt; muda só o texto — mesmo shape do desktop.
+      const atualizadas = (p.anotacoes ?? []).map((a) => (a.id === alvo.id ? { ...a, texto } : a));
+      await putRecord('processos', { ...p, anotacoes: atualizadas });
+    } catch (e) {
+      console.warn('Erro ao editar anotação:', e);
+    }
+  };
+
+  const excluirAnotacao = async () => {
+    if (!p || !anotDel) return;
+    const alvo = anotDel;
+    setAnotDel(null);
+    try {
+      const restantes = (p.anotacoes ?? []).filter((a) => a.id !== alvo.id);
+      await putRecord('processos', { ...p, anotacoes: restantes });
+    } catch (e) {
+      console.warn('Erro ao excluir anotação:', e);
+    }
+  };
+
   useEffect(() => {
     if (p) loadHistorico(p.id).then(setHistorico);
   }, [p?.id]);
@@ -289,20 +321,25 @@ export function ProcessoDetalheScreen() {
           ) : (
             <View style={{ marginTop: 16, gap: 14 }}>
               {anotacoes.map((a) => (
-                <View key={a.id} style={{ flexDirection: 'row', gap: 10 }}>
+                <Pressable key={a.id} onLongPress={() => setAnotMenu(a)} delayLongPress={300} style={{ flexDirection: 'row', gap: 10 }}>
                   <Avatar name={a.usuario} size={32} />
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Text style={{ fontFamily: fonts.semibold, fontSize: 12.5, color: colors.text }}>{a.usuario}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ fontFamily: fonts.semibold, fontSize: 12.5, color: colors.text, flex: 1 }} numberOfLines={1}>
+                        {a.usuario}
+                      </Text>
                       <Text style={{ fontFamily: fonts.regular, fontSize: 10.5, color: colors.muted }}>
                         {new Date(a.dt).toLocaleString('pt-BR')}
                       </Text>
+                      <Pressable onPress={() => setAnotMenu(a)} hitSlop={10} style={{ padding: 2 }}>
+                        <Feather name="more-vertical" size={16} color={colors.muted} />
+                      </Pressable>
                     </View>
                     <Text style={{ fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 3, lineHeight: 18 }}>
                       {a.texto}
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               ))}
             </View>
           )}
@@ -411,6 +448,63 @@ export function ProcessoDetalheScreen() {
           </Text>
         )}
       </SheetModal>
+
+      {/* Menu de ação da anotação */}
+      <SheetModal visible={!!anotMenu} onClose={() => setAnotMenu(null)} title="Anotação">
+        <Pressable
+          onPress={() => {
+            const a = anotMenu;
+            setAnotMenu(null);
+            if (a) { setAnotEditText(a.texto); setAnotEdit(a); }
+          }}
+          style={[styles.menuRow, { borderBottomColor: colors.divider }]}
+        >
+          <Feather name="edit-2" size={17} color={colors.text} />
+          <Text style={{ fontFamily: fonts.medium, fontSize: 14.5, color: colors.text }}>Editar anotação</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => { const a = anotMenu; setAnotMenu(null); if (a) setAnotDel(a); }}
+          style={[styles.menuRow, { borderBottomWidth: 0 }]}
+        >
+          <Feather name="trash-2" size={17} color={colors.danger} />
+          <Text style={{ fontFamily: fonts.medium, fontSize: 14.5, color: colors.danger }}>Excluir anotação</Text>
+        </Pressable>
+      </SheetModal>
+
+      {/* Edição da anotação */}
+      <SheetModal visible={!!anotEdit} onClose={() => setAnotEdit(null)} title="Editar anotação">
+        <TextInput
+          value={anotEditText}
+          onChangeText={setAnotEditText}
+          placeholder="Texto da anotação…"
+          placeholderTextColor={colors.mutedLight}
+          multiline
+          autoFocus
+          style={[
+            styles.anotInput,
+            {
+              backgroundColor: colors.card === '#ffffff' ? '#f5f7fb' : colors.input,
+              borderColor: colors.inputBorder,
+              color: colors.text,
+              minHeight: 90,
+              marginBottom: 12,
+            },
+          ]}
+        />
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 6 }}>
+          <SecondaryButton label="Cancelar" onPress={() => setAnotEdit(null)} style={{ flex: 1 }} />
+          <PrimaryButton label="Salvar" onPress={salvarEdicaoAnotacao} style={{ flex: 1.4 }} />
+        </View>
+      </SheetModal>
+
+      <ConfirmSheet
+        visible={!!anotDel}
+        onClose={() => setAnotDel(null)}
+        title="Excluir anotação"
+        message="Esta anotação será removida permanentemente do processo."
+        confirmLabel="Excluir"
+        onConfirm={excluirAnotacao}
+      />
     </View>
   );
 }
