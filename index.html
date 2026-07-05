@@ -17,7 +17,7 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=20260702-anotacoes-crud">
+        <link rel="stylesheet" href="style.css?v=20260705-atas">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -99,6 +99,7 @@
                     <li><a href="#" class="tab" data-tab="proc" data-tooltip="Processos"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><span class="nav-label">Processos</span></a></li>
                     <li><a href="#" class="tab" data-tab="cal" data-tooltip="Calendário"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="nav-label">Calendário</span></a></li>
                     <li><a href="#" class="tab" data-tab="docs" data-tooltip="Documentos"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="nav-label">Documentos</span></a></li>
+                    <li><a href="#" class="tab" data-tab="atas" data-tooltip="Atas"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><polyline points="14 4 14 9 19 9"/><line x1="8" y1="13" x2="15" y2="13"/><line x1="8" y1="17" x2="15" y2="17"/></svg><span class="nav-label">Atas</span></a></li>
                     <li><a href="#" class="tab" data-tab="leis" data-tooltip="Banco de Leis"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="nav-label">Leis</span></a></li>
                     <li><a href="#" class="tab" data-tab="cfg" data-tooltip="Configurações"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8L7 17M17 7l2.8-2.8"/></svg><span class="nav-label">Configurações</span></a></li>
                 </ul>
@@ -365,6 +366,33 @@
                     </div>
                   </div>
                 </section>
+
+                <section id="secAtas" style="display:none">
+                  <h2>Atas das Sessões</h2>
+                  <div class="card ata-card">
+                    <p class="ata-intro">Envie o <strong>Word (.docx)</strong> cru da sessão (o arquivo da empresa terceirizada). O sistema monta a <strong>ata institucional</strong> e você gera o <strong>PDF oficial</strong> para imprimir e assinar &mdash; no diálogo de impressão, escolha <strong>&ldquo;Salvar como PDF&rdquo;</strong>.</p>
+                    <div class="ata-actions">
+                      <input type="file" id="ataFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="sr-only">
+                      <label for="ataFile" class="btn primary">Enviar Word da sessão</label>
+                      <button id="ataExemplo" class="btn secondary" type="button">Ver exemplo (16/06)</button>
+                      <span id="ataFileName" class="ata-filename"></span>
+                    </div>
+                  </div>
+
+                  <div id="ataAvisos" class="ata-avisos" style="display:none"></div>
+
+                  <div id="ataToolbar" class="toolbar ata-toolbar" style="display:none">
+                    <button id="ataImprimir" class="btn primary">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      Imprimir / Salvar PDF
+                    </button>
+                    <button id="ataLimpar" class="btn secondary" type="button">Limpar</button>
+                  </div>
+
+                  <div id="ataPreviewWrap" class="ata-preview-wrap" style="display:none">
+                    <iframe id="ataPreview" class="ata-preview" title="Pré-visualização da ata"></iframe>
+                  </div>
+                </section>
             </main>
         </div>
         </div>
@@ -590,7 +618,9 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/app.js?v=20260702-badge-tabela"></script>
+    <script src="js/ata/ata-parser.js?v=20260705-atas"></script>
+    <script src="js/ata/ata-ui.js?v=20260705-atas"></script>
+    <script src="js/app.js?v=20260705-atas"></script>
 
 </body>
 </html>
