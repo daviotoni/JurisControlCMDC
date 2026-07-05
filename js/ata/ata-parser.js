@@ -84,6 +84,40 @@
     return ['', norm(rest)];
   }
 
+  // Quebra a fala de um orador em segmentos, reconhecendo apartes e retomadas:
+  //   "Vereador NOME (Apelido) aparteia: ..."  -> segmento de aparte
+  //   "Orador(a) retoma a palavra: ..."         -> segmento de retomada
+  // Sem esses marcadores, devolve a fala inteira como um único segmento.
+  function parseSegmentos(fala) {
+    fala = String(fala || '');
+    var marks = [], m;
+    var apRe = /Vereador[a]?\s+([A-ZÀ-Ú][^:(.?!]{1,59}?)\s*\(([^)]+)\)\s*aparteia:\s*/g;
+    while ((m = apRe.exec(fala))) {
+      marks.push({ kind: 'aparte', nome: norm(m[1]), apelido: norm(m[2]),
+        start: m.index, end: m.index + m[0].length });
+    }
+    var reRe = /[Oo]rador[a]?\s+retoma a palavra:\s*/g;
+    while ((m = reRe.exec(fala))) {
+      marks.push({ kind: 'retoma', start: m.index, end: m.index + m[0].length });
+    }
+    if (!marks.length) return [{ tipo: 'fala', texto: norm(fala) }];
+    marks.sort(function (a, b) { return a.start - b.start; });
+
+    var segs = [];
+    var head = norm(fala.slice(0, marks[0].start));
+    if (head) segs.push({ tipo: 'fala', texto: head });
+    for (var i = 0; i < marks.length; i++) {
+      var mk = marks[i];
+      var txt = norm(fala.slice(mk.end, i + 1 < marks.length ? marks[i + 1].start : fala.length));
+      if (mk.kind === 'aparte') {
+        segs.push({ tipo: 'aparte', nome: mk.nome, apelido: mk.apelido, texto: txt });
+      } else if (txt) {
+        segs.push({ tipo: 'retoma', texto: txt });
+      }
+    }
+    return segs.length ? segs : [{ tipo: 'fala', texto: norm(fala) }];
+  }
+
   function classify(a) {
     if (a.indexOf('Mensagem') === 0) return 'VETO';
     if (a.indexOf('Projeto de Lei') === 0) return 'PL';
@@ -213,7 +247,7 @@
     // O nome do orador é curto: limitá-lo (2..60 caracteres, sem "(" nem ":")
     // impede que a regex "engula" o discurso inteiro quando o próprio orador
     // menciona "Vereador(a)" no meio da fala.
-    var speaker = /Vereador[a]?\s+([A-ZÀ-Ú][^:(]{1,59}?)\s*\(([^)]+)\):\s*/g;
+    var speaker = /Vereador[a]?\s+([A-ZÀ-Ú][^:(.?!]{1,59}?)\s*\(([^)]+)\):\s*/g;
     var marks = [], mk;
     while ((mk = speaker.exec(trib))) {
       marks.push({ nome: mk[1], apelido: mk[2], head: mk[0], start: mk.index, end: mk.index + mk[0].length });
@@ -227,7 +261,7 @@
       var antes = trib.slice(Math.max(0, marks[i].start - 45), marks[i].start);
       var papel = /Líder de Governo/.test(antes) ? 'Líder de Governo' : 'Por ordem de inscrição';
       tribuna.push({ n: i + 1, nome: norm(marks[i].nome), apelido: norm(marks[i].apelido),
-        papel: papel, segmentos: [{ tipo: 'fala', texto: norm(fala) }] });
+        papel: papel, segmentos: parseSegmentos(fala) });
     }
     data.tribuna = tribuna;
 
