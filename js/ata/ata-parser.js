@@ -54,7 +54,8 @@
   // "Nome (Apelido), Nome (Apelido) e Nome (Apelido)" -> [{nome, apelido}]
   function splitPeople(segment) {
     var out = [];
-    var re = /([A-ZÀ-Ú][^(,]+?)\s*\(([^)]+)\)/g, m;
+    // tolera vírgula solta antes do parêntese ("Nome Sobrenome, (Apelido)")
+    var re = /([A-ZÀ-Ú][^(,]+?)\s*,?\s*\(([^)]+)\)/g, m;
     while ((m = re.exec(segment))) {
       out.push({ nome: cleanNome(m[1]), apelido: norm(m[2]) });
     }
@@ -116,6 +117,66 @@
       }
     }
     return segs.length ? segs : [{ tipo: 'fala', texto: norm(fala) }];
+  }
+
+  // "Mensagem nº 16/GP/2026, encaminhando Projeto de Lei nº 14/2026" -> "Mensagem nº 16/GP/2026 (PL 14/2026)"
+  function cleanMateria(s) {
+    s = norm(s);
+    var enc = s.match(/(Mensagem n[ºo]\.?\s*[\dGP\/]+)[\s\S]*?Projeto de Lei n[ºo]\.?\s*([\d\/]+)/);
+    if (enc) return norm(enc[1]) + ' (PL ' + enc[2] + ')';
+    return s;
+  }
+
+  // Normaliza o desfecho da votação para uma frase curta.
+  function cleanDesfecho(s) {
+    s = norm(s);
+    var mv = s.match(/(Aprovad[ao]s?|Rejeitad[ao]s?)\s+por\s+(\d+)\s+votos?\s+a favor e\s+(\d+)\s+contr/i);
+    if (mv) return mv[1] + ' — ' + mv[2] + ' a favor, ' + mv[3] + ' contra';
+    var mu = s.match(/(Aprovad[ao]s?|Rejeitad[ao]s?)\s+por unanimidade/i);
+    if (mu) return norm(mu[0]);
+    var mm = s.match(/(Aprovad[ao]s?|Rejeitad[ao]s?)/i);
+    return mm ? mm[1] : s;
+  }
+
+  // Fase de discussão/votação da Ordem do Dia: cada matéria "..., em Discussão
+  // [e Votação]." abre um bloco com falas ("... discute a matéria: ...") e um
+  // desfecho ("Aprovado por unanimidade" / "por N votos a favor e M contrários").
+  function parseODDebates(od) {
+    var debates = [], votacoes = [];
+    var vi = od.search(/Feita a leitura[^.]*\./);
+    var seg = vi >= 0 ? od.slice(vi) : od;
+    var ef = seg.search(/EXPEDIENTE FINAL/i);
+    if (ef >= 0) seg = seg.slice(0, ef);
+
+    var matRe = /((?:Mensagem|Projeto de Lei|Projeto de Decreto Legislativo|Projeto de Resolu[çc][ãa]o)\s+n[ºo]\.?\s*\d+\/(?:GP\/)?\d+(?:\s*,?\s*encaminhando(?:\s+o)?\s+Projeto de Lei\s+n[ºo]\.?\s*[\d\/]+)?)\s*,?\s*em Discuss[ãa]o(?:\s+e Vota[çc][ãa]o)?/g;
+    var hits = [], m;
+    while ((m = matRe.exec(seg))) hits.push({ label: m[1], start: m.index, end: m.index + m[0].length });
+
+    for (var i = 0; i < hits.length; i++) {
+      var block = seg.slice(hits[i].end, i + 1 < hits.length ? hits[i + 1].start : seg.length);
+      var materia = cleanMateria(hits[i].label);
+      // Marcadores de fala ("... discute a matéria:") — fatiar entre eles é mais
+      // robusto que lookahead (um discurso pode citar "Vereador" à vontade).
+      var falas = [];
+      var fRe = /Vereador[a]?\s*,?\s*(L[íi]der de Governo\s*,?\s*)?([A-ZÀ-Ú][^:(.?!]{1,59}?)\s*\(([^)]+)\)\s*discute a mat[ée]ria:\s*/g;
+      var fmarks = [], f;
+      while ((f = fRe.exec(block))) {
+        fmarks.push({ lider: !!f[1], nome: norm(f[2]), apelido: norm(f[3]),
+          start: f.index, end: f.index + f[0].length });
+      }
+      for (var j = 0; j < fmarks.length; j++) {
+        var ftxt = block.slice(fmarks[j].end, j + 1 < fmarks.length ? fmarks[j + 1].start : block.length);
+        var cut = firstIndexOf(ftxt, ['Não havendo', 'O Presidente submete', 'O Presidente acata'], 0);
+        if (cut >= 0) ftxt = ftxt.slice(0, cut);
+        falas.push({ nome: fmarks[j].nome, apelido: fmarks[j].apelido,
+          papel: fmarks[j].lider ? 'Líder de Governo' : '', texto: norm(ftxt) });
+      }
+      var des = block.match(/(Aprovad[ao]s?|Rejeitad[ao]s?)(?:\s+por unanimidade|\s+por\s+\d+\s+votos?\s+a favor e\s+\d+\s+contr[áa]rios?)?/i);
+      var desfecho = des ? cleanDesfecho(des[0]) : '';
+      if (falas.length) debates.push({ materia: materia, falas: falas, desfecho: desfecho });
+      votacoes.push({ materia: materia, tipo: 'Discussão e Votação', resultado: desfecho || '—' });
+    }
+    return { debates: debates, votacoes: votacoes };
   }
 
   function classify(a) {
@@ -180,7 +241,14 @@
   function parse(paras) {
     paras = (paras || []).map(function (p) { return String(p); });
     var header = paras.slice(0, 9);
-    var body = paras.length > 2 ? norm(paras[2]) : norm(paras.join(' '));
+    // O corpo costuma estar em paras[2], mas a discussão/votação da Ordem do Dia
+    // pode transbordar para parágrafos seguintes. Junta de paras[2] até o bloco
+    // de assinatura — detectado pela primeira linha isolada "(Apelido)".
+    var sigStart = paras.length;
+    for (var bi = 3; bi < paras.length - 1; bi++) {
+      if (/^\(.+\)$/.test(paras[bi + 1].trim()) && paras[bi].trim().length < 60) { sigStart = bi; break; }
+    }
+    var body = paras.length > 2 ? norm(paras.slice(2, sigStart).join(' ')) : norm(paras.join(' '));
     var warn = [];
     var data = {};
 
@@ -274,56 +342,26 @@
     m = od.match(/Registrou-se um total de\s+(\d+)\s+Vereadores presentes[^:]*:([\s\S]+?)(?:A Secretári|O Secretári)/);
     data.quorum = m ? splitPeople(m[2]) : [];
 
-    // grupos de leitura da OD
-    var grupos = [];
-    var g1 = od.match(/\(Discussão Única\):([\s\S]+?)Feita a leitura/);
-    if (g1) grupos.push({ titulo: 'Vetos', subtitulo: 'Discussão Única', items: itemsFrom(g1[1], true) });
-    var g2 = od.match(/\(1ª Discussão dos Pareceres\):([\s\S]+?)Feita a leitura/);
-    if (g2) grupos.push({ titulo: 'Pareceres', subtitulo: '1ª Discussão', items: itemsFrom(g2[1], false) });
-    data.odGrupos = grupos;
+    // leitura da Ordem do Dia -> itens (matérias lidas)
+    var lei = od.match(/leitura da Ordem do Dia:?([\s\S]+?)Feita a leitura/);
+    data.odItems = lei ? itemsFrom(lei[1], false) : [];
+    data.odGrupos = [];
 
-    // debates ("... discute a matéria: ..." / "O Presidente retoma a palavra ...: ...")
-    var debates = [];
-    var debRe = /(?:Mensagem|Projeto)[^.]*?, em Discussão\.\s*([\s\S]+?)Não havendo mais quem queira discutir,\s*([\s\S]+?)(?:Aprovad[ao][\s\S]*?\.)/g;
-    var dm;
-    while ((dm = debRe.exec(od))) {
-      var bloco = dm[1];
-      var falas = [];
-      var falaRe = /Vereador[a]?\s+([A-ZÀ-Ú][^:(]+?)(?:\s*\(([^)]+)\))?(?:,\s*(Líder de Governo))?\s*discute a matéria:\s*([\s\S]+?)(?=Vereador[a]?\s+[A-ZÀ-Ú][^:(]+?(?:\s*\([^)]+\))?(?:,\s*Líder de Governo)?\s*discute a matéria:|O Presidente retoma|$)/g;
-      var f;
-      while ((f = falaRe.exec(bloco))) {
-        falas.push({ nome: norm(f[1]), apelido: norm(f[2] || ''), papel: f[3] || '', texto: norm(f[4]) });
-      }
-      var presM = bloco.match(/O Presidente retoma a palavra[^:]*:\s*([\s\S]+)/);
-      if (presM) {
-        falas.push({ nome: data.meta.presidente.nome || '', apelido: data.meta.presidente.apelido || '',
-          papel: 'Presidente — resumo', texto: norm(presM[1]) });
-      }
-      var full = dm[0];
-      var cut = full.indexOf(', em Discussão');
-      var materia = norm(cut >= 0 ? full.slice(0, cut) : full);
-      debates.push({ materia: materia, falas: falas, desfecho: '' });
-    }
-    data.debates = debates;
+    // rótulo da OD (ex.: "Primeira Discussão dos Pareceres")
+    var odLabel = od.match(/\(([^)]*Discuss[ãa]o[^)]*)\)/);
+    if (odLabel) data.meta.odResumo = norm(odLabel[1]);
 
-    // votações (resumo) — trechos específicos da sessão de 16/06 (conferir/ajustar)
-    var votacoes = [];
-    var v14 = od.match(/Mensagem nº 014\/GP\/2026[\s\S]*?Aprovada por (\d+) votos favoráveis e (\d+) contra[^.]*?do Vereador ([^.]+)\./);
-    var vre = /Mensagem nº (\d+\/GP\/\d+), encaminhando Projeto de Lei nº ([\d\/]+),[\s\S]*?(Aprovad[ao][^.]*)\./g;
-    var vm;
-    while ((vm = vre.exec(od))) {
-      var res = norm(vm[3]);
-      if (vm[1] === '014/GP/2026' && v14) {
-        res = 'Aprovada — ' + v14[1] + ' a ' + v14[2] + ' (contra: Ver. ' + norm(v14[3]) + ')';
-      }
-      votacoes.push({ materia: 'Veto — Msg ' + vm[1] + ' (PL ' + vm[2] + ')',
-        tipo: 'Discussão Única', resultado: res });
+    // debates e votações da fase de discussão/votação
+    var dv = parseODDebates(od);
+    data.debates = dv.debates;
+    data.votacoes = dv.votacoes;
+
+    // Segunda Discussão e Votação Extraordinária (quando houver)
+    var seg2 = od.match(/Segunda Discuss[ãa]o e Vota[çc][ãa]o Extraordin[áa]ria\.?\s*(Aprovad[ao]s?[^.]*\.?)/i);
+    if (seg2) {
+      data.votacoes.push({ materia: 'Matérias em bloco', tipo: '2ª Discussão (Extraordinária)',
+        resultado: cleanDesfecho(seg2[1]) });
     }
-    if (/Segunda Discussão e Votação Extraordinária/.test(od)) {
-      votacoes.push({ materia: 'Pareceres (PL 13, PL 126, PDL 307–321, PR 024–025)',
-        tipo: '1ª e 2ª Discussão (Extraordinária)', resultado: 'Aprovados por unanimidade' });
-    }
-    data.votacoes = votacoes;
 
     // avisos de conferida (além do redator)
     if (!pres.nome) warn.push('Não identifiquei a Presidência/Secretaria no preâmbulo — CONFERIR.');
