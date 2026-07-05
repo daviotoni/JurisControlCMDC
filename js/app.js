@@ -859,8 +859,8 @@ document.addEventListener('DOMContentLoaded', () => {
       drawPareceres(true);
   };
 
-  const sections={dashboard: $('#secDashboard'), proc:$('#secProc'), cal:$('#secCal'), docs:$('#secDoc'), atas:$('#secAtas'), leis: $('#secLeis'), cfg:$('#secCfg')};
-  const tabTitles = { dashboard: 'Dashboard', proc: 'Processos', cal: 'Calendário', docs: 'Documentos', atas: 'Atas', leis: 'Banco de Leis', cfg: 'Configurações' };
+  const sections={dashboard: $('#secDashboard'), proc:$('#secProc'), cal:$('#secCal'), docs:$('#secDoc'), leis: $('#secLeis'), cfg:$('#secCfg')};
+  const tabTitles = { dashboard: 'Dashboard', proc: 'Processos', cal: 'Calendário', docs: 'Documentos', leis: 'Banco de Leis', cfg: 'Configurações' };
 
   const mobileMenuToggle = $('#mobile-menu-toggle');
   const sidebar = $('#sidebar');
@@ -900,7 +900,6 @@ document.addEventListener('DOMContentLoaded', () => {
         drawPareceres(true);
         renderModelos(true);
     }
-    if(key==='atas') { if(window.AtaUI) window.AtaUI.onShow(); }
     if(key==='leis') renderLeis();
     if(key==='cfg') { renderUsers(); renderEmissores(); }
   }
