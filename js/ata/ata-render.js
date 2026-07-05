@@ -152,6 +152,14 @@
 
     var html = '';
 
+    // Numeração de seções dinâmica: só numera as seções que realmente saem
+    // (uma sessão sem Ordem do Dia não deixa buraco no "01, 02, 04").
+    var _sec = 0;
+    function nextSec() { _sec++; return _sec < 10 ? '0' + _sec : String(_sec); }
+    var hasOD = (D.quorum && D.quorum.length) || (D.odGrupos && D.odGrupos.length) ||
+      (D.odItems && D.odItems.length) || (D.debates && D.debates.length) ||
+      (D.votacoes && D.votacoes.length) || !!D.discussao;
+
     /* HEADER / FOOTER */
     html +=
       '<div slot="header" style="display: flex; align-items: center; justify-content: space-between; border-bottom: 0.6pt solid #17160f; padding-bottom: 5px; font-family: \'Spline Sans Mono\', monospace; font-size: 7pt; letter-spacing: 0.06em; text-transform: uppercase; color: #45443b;">' +
@@ -203,7 +211,7 @@
             fichaRow('SECRETARIA(O)', '<strong style="font-weight: 600;">' + esc(sec.nome) + '</strong> <span style="color: #6a695e;">(' + esc(sec.apelido) + ')' + (secEmEx ? ' — em exercício' : '') + '</span>') +
             fichaRow('Data', dpe) +
             fichaRow('Redação', esc(red.nome) + ' <span style="color: #6a695e;">— Matrícula ' + esc(red.matricula) + '</span>') +
-            fichaRow('Presença', '<strong style="font-weight: 600;">' + D.chamada.length + '</strong> Vereadores à chamada regimental &nbsp;·&nbsp; <strong style="font-weight: 600;">' + D.quorum.length + '</strong> na verificação da Ordem do Dia', true) +
+            fichaRow('Presença', '<strong style="font-weight: 600;">' + D.chamada.length + '</strong> Vereadores à chamada regimental' + (D.quorum.length ? ' &nbsp;·&nbsp; <strong style="font-weight: 600;">' + D.quorum.length + '</strong> na verificação da Ordem do Dia' : ''), true) +
           '</dl>' +
         '</section>';
     }
@@ -214,8 +222,8 @@
     html += '<p class="ata-just" style="margin: 14px 0 0;">Havendo número legal, o Senhor Presidente declara aberta a sessão:</p>' +
       '<blockquote style="margin: 10px 0 0; padding: 12px 18px; border-left: 2.4pt solid #17160f; background: #efede2; font-family: \'Source Serif 4\', serif; font-style: italic; font-size: 11.5pt; line-height: 1.4;">“Sob a proteção de Deus, iniciamos os nossos trabalhos. Está aberta a sessão.”</blockquote>';
 
-    /* 01 EXPEDIENTE */
-    html += sectionBand('01', 'Expediente Inicial', totalMaterias + ' matérias lidas');
+    /* EXPEDIENTE */
+    html += sectionBand(nextSec(), 'Expediente Inicial', totalMaterias + ' matérias lidas');
     html += '<p class="ata-just" style="margin: 12px 0 0;">Em seguida, o Presidente solicita ' + secObjExp + ' que faça a leitura do Expediente — <em>' + esc(meta.legislatura || '') + ', ' + esc(meta.reuniao) + ' de ' + esc(meta.dataExtenso) + '</em>.</p>';
 
     if (D.vetos.length) {
@@ -247,7 +255,7 @@
 
     /* 02 TRIBUNA */
     if (D.tribuna.length) {
-      html += sectionBand('02', 'Tribuna', D.tribuna.length + ' oradores' + (nApartes ? ' · ' + nApartes + ' apartes' : ''));
+      html += sectionBand(nextSec(), 'Tribuna', D.tribuna.length + ' oradores' + (nApartes ? ' · ' + nApartes + ' apartes' : ''));
       html += '<p class="ata-just" style="margin: 12px 0 0;">Terminada a leitura do Expediente, o Presidente abriu, durante um minuto, inscrições para o uso da palavra e, em seguida, franqueou a Tribuna aos oradores inscritos, admitidos os apartes na forma regimental.</p>';
 
       if (nApartes) {
@@ -297,25 +305,29 @@
       });
     }
 
-    /* 03 ORDEM DO DIA */
-    html += sectionBand('03', 'Ordem do Dia', meta.odResumo || 'Primeira Discussão dos Pareceres');
-    html += '<p class="ata-just" style="margin: 12px 0 0;">Não havendo mais oradores inscritos, o Presidente solicitou ' + secObjExp + ' a verificação de quórum. Registrou-se um total de <strong style="font-weight: 600;">' + D.quorum.length + ' Vereadores</strong> presentes, número em conformidade ao quantitativo regimental:</p>';
-    html += '<div style="margin-top: 10px;">' + rosterGrid(D.quorum, 32, '8.4pt', '7pt') + '</div>';
+    /* ORDEM DO DIA (só quando a sessão tem OD: quórum, grupos, itens ou debates) */
+    if (hasOD) {
+      html += sectionBand(nextSec(), 'Ordem do Dia', meta.odResumo || 'Primeira Discussão dos Pareceres');
+      if (D.quorum.length) {
+        html += '<p class="ata-just" style="margin: 12px 0 0;">Não havendo mais oradores inscritos, o Presidente solicitou ' + secObjExp + ' a verificação de quórum. Registrou-se um total de <strong style="font-weight: 600;">' + D.quorum.length + ' Vereadores</strong> presentes, número em conformidade ao quantitativo regimental:</p>';
+        html += '<div style="margin-top: 10px;">' + rosterGrid(D.quorum, 32, '8.4pt', '7pt') + '</div>';
+      }
 
-    if (D.odGrupos && D.odGrupos.length) {
-      // Ordem do Dia em grupos (ex.: Vetos — Discussão Única; Pareceres — 1ª Discussão)
-      html += '<p class="ata-just" style="margin: 14px 0 0;">Em seguida, procedeu-se à leitura das matérias da Ordem do Dia:</p>';
-      D.odGrupos.forEach(function (g) {
-        html += subHead(g.titulo, g.subtitulo || (g.items || []).length);
-        (g.items || []).forEach(function (o) {
+      if (D.odGrupos && D.odGrupos.length) {
+        // Ordem do Dia em grupos (ex.: Vetos — Discussão Única; Pareceres — 1ª Discussão)
+        html += '<p class="ata-just" style="margin: 14px 0 0;">Em seguida, procedeu-se à leitura das matérias da Ordem do Dia:</p>';
+        D.odGrupos.forEach(function (g) {
+          html += subHead(g.titulo, g.subtitulo || (g.items || []).length);
+          (g.items || []).forEach(function (o) {
+            html += chipRow(o.tag, o.num, esc(o.label), autorCorpo(o.autor, o.corpo));
+          });
+        });
+      } else if (D.odItems.length) {
+        html += '<p class="ata-just" style="margin: 14px 0 0;">' + (secFem ? 'A Secretária' : 'O Secretário' + secExSuf) + ' procedeu à leitura da Ordem do Dia <span style="color: #6a695e;">(Primeira Discussão dos Pareceres)</span>:</p>';
+        D.odItems.forEach(function (o) {
           html += chipRow(o.tag, o.num, esc(o.label), autorCorpo(o.autor, o.corpo));
         });
-      });
-    } else if (D.odItems.length) {
-      html += '<p class="ata-just" style="margin: 14px 0 0;">' + (secFem ? 'A Secretária' : 'O Secretário' + secExSuf) + ' procedeu à leitura da Ordem do Dia <span style="color: #6a695e;">(Primeira Discussão dos Pareceres)</span>:</p>';
-      D.odItems.forEach(function (o) {
-        html += chipRow(o.tag, o.num, esc(o.label), autorCorpo(o.autor, o.corpo));
-      });
+      }
     }
 
     /* DEBATES / DISCUSSÃO DE MATÉRIAS (falas dos vereadores na Ordem do Dia) */
@@ -379,8 +391,8 @@
       html += '</tbody></table></div>';
     }
 
-    /* 04 EXPEDIENTE FINAL */
-    html += sectionBand('04', 'Expediente Final', 'Encerramento e lavratura');
+    /* EXPEDIENTE FINAL */
+    html += sectionBand(nextSec(), 'Expediente Final', 'Encerramento e lavratura');
     html += '<p class="ata-just" style="margin: 12px 0 18px;">Não havendo mais Vereador inscrito, tampouco outros assuntos a tratar, o Presidente deu por encerrada a sessão. Eu,  <strong style="font-weight: 600;">' + esc(red.nome) + '</strong>, Matrícula ' + esc(red.matricula) + ', lavrei a presente ata, que segue assinada pelo Senhor Presidente e ' + secFecho + '.</p>';
 
     /* ASSINATURAS */

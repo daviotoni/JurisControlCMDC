@@ -31,12 +31,32 @@
 
   function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); }
 
+  // Menor índice, a partir de `from`, entre vários marcadores possíveis (ou -1).
+  function firstIndexOf(s, markers, from) {
+    from = from || 0;
+    var best = -1;
+    for (var i = 0; i < markers.length; i++) {
+      var idx = s.indexOf(markers[i], from);
+      if (idx >= 0 && (best < 0 || idx < best)) best = idx;
+    }
+    return best;
+  }
+
+  // Limpa o nome capturado: tira o " e" final (junção de lista) e prefixos que
+  // não são nome (ex.: "Os Vereadores ...", "e o Vereador ..."), comuns quando
+  // um grupo de vereadores registra presença no meio da lista.
+  function cleanNome(s) {
+    s = norm(s).replace(/[ e]+$/, '');
+    s = s.replace(/^(?:e\s+)?[Oo]s?\s+Vereador(?:es|as|a)?\s+/, '');
+    return s.trim();
+  }
+
   // "Nome (Apelido), Nome (Apelido) e Nome (Apelido)" -> [{nome, apelido}]
   function splitPeople(segment) {
     var out = [];
     var re = /([A-ZÀ-Ú][^(,]+?)\s*\(([^)]+)\)/g, m;
     while ((m = re.exec(segment))) {
-      out.push({ nome: norm(m[1]).replace(/[ e]+$/, ''), apelido: norm(m[2]) });
+      out.push({ nome: cleanNome(m[1]), apelido: norm(m[2]) });
     }
     return out;
   }
@@ -183,8 +203,12 @@
       .map(function (r) { return { num: r.num, autor: r.autor, corpo: r.corpo }; });
 
     // ---- tribuna ----
+    // A Tribuna termina onde começa a Ordem do Dia OU o Expediente Final OU o
+    // encerramento — nem toda sessão tem "ORDEM DO DIA" (ex.: só Expediente +
+    // Tribuna). Usa o marcador que aparecer primeiro após o início da Tribuna.
     var sT = body.indexOf('franqueou a Tribuna');
-    var eT = body.indexOf('ORDEM DO DIA');
+    var eT = firstIndexOf(body, ['ORDEM DO DIA', 'EXPEDIENTE FINAL',
+      'Não havendo Vereador inscrito', 'Não havendo mais Vereador'], sT < 0 ? 0 : sT + 1);
     var trib = body.slice(sT < 0 ? 0 : sT, eT < 0 ? body.length : eT);
     var speaker = /Vereador[a]?\s+([A-ZÀ-Ú][^:(]+?)\s*\(([^)]+)\):\s*/g;
     var marks = [], mk;
@@ -202,8 +226,11 @@
     data.tribuna = tribuna;
 
     // ---- ordem do dia ----
+    // Se a sessão não tem Ordem do Dia formal, `od` fica vazio e as seções de
+    // quórum/grupos/debates/votações saem vazias (não inventamos a partir do
+    // Expediente).
     var sOd = body.indexOf('ORDEM DO DIA');
-    var od = body.slice(sOd < 0 ? 0 : sOd);
+    var od = sOd < 0 ? '' : body.slice(sOd);
     m = od.match(/Registrou-se um total de\s+(\d+)\s+Vereadores presentes[^:]*:([\s\S]+?)(?:A Secretári|O Secretári)/);
     data.quorum = m ? splitPeople(m[2]) : [];
 
