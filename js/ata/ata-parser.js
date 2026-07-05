@@ -210,7 +210,10 @@
     var eT = firstIndexOf(body, ['ORDEM DO DIA', 'EXPEDIENTE FINAL',
       'Não havendo Vereador inscrito', 'Não havendo mais Vereador'], sT < 0 ? 0 : sT + 1);
     var trib = body.slice(sT < 0 ? 0 : sT, eT < 0 ? body.length : eT);
-    var speaker = /Vereador[a]?\s+([A-ZÀ-Ú][^:(]+?)\s*\(([^)]+)\):\s*/g;
+    // O nome do orador é curto: limitá-lo (2..60 caracteres, sem "(" nem ":")
+    // impede que a regex "engula" o discurso inteiro quando o próprio orador
+    // menciona "Vereador(a)" no meio da fala.
+    var speaker = /Vereador[a]?\s+([A-ZÀ-Ú][^:(]{1,59}?)\s*\(([^)]+)\):\s*/g;
     var marks = [], mk;
     while ((mk = speaker.exec(trib))) {
       marks.push({ nome: mk[1], apelido: mk[2], head: mk[0], start: mk.index, end: mk.index + mk[0].length });
@@ -218,8 +221,11 @@
     var tribuna = [];
     for (var i = 0; i < marks.length; i++) {
       var fala = trib.slice(marks[i].end, i + 1 < marks.length ? marks[i + 1].start : trib.length);
-      fala = fala.replace(/Por ordem de inscri[çc][ãa]o,?\s*$/, '').trim();
-      var papel = marks[i].head.indexOf('Líder de Governo') >= 0 ? 'Líder de Governo' : 'Por ordem de inscrição';
+      fala = fala.replace(/(?:Por ordem de inscri[çc][ãa]o|Líder de Governo)[,]?\s*$/, '').trim();
+      // O papel ("Por ordem de inscrição" / "Líder de Governo") é anunciado
+      // ANTES do "Vereador ..." — olha a janela imediatamente anterior.
+      var antes = trib.slice(Math.max(0, marks[i].start - 45), marks[i].start);
+      var papel = /Líder de Governo/.test(antes) ? 'Líder de Governo' : 'Por ordem de inscrição';
       tribuna.push({ n: i + 1, nome: norm(marks[i].nome), apelido: norm(marks[i].apelido),
         papel: papel, segmentos: [{ tipo: 'fala', texto: norm(fala) }] });
     }
