@@ -261,14 +261,19 @@
     var hj = header.join(' ');
     m = hj.match(/Realizada no dia ([\s\S]+?)\./);
     var dataExt = m ? norm(m[1]) : '';
-    m = body.match(/Presidência do Vereador ([\s\S]+?)\s*\(([\s\S]+?)\)\s*e secretariando os trabalhos (o|a) Vereador[a]?\s+([\s\S]+?)\s*\(([\s\S]+?)\)\./);
-    var pres = {}, sec = {}, fem = false, emEx = false;
+    // Nomes param no "(" e apelidos no ")": não exige o ponto colado ao
+    // parêntese (o secretário pode vir "(Apelido) em exercício." no meio).
+    m = body.match(/Presidência do Vereador ([^(]+?)\s*\(([^)]+)\)[^(]*?e secretariando os trabalhos (o|a) Vereador[a]?\s+([^(]+?)\s*\(([^)]+)\)/);
+    var pres = {}, sec = {}, fem = false, emEx = false, presEmEx = false;
     if (m) {
       pres = { nome: norm(m[1]), apelido: norm(m[2]) };
       sec = { nome: norm(m[4]), apelido: norm(m[5]) };
       fem = m[3] === 'a';
       var endp = m.index + m[0].length;
       emEx = body.slice(endp, endp + 30).toLowerCase().indexOf('em exercício') >= 0;
+      // Presidente em exercício: "em exercício" antes de "e secretariando".
+      var cutSec = m[0].indexOf('e secretariando');
+      presEmEx = /em exerc[íi]cio/i.test(cutSec >= 0 ? m[0].slice(0, cutSec) : '');
     }
     var dc = '';
     var md = dataExt.match(/(\d{1,2}) de ([A-Za-zÀ-ÿ]+) de (\d{4})/);
@@ -283,6 +288,8 @@
       secretarioCargo: (fem ? 'Secretária' : 'Secretário') + (emEx ? ' em exercício' : ''),
       secretarioArtigo: (fem ? 'a Vereadora' : 'o Vereador'),
       secretarioEmExercicio: emEx,
+      presidenteCargo: 'Presidente' + (presEmEx ? ' em exercício' : ''),
+      presidenteEmExercicio: presEmEx,
       presidente: pres, secretario: sec,
       redator: { nome: 'Davi Otoni da Silva Viana Leite', matricula: '9363696' }
     };

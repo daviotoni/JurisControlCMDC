@@ -15,6 +15,9 @@
 
   var bound = false;
   var lastData = null;
+  // Versão dos assets do iframe (fonts/doc-page/render). BUMP a cada mudança
+  // nesses arquivos para o navegador não servir versão em cache.
+  var ATA_VER = '20260705d';
 
   function $(sel) { return document.querySelector(sel); }
 
@@ -43,13 +46,13 @@
       '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">' +
       '<base href="' + base + '">' +
       '<title>' + title + '</title>' +
-      '<link rel="stylesheet" href="fonts.css">' +
+      '<link rel="stylesheet" href="fonts.css?v=' + ATA_VER + '">' +
       '<style>html,body{margin:0;padding:0}body{background:#d9d7cd}' +
       'doc-page:not(:defined){visibility:hidden}' +
       '.ata-body{font-variant-numeric:oldstyle-nums}' +
       '.ata-just{text-align:justify;text-justify:inter-word;hyphens:auto}</style>' +
-      '<script src="doc-page.js"><\/script>' +
-      '<script src="ata-render.js"><\/script>' +
+      '<script src="doc-page.js?v=' + ATA_VER + '"><\/script>' +
+      '<script src="ata-render.js?v=' + ATA_VER + '"><\/script>' +
       '</head><body>' +
       '<doc-page size="a4" margin="16mm" class="ata-body" ' +
       'style="font-family:\'Source Serif 4\',Georgia,serif;color:#17160f;font-size:10.2pt;line-height:1.5"></doc-page>' +

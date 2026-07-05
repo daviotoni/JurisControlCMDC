@@ -398,7 +398,7 @@
     /* ASSINATURAS */
     html += '<section style="break-inside: avoid; margin-top: 34px;">' +
         '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 56px; margin-top: 24px;">' +
-          sigBlock(pres.nome, pres.apelido, 'Presidente', true) +
+          sigBlock(pres.nome, pres.apelido, meta.presidenteCargo || 'Presidente', true) +
           sigBlock(sec.nome, sec.apelido, secCargo, true) +
         '</div>' +
         '<div style="text-align: center; margin-top: 30px;">' +
