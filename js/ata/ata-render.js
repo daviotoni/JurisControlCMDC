@@ -397,12 +397,13 @@
 
     /* ASSINATURAS */
     html += '<section style="break-inside: avoid; margin-top: 34px;">' +
-        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 56px; margin-top: 46px;">' +
+        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 56px; margin-top: 24px;">' +
           sigBlock(pres.nome, pres.apelido, 'Presidente', true) +
           sigBlock(sec.nome, sec.apelido, secCargo, true) +
         '</div>' +
-        '<div style="text-align: center; margin-top: 34px;">' +
+        '<div style="text-align: center; margin-top: 30px;">' +
           '<div style="display: inline-block; min-width: 300px; text-align: center;">' +
+            '<div style="height: 74px;" aria-hidden="true"></div>' +
             '<div style="border-top: 0.8pt solid #8a8879; padding-top: 8px;">' +
               '<div style="font-family: \'Archivo\', sans-serif; font-weight: 600; font-size: 9pt;">' + esc(red.nome) + '</div>' +
               '<div style="font-family: \'Spline Sans Mono\', monospace; font-size: 7pt; letter-spacing: 0.16em; text-transform: uppercase; color: #6a695e; margin-top: 4px;">Redator · Matrícula ' + esc(red.matricula) + '</div>' +
@@ -416,6 +417,7 @@
 
   function sigBlock(nome, apelido, cargo) {
     return '<div style="text-align: center;">' +
+        '<div style="height: 74px;" aria-hidden="true"></div>' +
         '<div style="border-top: 1pt solid #17160f; padding-top: 8px;">' +
           '<div style="font-family: \'Archivo\', sans-serif; font-weight: 700; font-size: 10pt;">' + esc(nome) + '</div>' +
           '<div style="font-size: 8.4pt; color: #6a695e;">' + esc(apelido) + '</div>' +
