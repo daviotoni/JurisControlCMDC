@@ -11,7 +11,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { DateField, SelectField, SheetModal } from '../components/form';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { ConfirmSheet, DateField, SelectField, SheetModal } from '../components/form';
+import { db } from '../lib/firebase';
 import { NavyHeader } from '../components/NavyHeader';
 import {
   Card,
@@ -25,7 +27,7 @@ import {
 } from '../components/ui';
 import { useData } from '../data/DataContext';
 import { diffDays, fmtBRShort, parseYMD, todayUTC } from '../lib/dates';
-import { Processo, SETORES } from '../lib/types';
+import { HistoricoEntry, Processo, SETORES } from '../lib/types';
 import { RootStackParamList, TabParamList } from '../navigation/types';
 import { useTheme } from '../theme/ThemeContext';
 import { fonts, STATUS, StatusKey, statusByKey } from '../theme/tokens';
@@ -56,7 +58,7 @@ function urgenciaLista(p: Processo): { texto: string | null; cor: 'vencido' | 'a
 
 export function ProcessosScreen() {
   const { colors, isDark } = useTheme();
-  const { processos, emissores, loading, saveProcesso } = useData();
+  const { processos, emissores, loading, saveProcesso, pareceres, deleteRecord, putRecord, userName } = useData();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
 
@@ -65,6 +67,12 @@ export function ProcessosScreen() {
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VAZIOS);
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [moverProc, setMoverProc] = useState<Processo | null>(null);
+
+  // Seleção múltipla (exclusão em massa) — só na visão Lista
+  const [selecaoAtiva, setSelecaoAtiva] = useState(false);
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
 
   // Filtros vindos do Dashboard (KPIs).
   useEffect(() => {
@@ -120,13 +128,104 @@ export function ProcessosScreen() {
     }
   };
 
+  // Seleção múltipla só existe na Lista — desliga ao ir pro Kanban
+  useEffect(() => {
+    if (view === 'kanban' && selecaoAtiva) sairSelecao();
+  }, [view]);
+
+  // Remove da seleção itens que sumiram do filtro atual (ex.: busca/filtro mudou, item excluído)
+  useEffect(() => {
+    setSelecionados((prev) => {
+      if (prev.size === 0) return prev;
+      const validos = new Set(filtrados.map((p) => String(p.id)));
+      let mudou = false;
+      const next = new Set<string>();
+      prev.forEach((id) => { if (validos.has(id)) next.add(id); else mudou = true; });
+      return mudou ? next : prev;
+    });
+  }, [filtrados]);
+
+  const sairSelecao = () => {
+    setSelecaoAtiva(false);
+    setSelecionados(new Set());
+  };
+
+  const toggleSelecao = (id: number | string) => {
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      const k = String(id);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  };
+
+  // "Selecionar todos" opera sobre a lista filtrada atual
+  const idsFiltrados = filtrados.map((p) => String(p.id));
+  const todosSelecionados = idsFiltrados.length > 0 && idsFiltrados.every((id) => selecionados.has(id));
+  const alternarTodos = () => {
+    setSelecionados(todosSelecionados ? new Set() : new Set(idsFiltrados));
+  };
+
+  // Conta quantos dos selecionados têm parecer vinculado (para o aviso da confirmação)
+  const comParecer = useMemo(
+    () =>
+      [...selecionados].filter((id) => pareceres.some((z) => String(z.processoId) === id)).length,
+    [selecionados, pareceres]
+  );
+
+  const excluirSelecionados = async () => {
+    const alvos = processos.filter((p) => selecionados.has(String(p.id)));
+    if (alvos.length === 0) return;
+    setExcluindo(true);
+    let ok = 0;
+    for (const p of alvos) {
+      try {
+        // Exclusão em cascata espelhando o web/detalhe: pareceres + versões vinculados.
+        const meusPareceres = pareceres.filter((z) => String(z.processoId) === String(p.id));
+        for (const pz of meusPareceres) {
+          const versoes = await getDocs(query(collection(db, 'parecerVersoes'), where('parecerId', '==', pz.id)));
+          for (const v of versoes.docs) await deleteRecord('parecerVersoes', v.id);
+          await deleteRecord('pareceres', pz.id);
+        }
+        await deleteRecord('processos', p.id);
+        await putRecord('historico', {
+          id: Date.now() + ok,
+          processoId: String(p.id),
+          processoNum: p.num,
+          acao: 'excluido',
+          usuario: userName,
+          timestamp: new Date().toISOString(),
+          campos: [],
+        } as HistoricoEntry & { id: number });
+        ok++;
+      } catch (e) {
+        console.warn('Erro ao excluir processo em massa:', p.id, e);
+      }
+    }
+    setExcluindo(false);
+    sairSelecao();
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <NavyHeader>
         <View style={styles.titleRow}>
           <Text style={styles.title}>Processos</Text>
-          <View style={styles.countPill}>
-            <Text style={styles.countText}>{processos.length}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {view === 'lista' ? (
+              <Pressable
+                onPress={() => (selecaoAtiva ? sairSelecao() : setSelecaoAtiva(true))}
+                hitSlop={8}
+                style={styles.selectBtn}
+              >
+                <Feather name={selecaoAtiva ? 'x' : 'check-square'} size={14} color="#fff" />
+                <Text style={styles.selectBtnText}>{selecaoAtiva ? 'Cancelar' : 'Selecionar'}</Text>
+              </Pressable>
+            ) : null}
+            <View style={styles.countPill}>
+              <Text style={styles.countText}>{processos.length}</Text>
+            </View>
           </View>
         </View>
         <View style={styles.searchRow}>
@@ -171,11 +270,27 @@ export function ProcessosScreen() {
               urg.cor === 'vencido' ? (isDark ? '#e88b8b' : '#b42323')
               : urg.cor === 'alerta' ? (isDark ? '#e6a24a' : '#b25e09')
               : colors.muted;
+            const marcado = selecionados.has(String(p.id));
             return (
-              <Pressable onPress={() => navigation.navigate('ProcessoDetalhe', { id: p.id })}>
-                <Card style={{ padding: 0, overflow: 'hidden' }}>
-                  <View style={{ flexDirection: 'row' }}>
-                    <View style={{ width: 4, backgroundColor: isDark ? def.colorDark : def.color }} />
+              <Pressable
+                onPress={() =>
+                  selecaoAtiva ? toggleSelecao(p.id) : navigation.navigate('ProcessoDetalhe', { id: p.id })
+                }
+                onLongPress={() => { if (!selecaoAtiva) { setSelecaoAtiva(true); toggleSelecao(p.id); } }}
+                delayLongPress={300}
+              >
+                <Card style={{ padding: 0, overflow: 'hidden', borderWidth: marcado ? 1.5 : 0, borderColor: marcado ? colors.primary : 'transparent' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
+                    {selecaoAtiva ? (
+                      <View style={{ justifyContent: 'center', paddingLeft: 12 }}>
+                        <Feather
+                          name={marcado ? 'check-circle' : 'circle'}
+                          size={21}
+                          color={marcado ? colors.primary : colors.mutedLight}
+                        />
+                      </View>
+                    ) : null}
+                    <View style={{ width: 4, backgroundColor: isDark ? def.colorDark : def.color, marginLeft: selecaoAtiva ? 12 : 0 }} />
                     <View style={{ flex: 1, padding: 13 }}>
                       <View style={styles.cardTop}>
                         <Text style={{ fontFamily: fonts.bold, fontSize: 13, color: colors.primary }}>{p.num}</Text>
@@ -287,7 +402,47 @@ export function ProcessosScreen() {
         </ScrollView>
       )}
 
-      <Fab onPress={() => navigation.navigate('ProcessoForm')} />
+      {!selecaoAtiva ? <Fab onPress={() => navigation.navigate('ProcessoForm')} /> : null}
+
+      {/* Barra de ação da seleção múltipla */}
+      {selecaoAtiva ? (
+        <View style={[styles.bulkBar, { backgroundColor: colors.card, borderTopColor: colors.divider }]}>
+          <Pressable onPress={alternarTodos} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+            <Feather
+              name={todosSelecionados ? 'check-square' : 'square'}
+              size={19}
+              color={todosSelecionados ? colors.primary : colors.muted}
+            />
+            <Text style={{ fontFamily: fonts.semibold, fontSize: 13, color: colors.text }}>Todos</Text>
+          </Pressable>
+          <Text style={{ fontFamily: fonts.bold, fontSize: 13, color: colors.text, flex: 1, textAlign: 'center' }}>
+            {selecionados.size} selecionado(s)
+          </Text>
+          <Pressable
+            onPress={() => setConfirmBulk(true)}
+            disabled={selecionados.size === 0 || excluindo}
+            style={[styles.bulkDelBtn, { opacity: selecionados.size === 0 || excluindo ? 0.4 : 1 }]}
+          >
+            <Feather name="trash-2" size={15} color="#fff" />
+            <Text style={{ fontFamily: fonts.bold, fontSize: 13.5, color: '#fff' }}>Excluir</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <ConfirmSheet
+        visible={confirmBulk}
+        onClose={() => setConfirmBulk(false)}
+        title="Excluir processos"
+        message={
+          `${selecionados.size} processo(s) selecionado(s) serão removidos permanentemente.` +
+          (comParecer > 0
+            ? ` ${comParecer} deles ${comParecer === 1 ? 'tem parecer vinculado, que também será excluído' : 'têm pareceres vinculados, que também serão excluídos'} (com o histórico de versões).`
+            : '') +
+          ' Deseja continuar?'
+        }
+        confirmLabel={`Excluir ${selecionados.size}`}
+        onConfirm={excluirSelecionados}
+      />
 
       {/* Folha de filtros (mesmos filtros do web) */}
       <SheetModal visible={filtrosOpen} onClose={() => setFiltrosOpen(false)} title="Filtros">
@@ -430,4 +585,36 @@ const styles = StyleSheet.create({
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kanbanHead: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 9, paddingHorizontal: 2 },
   kanbanCount: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  selectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,.14)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  selectBtnText: { fontFamily: fonts.semibold, fontSize: 12.5, color: '#fff' },
+  bulkBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 26,
+    borderTopWidth: 1,
+  },
+  bulkDelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: '#b42323',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+  },
 });
