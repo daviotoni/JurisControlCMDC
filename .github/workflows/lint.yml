@@ -1,0 +1,34 @@
+name: Lint
+
+# Roda o ESLint no js/ a cada push e pull request, pegando bugs reais
+# (variável não definida, chave duplicada, código inalcançável, etc.)
+# antes de chegar na produção. Não afeta o site servido.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/**'
+      - 'eslint.config.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/lint.yml'
+  pull_request:
+    paths:
+      - 'js/**'
+      - 'eslint.config.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/lint.yml'
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint

@@ -1,0 +1,13 @@
+{
+  "name": "juriscontrol",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ferramentas de desenvolvimento (lint/CI) do JurisControl. Não afeta o site servido, que é HTML/JS estático.",
+  "scripts": {
+    "lint": "eslint js/"
+  },
+  "devDependencies": {
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0"
+  }
+}
