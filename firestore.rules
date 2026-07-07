@@ -1,9 +1,41 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Exige autenticação Firebase em todas as operações
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // Usuário autenticado no Firebase Auth (login por e-mail/senha do app).
+    function autenticado() {
+      return request.auth != null;
     }
+
+    // Coleções efetivamente usadas pelo JurisControl (web + mobile).
+    // Só estas são acessíveis. NÃO há mais regra curinga (`{document=**}`):
+    // qualquer coleção não listada abaixo é NEGADA por padrão, impedindo que
+    // um cliente autenticado grave em coleções arbitrárias (ex.: exfiltrar
+    // dados ou poluir o banco com coleções inventadas).
+    //
+    // ⚠️ Ao criar uma coleção nova no app, adicione a regra dela aqui —
+    //    senão as leituras/gravações vão falhar em produção.
+    match /processos/{id}      { allow read, write: if autenticado(); }
+    match /pareceres/{id}      { allow read, write: if autenticado(); }
+    match /parecerVersoes/{id} { allow read, write: if autenticado(); }
+    match /documentos/{id}     { allow read, write: if autenticado(); }
+    match /versoes/{id}        { allow read, write: if autenticado(); }
+    match /calendario/{id}     { allow read, write: if autenticado(); }
+    match /emissores/{id}      { allow read, write: if autenticado(); }
+    match /modelos/{id}        { allow read, write: if autenticado(); }
+    match /leis/{id}           { allow read, write: if autenticado(); }
+    match /historico/{id}      { allow read, write: if autenticado(); }
+    match /config/{id}         { allow read, write: if autenticado(); }
+    match /users/{id}          { allow read, write: if autenticado(); }
+
+    // PRÓXIMO PASSO (controle por papel / anti-cadastro público):
+    // Hoje qualquer conta autenticada tem acesso total. Para restringir a
+    // usuários aprovados e distinguir "admin", o caminho recomendado é manter
+    // um doc por UID (ex.: users/{request.auth.uid}) ou usar Custom Claims,
+    // e então trocar `autenticado()` por algo como:
+    //   function aprovado() { return exists(/databases/$(database)/documents/aprovados/$(request.auth.uid)); }
+    //   function admin()    { return get(/databases/$(database)/documents/aprovados/$(request.auth.uid)).data.role == 'admin'; }
+    // Isso exige provisionar esses docs para os usuários atuais (senão eles
+    // perdem o acesso), por isso não está ativado aqui.
   }
 }

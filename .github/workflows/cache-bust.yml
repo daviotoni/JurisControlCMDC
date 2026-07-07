@@ -1,0 +1,56 @@
+name: Cache-busting automático
+
+# Resolve um foot-gun recorrente (ver CLAUDE.md): esquecer de atualizar o
+# `?v=...` das tags de js/app.js e style.css no index.html ao mudá-los, o que
+# faz o navegador servir a versão em cache.
+#
+# A cada push na `main` que toque nesses arquivos, este workflow recalcula o
+# `?v=` como um hash do conteúdo de cada arquivo e, se estiver desatualizado,
+# corrige o index.html e faz commit de volta. O deploy do GitHub Pages (workflow
+# "pages build and deployment") roda normalmente e publica o index.html corrigido.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/app.js'
+      - 'style.css'
+      - 'index.html'
+
+# Não re-dispara para o commit que o próprio workflow gera (marcado com
+# "cache-bust:" na mensagem); o deploy do Pages, por ser outro workflow, roda igual.
+concurrency:
+  group: cache-bust-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cache-bust:
+    if: ${{ !contains(github.event.head_commit.message, 'cache-bust:') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Atualiza ?v= com o hash do conteúdo
+        run: |
+          set -euo pipefail
+          APP_HASH=$(sha256sum js/app.js | cut -c1-10)
+          CSS_HASH=$(sha256sum style.css | cut -c1-10)
+          echo "app.js  -> $APP_HASH"
+          echo "style.css -> $CSS_HASH"
+          sed -i -E "s#(js/app\.js\?v=)[^\"']*#\1${APP_HASH}#g" index.html
+          sed -i -E "s#(style\.css\?v=)[^\"']*#\1${CSS_HASH}#g" index.html
+
+      - name: Commita se o index.html mudou
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- index.html; then
+            echo "Cache-busting já estava correto — nada a fazer."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "cache-bust: atualiza ?v= de app.js/style.css [auto]"
+          git push
