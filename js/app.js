@@ -572,21 +572,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return null;
   }
 
-  // Confirma e exclui um processo, apagando em cascata o parecer vinculado a ele (estruturado
-  // ou Word legado, com todo o histórico de versões) — sem isso o parecer ficava "órfão" no
-  // Firestore pra sempre. Usado pelos dois pontos de exclusão de processo (lista e modal de
-  // edição). Retorna true se o processo foi excluído, false se o usuário cancelou.
-  async function excluirProcessoEmCascata(id, procToDelete) {
+  // Exclui de fato um processo e o parecer vinculado a ele em cascata (estruturado ou Word
+  // legado, com todo o histórico de versões) — sem isso o parecer ficava "órfão" no Firestore
+  // pra sempre. NÃO pede confirmação: quem chama é responsável por confirmar antes. Usado pela
+  // exclusão individual (excluirProcessoEmCascata) e pela exclusão em massa.
+  async function deleteProcessoCascata(id, procToDelete) {
       const parecerInfo = procToDelete ? getParecerInfo(procToDelete) : null;
-      let avisoParecer = '';
-      if (parecerInfo?.tipo === 'estruturado') {
-          avisoParecer = `<br><br>Este processo tem um parecer <strong>${parecerInfo.emitido ? 'emitido' : 'em rascunho'}</strong> vinculado — ele também será excluído, junto com todo o seu histórico de versões.`;
-      } else if (parecerInfo?.tipo === 'legado') {
-          avisoParecer = `<br><br>Este processo tem um parecer (Word) vinculado — ele também será excluído, junto com todo o seu histórico de versões.`;
-      }
-      const msg = `Tem certeza que deseja excluir o processo <strong>${sanitizeHTML(procToDelete?.num || String(id))}</strong>?${avisoParecer}<br><br>Esta ação não pode ser desfeita.`;
-      if (!(await confirmDialog(msg, { title: 'Excluir processo', confirmLabel: 'Excluir' }))) return false;
-
       if (parecerInfo?.tipo === 'estruturado') {
           const pz = parecerInfo.parecer;
           const versoes = getParecerVersoes(pz.id);
@@ -606,6 +597,23 @@ document.addEventListener('DOMContentLoaded', () => {
       await logHistorico(id, procToDelete?.num, 'excluido');
       DB = DB.filter(p => p.id != id);
       await dbHelper.delete('processos', id);
+  }
+
+  // Confirma e exclui um único processo em cascata. Usado pelos dois pontos de exclusão de
+  // processo (lista e modal de edição). Retorna true se o processo foi excluído, false se o
+  // usuário cancelou.
+  async function excluirProcessoEmCascata(id, procToDelete) {
+      const parecerInfo = procToDelete ? getParecerInfo(procToDelete) : null;
+      let avisoParecer = '';
+      if (parecerInfo?.tipo === 'estruturado') {
+          avisoParecer = `<br><br>Este processo tem um parecer <strong>${parecerInfo.emitido ? 'emitido' : 'em rascunho'}</strong> vinculado — ele também será excluído, junto com todo o seu histórico de versões.`;
+      } else if (parecerInfo?.tipo === 'legado') {
+          avisoParecer = `<br><br>Este processo tem um parecer (Word) vinculado — ele também será excluído, junto com todo o seu histórico de versões.`;
+      }
+      const msg = `Tem certeza que deseja excluir o processo <strong>${sanitizeHTML(procToDelete?.num || String(id))}</strong>?${avisoParecer}<br><br>Esta ação não pode ser desfeita.`;
+      if (!(await confirmDialog(msg, { title: 'Excluir processo', confirmLabel: 'Excluir' }))) return false;
+
+      await deleteProcessoCascata(id, procToDelete);
       return true;
   }
 
@@ -1003,6 +1011,13 @@ document.addEventListener('DOMContentLoaded', () => {
     itemsPerPageSel.value = String(CFG.procItemsPerPage || 10);
     let itemsPerPage = Number(itemsPerPageSel.value) || 10;
 
+    // Seleção múltipla (exclusão em massa) — só na visão Lista
+    const bulkBar = $('#bulkBar'), bulkCount = $('#bulkCount'), bulkSelAll = $('#bulkSelAll');
+    const btnSelecionar = $('#btnSelecionar'), btnBulkDelete = $('#btnBulkDelete'), btnBulkCancel = $('#btnBulkCancel');
+    let selectionMode = false;
+    let selectedIds = new Set();
+    let lastFiltered = [];
+
     if (initialFilter) {
         q.value = '';
         if(initialFilter.text) q.value = initialFilter.text;
@@ -1073,6 +1088,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function draw(resetPage = false) {
         if (resetPage) currentPage = 1;
         const L = filterSort();
+        lastFiltered = L;
         tbody.innerHTML = '';
         mobileContainer.innerHTML = '';
 
@@ -1092,11 +1108,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const prazoTitle = vencido ? `title="Prazo vencido"` : alerta ? `title="Prazo próximo do vencimento"` : '';
                 const badgeHtml = p.anotacoes && p.anotacoes.length > 0
                     ? `<span class="anotacoes-badge" data-anot="${p.id}" aria-label="${p.anotacoes.length} anotação(ões)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${p.anotacoes.length}</span>` : '';
+                const selChk = selectionMode
+                    ? `<input type="checkbox" class="sel-chk" data-sel-proc="${p.id}" ${selectedIds.has(String(p.id)) ? 'checked' : ''} title="Selecionar processo">`
+                    : '';
                 const tr = document.createElement('tr');
                 if (urgClass) tr.classList.add(urgClass);
+                if (selectionMode && selectedIds.has(String(p.id))) tr.classList.add('row-selected');
                 tr.innerHTML = `
                     <td>
-                        <div style="font-weight: 700; color: var(--text-primary); display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">${sanitizeHTML(p.num)}${badgeHtml}</div>
+                        <div style="font-weight: 700; color: var(--text-primary); display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">${selChk}${sanitizeHTML(p.num)}${badgeHtml}</div>
                         <div>${sanitizeHTML(p.int)}</div>
                     </td>
                     <td>${sanitizeHTML(p.obj) || '—'}</td>
@@ -1113,10 +1133,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 tbody.appendChild(tr);
 
                 const card = document.createElement('div');
-                card.className = `proc-card ${urgClass}`;
+                card.className = `proc-card ${urgClass}${selectionMode && selectedIds.has(String(p.id)) ? ' row-selected' : ''}`;
                 card.innerHTML = `
                     <div class="proc-card-header">
-                        <span class="num">${sanitizeHTML(p.num)}</span>
+                        <span class="num" style="display:flex;align-items:center;gap:0.5rem;">${selChk}${sanitizeHTML(p.num)}</span>
                         <div style="display:flex;align-items:center;gap:0.5rem;">
                             ${p.anotacoes && p.anotacoes.length > 0 ? `<span class="anotacoes-badge" data-anot="${p.id}" aria-label="${p.anotacoes.length} anotação(ões)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${p.anotacoes.length}</span>` : ''}
                             <span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(sTxt)}</span>
@@ -1140,6 +1160,28 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPage = newPage;
             draw();
         });
+        updateBulkUI();
+    }
+
+    // Mantém a barra de exclusão em massa em sincronia com a seleção atual
+    function updateBulkUI() {
+        // Remove da seleção ids que sumiram (ex.: filtro mudou) — mantém só os visíveis no filtro atual
+        const validIds = new Set(lastFiltered.map(p => String(p.id)));
+        selectedIds.forEach(id => { if (!validIds.has(id)) selectedIds.delete(id); });
+
+        const n = selectedIds.size;
+        bulkCount.textContent = `${n} selecionado(s)`;
+        btnBulkDelete.disabled = n === 0;
+        bulkSelAll.checked = lastFiltered.length > 0 && n === lastFiltered.length;
+        bulkSelAll.indeterminate = n > 0 && n < lastFiltered.length;
+    }
+
+    function setSelectionMode(on) {
+        selectionMode = on;
+        if (!on) selectedIds.clear();
+        bulkBar.style.display = on ? 'flex' : 'none';
+        btnSelecionar.classList.toggle('active', on);
+        draw();
     }
     
     let viewMode = 'lista';
@@ -1283,6 +1325,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function setViewMode(mode) {
         viewMode = mode;
         const isKanban = mode === 'kanban';
+        // Seleção múltipla só existe na Lista — desliga ao ir pro Kanban
+        if (isKanban && selectionMode) setSelectionMode(false);
+        btnSelecionar.style.display = isKanban ? 'none' : '';
         const kc = document.getElementById('kanban-container');
         const tw = document.getElementById('proc-table-wrap');
         if (kc) kc.style.display = isKanban ? 'flex' : 'none';
@@ -1347,6 +1392,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Processo excluído.', 'danger');
             }
         }
+    };
+
+    // Marca/desmarca um processo na seleção múltipla
+    procContainer.addEventListener('change', (e) => {
+        const chk = e.target.closest('[data-sel-proc]');
+        if (!chk) return;
+        const id = String(chk.dataset.selProc);
+        if (chk.checked) selectedIds.add(id); else selectedIds.delete(id);
+        const row = chk.closest('tr, .proc-card');
+        if (row) row.classList.toggle('row-selected', chk.checked);
+        updateBulkUI();
+    });
+
+    btnSelecionar.onclick = () => setSelectionMode(!selectionMode);
+    btnBulkCancel.onclick = () => setSelectionMode(false);
+
+    bulkSelAll.onchange = () => {
+        if (bulkSelAll.checked) lastFiltered.forEach(p => selectedIds.add(String(p.id)));
+        else selectedIds.clear();
+        draw();
+    };
+
+    btnBulkDelete.onclick = async () => {
+        const ids = [...selectedIds];
+        if (ids.length === 0) return;
+        const procs = ids.map(id => DB.find(p => String(p.id) === id)).filter(Boolean);
+        const comParecer = procs.filter(p => { const info = getParecerInfo(p); return info?.tipo === 'estruturado' || info?.tipo === 'legado'; }).length;
+        let avisoParecer = '';
+        if (comParecer === 1) avisoParecer = `<br><br><strong>1</strong> deles tem um parecer vinculado, que também será excluído (com todo o histórico de versões).`;
+        else if (comParecer > 1) avisoParecer = `<br><br><strong>${comParecer}</strong> deles têm pareceres vinculados, que também serão excluídos (com todo o histórico de versões).`;
+        const msg = `Tem certeza que deseja excluir <strong>${procs.length}</strong> processo(s) selecionado(s)?${avisoParecer}<br><br>Esta ação não pode ser desfeita.`;
+        if (!(await confirmDialog(msg, { title: 'Excluir processos', confirmLabel: `Excluir ${procs.length}` }))) return;
+
+        let ok = 0;
+        for (const p of procs) {
+            try { await deleteProcessoCascata(p.id, p); ok++; }
+            catch (err) { console.error('Erro ao excluir processo em massa:', p.id, err); }
+        }
+        setSelectionMode(false);
+        renderDashboard();
+        if (ok === procs.length) showToast(`${ok} processo(s) excluído(s).`, 'danger');
+        else showToast(`${ok} de ${procs.length} excluído(s) — alguns falharam.`, 'danger');
     };
 
     draw(reset);
