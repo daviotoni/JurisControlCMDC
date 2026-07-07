@@ -53,6 +53,13 @@ module.exports = [
     },
   },
   {
+    // utils.js e assets.js definem globais CONSUMIDOS por app.js (outro arquivo).
+    // O ESLint, analisando arquivo a arquivo, não enxerga esse uso — então o
+    // no-unused-vars daria falso-positivo aqui.
+    files: ['js/utils.js', 'js/assets.js'],
+    rules: { 'no-unused-vars': 'off' },
+  },
+  {
     // loginComFirebase/logoutFirebase/observarAuth são declaradas em firebase.js
     // e apenas CONSUMIDAS por app.js — declará-las como global só aqui evita
     // tanto o no-undef (em app.js) quanto o no-redeclare (em firebase.js).
@@ -62,6 +69,19 @@ module.exports = [
         loginComFirebase: 'readonly',
         logoutFirebase: 'readonly',
         observarAuth: 'readonly',
+        // Definidos em js/utils.js (carregado antes do app.js)
+        fmtBR: 'readonly',
+        parse: 'readonly',
+        todayUTC: 'readonly',
+        diffDays: 'readonly',
+        ymd: 'readonly',
+        sanitizeHTML: 'readonly',
+        safeCSSClass: 'readonly',
+        VALID_STATS: 'readonly',
+        VALID_ACAO: 'readonly',
+        VALID_CAT: 'readonly',
+        // Definido em js/assets.js
+        BRASAO_DUQUE_DE_CAXIAS_B64: 'readonly',
       },
     },
   },

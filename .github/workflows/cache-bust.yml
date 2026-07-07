@@ -14,6 +14,8 @@ on:
     branches: [main]
     paths:
       - 'js/app.js'
+      - 'js/utils.js'
+      - 'js/assets.js'
       - 'style.css'
       - 'index.html'
 
@@ -36,10 +38,16 @@ jobs:
         run: |
           set -euo pipefail
           APP_HASH=$(sha256sum js/app.js | cut -c1-10)
+          UTILS_HASH=$(sha256sum js/utils.js | cut -c1-10)
+          ASSETS_HASH=$(sha256sum js/assets.js | cut -c1-10)
           CSS_HASH=$(sha256sum style.css | cut -c1-10)
-          echo "app.js  -> $APP_HASH"
+          echo "app.js    -> $APP_HASH"
+          echo "utils.js  -> $UTILS_HASH"
+          echo "assets.js -> $ASSETS_HASH"
           echo "style.css -> $CSS_HASH"
           sed -i -E "s#(js/app\.js\?v=)[^\"']*#\1${APP_HASH}#g" index.html
+          sed -i -E "s#(js/utils\.js\?v=)[^\"']*#\1${UTILS_HASH}#g" index.html
+          sed -i -E "s#(js/assets\.js\?v=)[^\"']*#\1${ASSETS_HASH}#g" index.html
           sed -i -E "s#(style\.css\?v=)[^\"']*#\1${CSS_HASH}#g" index.html
 
       - name: Commita se o index.html mudou
@@ -52,5 +60,5 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "cache-bust: atualiza ?v= de app.js/style.css [auto]"
+          git commit -m "cache-bust: atualiza ?v= de app.js/utils.js/assets.js/style.css [auto]"
           git push
