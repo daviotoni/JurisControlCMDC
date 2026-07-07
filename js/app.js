@@ -2987,32 +2987,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if(mVersoes) mVersoes.onclick = (e) => { if (e.target.matches('.modal') || e.target.closest('[data-close-versoes]')) { mVersoes.style.display = 'none'; } };
     $('#lista_versoes').onclick = (e) => { const downloadBtn = e.target.closest('[data-download-version]'); if (downloadBtn) { const version = getVersion(Number(downloadBtn.dataset.downloadVersion)); if (version) handleDownload(version.data, version.nomeArquivo); } };
 
-    $('#btnHardReset').onclick = async () => {
-        if (confirm('ATENÇÃO!\n\nEsta ação apagará TODOS os dados do JurisControl neste navegador (processos, usuários, documentos, etc.).\n\nEsta ação é IRREVERSÍVEL.\n\nDeseja continuar?')) {
-            try {
-                if (db) {
-                    db.close();
-                }
-                const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
-                deleteRequest.onsuccess = () => {
-                    showToast('Todos os dados foram apagados. O sistema será reiniciado.', 'danger');
-                    setTimeout(() => location.reload(), 2000);
-                };
-                deleteRequest.onerror = (e) => {
-                    console.error("Erro ao deletar banco de dados:", e.target.error);
-                    showToast('Não foi possível apagar os dados.', 'danger');
-                };
-                deleteRequest.onblocked = () => {
-                     console.warn("Exclusão do banco de dados bloqueada.");
-                    showToast('Feche outras abas do JurisControl e tente novamente.', 'info');
-                };
-            } catch (error) {
-                console.error("Erro no processo de hard reset:", error);
-                showToast('Ocorreu um erro inesperado.', 'danger');
-            }
-        }
-    };
-
     $('#bk_csv').onclick = () => exportCSV(DB);
 
     $('#bk_down').onclick = async () => {
@@ -3066,12 +3040,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error('Arquivo de backup inválido ou corrompido.');
                 }
                 
-                if (db) db.close(); 
-
                 setTimeout(async () => {
                     await dbHelper.init();
 
-                    for (const storeName of STORES) {
+                    // Coleções restauráveis (o Firestore substituiu o IndexedDB;
+                    // 'config' é tratado à parte logo abaixo).
+                    const COLECOES = ['users', 'processos', 'calendario', 'documentos', 'versoes', 'modelos', 'emissores', 'leis', 'pareceres', 'parecerVersoes'];
+                    for (const storeName of COLECOES) {
                          if (backupData[storeName]) {
                             await dbHelper.clear(storeName);
                             for (const item of backupData[storeName]) {
