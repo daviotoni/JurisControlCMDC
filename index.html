@@ -17,7 +17,7 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=20260702-anotacoes-crud">
+        <link rel="stylesheet" href="style.css?v=20260707-bulk-delete">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -206,9 +206,23 @@
                         </button>
                     </div>
                     <div class="actions-group">
+                        <button id="btnSelecionar" class="btn secondary" type="button" title="Selecionar vários processos">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            Selecionar
+                        </button>
                         <button id="exportCsv" class="btn secondary">Exportar CSV</button>
                         <button id="exportXlsx" class="btn secondary">Exportar Excel</button>
                         <button id="add" class="btn primary">Adicionar Processo</button>
+                    </div>
+                  </div>
+                  <div id="bulkBar" class="bulk-bar" style="display:none;">
+                    <label class="bulk-selall">
+                        <input type="checkbox" id="bulkSelAll"> Selecionar todos
+                    </label>
+                    <span id="bulkCount" class="bulk-count">0 selecionado(s)</span>
+                    <div class="bulk-bar-actions">
+                        <button id="btnBulkDelete" class="btn danger" type="button" disabled>Excluir selecionados</button>
+                        <button id="btnBulkCancel" class="btn secondary" type="button">Cancelar</button>
                     </div>
                   </div>
                   <div id="filtrosPanel" class="filtros-panel" style="display:none;">
@@ -590,7 +604,7 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/app.js?v=20260702-badge-tabela"></script>
+    <script src="js/app.js?v=20260707-bulk-delete"></script>
 
 </body>
 </html>
