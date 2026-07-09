@@ -1,6 +1,10 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    // Globais do Jest (describe/it/expect) nos testes de tela em __tests__/.
+    // O TypeScript 6 não inclui os @types automaticamente aqui, então
+    // declaramos explícito.
+    "types": ["jest"]
   }
 }
