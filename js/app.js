@@ -1027,24 +1027,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Lógica pura extraída para js/utils.js (filtrarOrdenarProcessos), testável.
+    // Aqui só coletamos os valores dos controles da UI e delegamos.
     function filterSort() {
-        let L = DB.slice();
-        const t = (q.value || '').toLowerCase().trim();
-        if (t) L = L.filter(p => [p.num, p.int, p.obj, p.setorOrigem, p.dest, p.acao, statusMap[p.stat]].some(v => String(v || '').toLowerCase().includes(t)));
-        if (initialFilter?.status) L = L.filter(p => p.stat === initialFilter.status);
-        if (initialFilter?.prazo === 'alerta') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) <= 5 && diffDays(todayUTC(), parse(p.prazo)) >= 0);
-        if (initialFilter?.prazo === 'vencido') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) < 0);
-        if (initialFilter?.month !== undefined) L = L.filter(p => p.ent && parse(p.ent).getUTCMonth() === initialFilter.month);
-        if (filtroStatus.value) L = L.filter(p => p.stat === filtroStatus.value);
-        if (filtroSetor.value) L = L.filter(p => p.setorOrigem === filtroSetor.value || p.dest === filtroSetor.value);
-        if (filtroTipo.value) L = L.filter(p => p.tipo === filtroTipo.value);
-        if (filtroEmissor.value) L = L.filter(p => String(p.emissorId || '') === filtroEmissor.value);
-        if (filtroEntradaDe.value) { const de = parse(filtroEntradaDe.value); L = L.filter(p => p.ent && parse(p.ent) >= de); }
-        if (filtroEntradaAte.value) { const ate = parse(filtroEntradaAte.value); L = L.filter(p => p.ent && parse(p.ent) <= ate); }
-        if (ord.value === 'prazo') L.sort((a, b) => { const A = parse(a.prazo), B = parse(b.prazo); return (A ? A.getTime() : Infinity) - (B ? B.getTime() : Infinity); });
-        else if (ord.value === 'status') L.sort((a, b) => (a.stat || '').localeCompare(b.stat || ''));
-        else L.sort((a, b) => { const A = parse(a.ent), B = parse(b.ent); return (B ? B.getTime() : 0) - (A ? A.getTime() : 0); });
-        return L;
+        return filtrarOrdenarProcessos(DB, {
+            busca: q.value,
+            initialFilter,
+            status: filtroStatus.value,
+            setor: filtroSetor.value,
+            tipo: filtroTipo.value,
+            emissor: filtroEmissor.value,
+            entradaDe: filtroEntradaDe.value,
+            entradaAte: filtroEntradaAte.value,
+            ordem: ord.value,
+            statusMap,
+        });
     }
 
     function draw(resetPage = false) {

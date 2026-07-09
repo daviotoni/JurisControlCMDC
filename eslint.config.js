@@ -87,6 +87,7 @@ module.exports = [
         getChanges: 'readonly',
         base64ToArrayBuffer: 'readonly',
         getMimeType: 'readonly',
+        filtrarOrdenarProcessos: 'readonly',
         VALID_STATS: 'readonly',
         VALID_ACAO: 'readonly',
         VALID_CAT: 'readonly',
