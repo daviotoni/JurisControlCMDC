@@ -96,8 +96,80 @@ function filtrarOrdenarProcessos(lista, criterios = {}) {
   return L;
 }
 
+// ----- Pareceres e versões -----
+// Lógica pura de derivação de pareceres/versões (os DB_* entram por argumento).
+// Os acessores do app.js (getParecerInfo, getCurrentVersion, etc.) delegam aqui.
+
+// Normaliza um item (parecer estruturado ou documento Word legado) para o
+// formato da lista combinada de pareceres.
+function normalizeParecerParaLista(item, tipo) {
+  if (tipo === 'estruturado') {
+    return {
+      id: `pz-${item.id}`, tipo: 'estruturado',
+      titulo: `Parecer — Processo ${item.processoNum || 's/ nº'}`,
+      status: item.status, dataRef: item.atualizadoEm || item.criadoEm, ref: item,
+    };
+  }
+  return { id: `doc-${item.id}`, tipo: 'legado', titulo: item.nomePrincipal, status: null, dataRef: item.criadoEm, ref: item };
+}
+
+// Junta pareceres legados (docs) + estruturados numa lista ordenada por data
+// (mais recente primeiro).
+function combinarPareceres(docs = [], pareceres = []) {
+  const legado = docs.map(d => normalizeParecerParaLista(d, 'legado'));
+  const estruturados = pareceres.map(pz => normalizeParecerParaLista(pz, 'estruturado'));
+  return [...legado, ...estruturados].sort((a, b) => new Date(b.dataRef) - new Date(a.dataRef));
+}
+
+// Versões de um documento, da mais nova para a mais antiga.
+function versoesDoDocumento(versoes = [], docId) {
+  return versoes.filter(v => v.idDocumento === docId).sort((a, b) => b.versao - a.versao);
+}
+
+// Versão "atual" de um documento (a apontada por doc.idVersaoAtual).
+function versaoAtual(docs = [], versoes = [], docId) {
+  const doc = docs.find(d => d.id === docId);
+  if (!doc) return null;
+  return versoes.find(v => v.id === doc.idVersaoAtual);
+}
+
+// Versões de um parecer estruturado, da mais nova para a mais antiga.
+function versoesDoParecer(parecerVersoes = [], parecerId) {
+  return parecerVersoes.filter(v => String(v.parecerId) === String(parecerId)).sort((a, b) => b.versao - a.versao);
+}
+
+// Decide qual é o parecer de um processo: estruturado > Word legado > nenhum.
+// Devolve dados normalizados (não HTML) ou null. 'legado-orfao' = docId aponta
+// para um documento que não existe mais.
+function inferirParecerInfo(processo, pareceres = [], docs = []) {
+  const estruturado = pareceres.find(pz => String(pz.processoId) === String(processo.id));
+  if (estruturado) {
+    const emitido = estruturado.status === 'emitido';
+    return {
+      tipo: 'estruturado', emitido,
+      label: emitido ? 'Emitido' : 'Rascunho',
+      dataRef: emitido ? estruturado.emitidoEm : (estruturado.atualizadoEm || estruturado.criadoEm),
+      nomeDocumento: `Parecer redigido no sistema (${emitido ? 'Emitido' : 'Rascunho'})`,
+      parecer: estruturado, docLegado: null,
+    };
+  }
+  if (processo.docId) {
+    const docLegado = docs.find(d => d.id === processo.docId);
+    if (docLegado) {
+      return { tipo: 'legado', emitido: null, label: null, dataRef: docLegado.criadoEm, nomeDocumento: docLegado.nomePrincipal, parecer: null, docLegado };
+    }
+    return { tipo: 'legado-orfao', emitido: null, label: null, dataRef: null, nomeDocumento: null, parecer: null, docLegado: null };
+  }
+  return null;
+}
+
 // Exporta para ambientes de teste (Node/Vitest). No navegador `module` não
 // existe, então este bloco é ignorado e NÃO afeta o carregamento via <script>.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS, base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, VALID_STATS, VALID_ACAO, VALID_CAT };
+  module.exports = {
+    fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
+    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos,
+    normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
+    VALID_STATS, VALID_ACAO, VALID_CAT,
+  };
 }

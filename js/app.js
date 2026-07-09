@@ -310,12 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const getDoc = (docId) => DB_DOCS.find(d => d.id === docId);
   const getVersion = (versionId) => DB_VERSOES.find(v => v.id === versionId);
   const getModelo = (modeloId) => DB_MODELOS.find(m => m.id === modeloId);
-  const getVersionsOfDoc = (docId) => DB_VERSOES.filter(v => v.idDocumento === docId).sort((a,b) => b.versao - a.versao);
-  const getCurrentVersion = (docId) => {
-      const doc = getDoc(docId);
-      if (!doc) return null;
-      return getVersion(doc.idVersaoAtual);
-  };
+  // Delegam para funções puras em js/utils.js (versoesDoDocumento, versaoAtual).
+  const getVersionsOfDoc = (docId) => versoesDoDocumento(DB_VERSOES, docId);
+  const getCurrentVersion = (docId) => versaoAtual(DB_DOCS, DB_VERSOES, docId);
   
   // base64ToArrayBuffer e getMimeType foram movidos para js/utils.js (funções
   // puras, testáveis). Continuam disponíveis como globais.
@@ -371,22 +368,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     
-  function normalizeParecerParaLista(item, tipo) {
-      if (tipo === 'estruturado') {
-          return {
-              id: `pz-${item.id}`, tipo: 'estruturado',
-              titulo: `Parecer — Processo ${item.processoNum || 's/ nº'}`,
-              status: item.status, dataRef: item.atualizadoEm || item.criadoEm, ref: item
-          };
-      }
-      return { id: `doc-${item.id}`, tipo: 'legado', titulo: item.nomePrincipal, status: null, dataRef: item.criadoEm, ref: item };
-  }
-
-  function buildPareceresListaCombinada() {
-      const legado = DB_DOCS.map(d => normalizeParecerParaLista(d, 'legado'));
-      const estruturados = DB_PARECERES.map(pz => normalizeParecerParaLista(pz, 'estruturado'));
-      return [...legado, ...estruturados].sort((a, b) => new Date(b.dataRef) - new Date(a.dataRef));
-  }
+  // normalizeParecerParaLista e a combinação da lista foram movidos para
+  // js/utils.js (normalizeParecerParaLista / combinarPareceres), testáveis.
+  const buildPareceresListaCombinada = () => combinarPareceres(DB_DOCS, DB_PARECERES);
 
   function drawPareceres(resetPage = false) {
     if (resetPage) parecerCurrentPage = 1;
@@ -503,40 +487,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentParecerIsNew = false;
 
   const getParecer = (processoId) => DB_PARECERES.find(pz => String(pz.processoId) === String(processoId));
-  const getParecerVersoes = (parecerId) => DB_PARECER_VERSOES.filter(v => String(v.parecerId) === String(parecerId)).sort((a, b) => b.versao - a.versao);
+  const getParecerVersoes = (parecerId) => versoesDoParecer(DB_PARECER_VERSOES, parecerId);
 
   // Accessor único de "qual é o parecer deste processo" (estruturado > Word legado > nenhum).
   // Devolve só dados normalizados (não HTML) — usado por openProcDetails e os dois fluxos de PDF,
   // pra não repetir essa decisão em cada lugar. NÃO é usado no gráfico do dashboard (getChartConfigs)
   // porque aquela contagem é "por registro" (independente de o processo ainda existir), não "por
   // processo vivo" como este accessor — ver comentário em getChartConfigs.
-  function getParecerInfo(processo) {
-      const estruturado = getParecer(processo.id);
-      if (estruturado) {
-          const emitido = estruturado.status === 'emitido';
-          return {
-              tipo: 'estruturado',
-              emitido,
-              label: emitido ? 'Emitido' : 'Rascunho',
-              dataRef: emitido ? estruturado.emitidoEm : (estruturado.atualizadoEm || estruturado.criadoEm),
-              nomeDocumento: `Parecer redigido no sistema (${emitido ? 'Emitido' : 'Rascunho'})`,
-              parecer: estruturado,
-              docLegado: null
-          };
-      }
-      if (processo.docId) {
-          const docLegado = getDoc(processo.docId);
-          if (docLegado) {
-              return {
-                  tipo: 'legado', emitido: null, label: null,
-                  dataRef: docLegado.criadoEm, nomeDocumento: docLegado.nomePrincipal,
-                  parecer: null, docLegado
-              };
-          }
-          return { tipo: 'legado-orfao', emitido: null, label: null, dataRef: null, nomeDocumento: null, parecer: null, docLegado: null };
-      }
-      return null;
-  }
+  // Delega para a função pura inferirParecerInfo (js/utils.js), testável.
+  const getParecerInfo = (processo) => inferirParecerInfo(processo, DB_PARECERES, DB_DOCS);
 
   // Exclui de fato um processo e o parecer vinculado a ele em cascata (estruturado ou Word
   // legado, com todo o histórico de versões) — sem isso o parecer ficava "órfão" no Firestore
