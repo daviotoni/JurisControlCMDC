@@ -1060,6 +1060,11 @@
         .aud-item-top { display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline; font-size: 0.875rem; }
         .aud-item-top .aud-modulo { margin-left: auto; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); background: rgba(127, 127, 127, 0.12); padding: 2px 8px; border-radius: 999px; }
         .aud-item-meta { color: var(--text-secondary); font-size: 0.78rem; margin-top: 2px; }
+        .juris-portais { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem; }
+        .juris-portais-label { font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; }
+        .juris-sep { border: none; border-top: 1px solid var(--border-color); margin: 1rem 0; }
+        .juris-subtitle { margin: 0 0 0.25rem; }
+        .juris-preview { border: 1px dashed var(--border-color); border-radius: 9px; padding: 0.75rem; font-size: 0.875rem; color: var(--text-primary); background: var(--card-bg); min-height: 3em; white-space: pre-wrap; }
         .doc-list .doc-item {border:1px solid var(--border-color);border-radius:9px;padding:8px;display:flex;justify-content:space-between;align-items:center;background:var(--card-bg); gap: 8px;}
 
         #toast-container { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 350px; }
