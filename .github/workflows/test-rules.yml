@@ -1,0 +1,49 @@
+name: Test rules
+
+# Testa as firestore.rules contra o emulador do Firestore (Java + emulador
+# baixado on-demand). Roda SEPARADO dos testes rápidos (workflow "Test") para
+# não atrasá-los. Não afeta o site servido.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - 'test/rules/**'
+      - 'vitest.rules.config.js'
+      - 'firebase.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/test-rules.yml'
+  pull_request:
+    paths:
+      - 'firestore.rules'
+      - 'test/rules/**'
+      - 'vitest.rules.config.js'
+      - 'firebase.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/test-rules.yml'
+
+jobs:
+  firestore-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      # O emulador do Firestore roda em Java.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      # Evita rebaixar o .jar do emulador (~130 MB) a cada execução.
+      - name: Cache do emulador do Firestore
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-firestore
+      - run: npm ci
+      - run: npm run test:rules

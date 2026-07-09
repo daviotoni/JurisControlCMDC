@@ -1,2 +1,5 @@
 .firebase/
 node_modules/
+
+# Logs gerados pelo emulador do Firestore (npm run test:rules)
+*-debug.log

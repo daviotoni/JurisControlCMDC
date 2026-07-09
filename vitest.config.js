@@ -21,5 +21,9 @@ export default defineConfig({
     // describe/it/expect globais, sem precisar importar em cada arquivo.
     globals: true,
     include: ['test/**/*.test.{js,ts}'],
+    // Os testes das firestore.rules precisam do emulador do Firestore rodando,
+    // então NÃO entram no runner rápido — têm config e script próprios
+    // (vitest.rules.config.js / `npm run test:rules`).
+    exclude: ['test/rules/**', 'node_modules/**'],
   },
 });
