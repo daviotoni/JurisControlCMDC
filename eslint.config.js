@@ -60,6 +60,13 @@ module.exports = [
     rules: { 'no-unused-vars': 'off' },
   },
   {
+    // utils.js expõe um bloco `module.exports` (guardado por typeof) para os
+    // testes rodarem em Node/Vitest. `module` é global do CommonJS, não do
+    // navegador — declará-lo aqui evita o no-undef sem afetar o runtime.
+    files: ['js/utils.js'],
+    languageOptions: { globals: { module: 'readonly' } },
+  },
+  {
     // loginComFirebase/logoutFirebase/observarAuth são declaradas em firebase.js
     // e apenas CONSUMIDAS por app.js — declará-las como global só aqui evita
     // tanto o no-undef (em app.js) quanto o no-redeclare (em firebase.js).
@@ -77,6 +84,7 @@ module.exports = [
         ymd: 'readonly',
         sanitizeHTML: 'readonly',
         safeCSSClass: 'readonly',
+        getChanges: 'readonly',
         VALID_STATS: 'readonly',
         VALID_ACAO: 'readonly',
         VALID_CAT: 'readonly',

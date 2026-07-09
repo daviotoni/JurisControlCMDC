@@ -1,0 +1,12 @@
+{
+  "//": "Config auto-contida usada APENAS por ferramentas que resolvem o tsconfig mais próximo de cada arquivo (ex.: o transformador oxc do Vitest, ao rodar os testes de lógica pura em test/mobile/). O mobile/tsconfig.json estende 'expo/tsconfig.base', que não está instalado fora do toolchain do Expo; sem este arquivo, o oxc sobe a árvore, acha aquele e falha. É inerte para o build do Expo (o tsc de mobile/tsconfig.json ignora tsconfigs aninhados).",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx"
+  }
+}

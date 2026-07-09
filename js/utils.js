@@ -24,3 +24,20 @@ const VALID_STATS = new Set(['pendente', 'em-analise', 'aguardando-documentacao'
 const VALID_ACAO  = new Set(['criado', 'editado', 'excluido', 'parecer-criado', 'parecer-editado', 'parecer-emitido', 'parecer-reaberto']);
 const VALID_CAT   = new Set(['g', 'a', 'r', 'p', 'u', 'e', 'o']);
 const safeCSSClass = (value, whitelist) => whitelist.has(value) ? value : '';
+
+// ----- Histórico / diff de alterações -----
+// Compara dois registros de processo e retorna os campos rastreados que
+// mudaram (usado por logHistorico no app.js). Trata null/undefined/'' como
+// equivalentes (coerção via String(x || '')). Função pura.
+const TRACK_FIELDS = ['num', 'int', 'tipo', 'obj', 'acao', 'stat', 'setorOrigem', 'dest', 'ent', 'prazo', 'saida'];
+function getChanges(oldRec, newRec) {
+  return TRACK_FIELDS
+    .filter(f => String(oldRec[f] || '') !== String(newRec[f] || ''))
+    .map(f => ({ campo: f, de: oldRec[f] || '', para: newRec[f] || '' }));
+}
+
+// Exporta para ambientes de teste (Node/Vitest). No navegador `module` não
+// existe, então este bloco é ignorado e NÃO afeta o carregamento via <script>.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS, VALID_STATS, VALID_ACAO, VALID_CAT };
+}

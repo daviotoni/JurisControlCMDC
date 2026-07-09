@@ -4,10 +4,14 @@
   "private": true,
   "description": "Ferramentas de desenvolvimento (lint/CI) do JurisControl. Não afeta o site servido, que é HTML/JS estático.",
   "scripts": {
-    "lint": "eslint js/"
+    "lint": "eslint js/",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "devDependencies": {
     "eslint": "^9.13.0",
-    "globals": "^15.11.0"
+    "globals": "^15.11.0",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.10"
   }
 }
