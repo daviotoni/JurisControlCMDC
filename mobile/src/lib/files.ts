@@ -2,6 +2,7 @@
 // do web). Usa a API legada do expo-file-system por simplicidade.
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { parseDataUrl } from './dataurl';
 
 /** Grava conteúdo num arquivo temporário e abre a folha de compartilhar. */
 export async function saveAndShare(
@@ -22,9 +23,7 @@ export async function saveAndShare(
 
 /** Compartilha um dataURL (modelos .docx e arquivos de lei do Firestore). */
 export async function shareDataUrl(filename: string, dataUrl: string): Promise<void> {
-  const comma = dataUrl.indexOf(',');
-  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
-  const mime = /^data:([^;]+);/.exec(dataUrl)?.[1];
+  const { base64, mime } = parseDataUrl(dataUrl);
   await saveAndShare(filename, base64, { base64: true, mimeType: mime });
 }
 

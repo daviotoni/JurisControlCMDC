@@ -85,6 +85,8 @@ module.exports = [
         sanitizeHTML: 'readonly',
         safeCSSClass: 'readonly',
         getChanges: 'readonly',
+        base64ToArrayBuffer: 'readonly',
+        getMimeType: 'readonly',
         VALID_STATS: 'readonly',
         VALID_ACAO: 'readonly',
         VALID_CAT: 'readonly',
