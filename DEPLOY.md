@@ -75,6 +75,40 @@ Aprovações". Sem aprovação, nada é lido/escrito.
 Testes das regras: `npm run test:rules` (sobe o emulador do Firestore e valida
 aprovação, papéis, bootstrap e o append-only da auditoria).
 
+## Busca de jurisprudência integrada (Cloud Function `juris`)
+
+O painel "⚖ Jurisprudência" do editor de parecer tem uma busca integrada
+("Buscar aqui") que consulta o LexML (por tema) e o Datajud/CNJ (por nº de
+processo) através da Cloud Function `functions/juris`. A função valida o
+ID token do Firebase e exige perfil **aprovado** (mesma política das rules).
+
+> ⚠️ **Ativação (2 passos manuais, uma única vez):**
+>
+> 1. **Plano Blaze**: Cloud Functions exige billing habilitado. Console →
+>    https://console.firebase.google.com/project/juriscontrolcmdc/usage/details
+>    → "Modificar plano" → Blaze. O uso desta função fica na faixa gratuita
+>    (2 milhões de invocações/mês grátis).
+> 2. **Publicar a função**:
+>    ```bash
+>    cd functions && npm install && cd ..
+>    firebase deploy --only functions --token "<TOKEN>" --project juriscontrolcmdc
+>    ```
+>
+> Enquanto a função não for publicada, o botão "Buscar aqui" mostra um aviso
+> e os botões dos portais (STF/STJ/TJRJ/LexML/Jusbrasil) seguem funcionando.
+
+Notas:
+- A chave do Datajud usada é a chave PÚBLICA divulgada pelo próprio CNJ
+  (documentação da API Pública). Se o CNJ rotacionar, atualize
+  `DATAJUD_API_KEY` em `functions/index.js` e republique.
+- A URL da função esperada pelo site é
+  `https://us-central1-juriscontrolcmdc.cloudfunctions.net/juris`
+  (constante `JURIS_FUNCTION_URL` em `js/app.js`).
+- Os normalizadores de resposta têm testes offline em
+  `test/web/juris-normalizadores.test.js`; a primeira chamada real às fontes
+  externas deve ser validada após o deploy (o sandbox de desenvolvimento não
+  alcança lexml.gov.br / datajud.cnj.br).
+
 ## Deploy no Firebase (manual)
 
 ```bash
