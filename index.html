@@ -17,7 +17,7 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=b3d5bf0d1c">
+        <link rel="stylesheet" href="style.css?v=e1ed51a3d2">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -529,11 +529,53 @@
                 <div class="parecer-timbre-rodape">Página 1</div>
             </div>
             <div class="dialog-footer">
-                <button type="button" class="btn danger" id="btnReabrirParecer" style="display:none; margin-right:auto;">Reabrir para edição</button>
+                <div style="margin-right:auto; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button type="button" class="btn secondary" id="btnJurisprudencia">⚖ Jurisprudência</button>
+                    <button type="button" class="btn danger" id="btnReabrirParecer" style="display:none;">Reabrir para edição</button>
+                </div>
                 <button type="button" class="btn secondary" id="btnGerarPdfParecer" style="display:none;">Gerar PDF Oficial</button>
                 <button type="button" class="btn secondary" data-close-parecer>Fechar</button>
                 <button type="button" class="btn secondary" id="btnSalvarRascunho">Salvar Rascunho</button>
                 <button type="button" class="btn primary" id="btnEmitirParecer">Emitir Parecer</button>
+            </div>
+        </div>
+    </div>
+    <div id="m_juris" class="modal">
+        <div class="dialog" style="max-width: 640px;">
+            <div class="dialog-header"><h3>⚖ Pesquisa de Jurisprudência</h3></div>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <label for="jr_tema">Tema da pesquisa</label>
+                    <input id="jr_tema" class="input" placeholder="Ex.: dispensa de licitação câmara municipal">
+                </div>
+                <div class="juris-portais">
+                    <span class="juris-portais-label">Pesquisar em:</span>
+                    <button type="button" class="btn secondary" data-juris-portal="stf">STF</button>
+                    <button type="button" class="btn secondary" data-juris-portal="stj">STJ</button>
+                    <button type="button" class="btn secondary" data-juris-portal="tjrj">TJRJ</button>
+                    <button type="button" class="btn secondary" data-juris-portal="lexml">LexML</button>
+                    <button type="button" class="btn secondary" data-juris-portal="jusbrasil">Jusbrasil</button>
+                </div>
+                <hr class="juris-sep">
+                <h4 class="juris-subtitle">Inserir citação no parecer</h4>
+                <p class="cfg-note">Preencha com os dados do acórdão encontrado. A citação formatada será inserida no editor, na posição do cursor.</p>
+                <div class="form-grid two-cols">
+                    <div class="form-group"><label for="jr_trib">Tribunal</label><input id="jr_trib" class="input" placeholder="Ex.: TJRJ"></div>
+                    <div class="form-group"><label for="jr_classe">Classe</label><input id="jr_classe" class="input" placeholder="Ex.: Apelação Cível"></div>
+                    <div class="form-group"><label for="jr_num">Nº do processo</label><input id="jr_num" class="input" placeholder="Ex.: 0002934-98.2018.8.19.0064"></div>
+                    <div class="form-group"><label for="jr_relator">Relator(a)</label><input id="jr_relator" class="input" placeholder="Ex.: Des. Marco Antonio Ibrahim"></div>
+                    <div class="form-group"><label for="jr_orgao">Órgão julgador</label><input id="jr_orgao" class="input" placeholder="Ex.: Sétima Câmara de Direito Público"></div>
+                    <div class="form-group"><label for="jr_data">Data do julgamento</label><input id="jr_data" type="date" class="input"></div>
+                    <div class="form-group full-width"><label for="jr_ementa">Ementa / trecho a citar (opcional)</label><textarea id="jr_ementa" class="input" rows="3" placeholder="Cole aqui o trecho da ementa que deseja citar"></textarea></div>
+                </div>
+                <div class="form-group">
+                    <label>Pré-visualização</label>
+                    <div id="jr_preview" class="juris-preview">Preencha os campos acima…</div>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="btn secondary" data-close-juris>Fechar</button>
+                <button type="button" class="btn primary" id="btnInserirCitacao">Inserir no parecer</button>
             </div>
         </div>
     </div>
@@ -590,7 +632,7 @@
 
     <script src="js/utils.js?v=970526615f"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
-    <script src="js/app.js?v=ddcd65912a"></script>
+    <script src="js/app.js?v=00fe6156ad"></script>
 
 </body>
 </html>

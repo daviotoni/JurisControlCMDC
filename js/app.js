@@ -629,6 +629,71 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   }
 
+  // ===== Pesquisa de jurisprudência (painel do editor de parecer) =====
+  // Abre a busca já preenchida nos portais oficiais (nova aba) e monta uma
+  // citação formatada para inserir no ponto do cursor no editor Quill.
+  const JURIS_PORTAIS = {
+      stf:       (q) => `https://jurisprudencia.stf.jus.br/pages/search?queryString=${encodeURIComponent(q)}`,
+      stj:       (q) => `https://scon.stj.jus.br/SCON/pesquisar.jsp?b=ACOR&livre=${encodeURIComponent(q)}`,
+      // O e-JURIS do TJRJ não aceita busca por URL — busca restrita ao domínio do tribunal.
+      tjrj:      (q) => `https://www.google.com/search?q=${encodeURIComponent('site:tjrj.jus.br jurisprudência ' + q)}`,
+      lexml:     (q) => `https://www.lexml.gov.br/busca/search?keyword=${encodeURIComponent(q)}`,
+      jusbrasil: (q) => `https://www.jusbrasil.com.br/jurisprudencia/busca?q=${encodeURIComponent(q)}`
+  };
+
+  function montarCitacaoJuris() {
+      const v = (sel) => $(sel)?.value.trim() || '';
+      const partes = [];
+      const trib = v('#jr_trib'), classe = v('#jr_classe'), num = v('#jr_num');
+      const relator = v('#jr_relator'), orgao = v('#jr_orgao'), data = v('#jr_data');
+      if (trib) partes.push(trib);
+      if (classe || num) partes.push(`${classe || 'Processo'}${num ? ' nº ' + num : ''}`);
+      if (relator) partes.push(`Relator(a): ${relator}`);
+      if (orgao) partes.push(orgao);
+      if (data) { const [a, m, d] = data.split('-'); partes.push(`julgado em ${d}/${m}/${a}`); }
+      return { ementa: v('#jr_ementa'), referencia: partes.length ? `(${partes.join(', ')})` : '' };
+  }
+
+  function atualizarPreviewJuris() {
+      const el = $('#jr_preview'); if (!el) return;
+      const { ementa, referencia } = montarCitacaoJuris();
+      if (!ementa && !referencia) { el.textContent = 'Preencha os campos acima…'; return; }
+      el.innerHTML = `${ementa ? `<em>“${sanitizeHTML(ementa)}”</em><br>` : ''}${sanitizeHTML(referencia)}`;
+  }
+
+  function inserirCitacaoNoParecer() {
+      const { ementa, referencia } = montarCitacaoJuris();
+      if (!ementa && !referencia) { showToast('Preencha ao menos um campo da citação.', 'danger'); return; }
+      const quill = ensureParecerQuill();
+      if (!quill.isEnabled()) { showToast('O parecer está emitido — reabra para edição antes de inserir a citação.', 'danger'); return; }
+      const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+      let pos = range.index;
+      quill.insertText(pos, '\n'); pos += 1;
+      if (ementa) {
+          const trecho = `“${ementa}”`;
+          quill.insertText(pos, trecho, { italic: true }); pos += trecho.length;
+          quill.insertText(pos, '\n', { italic: false }); pos += 1;
+      }
+      if (referencia) {
+          quill.insertText(pos, referencia, { italic: false }); pos += referencia.length;
+          quill.insertText(pos, '\n', { italic: false }); pos += 1;
+      }
+      quill.setSelection(pos, 0);
+      $('#m_juris').style.display = 'none';
+      showToast('Citação inserida no parecer!');
+  }
+
+  function openJurisModal() {
+      const tema = $('#jr_tema');
+      // Sugere o tema a partir da ementa do parecer ou do objeto do processo.
+      if (tema && !tema.value) {
+          tema.value = ($('#pz_ementa')?.value || currentParecerProcesso?.obj || '').slice(0, 120).trim();
+      }
+      atualizarPreviewJuris();
+      $('#m_juris').style.display = 'flex';
+      tema?.focus();
+  }
+
   function openParecerModal(processo) {
       currentParecerProcesso = processo;
       const quill = ensureParecerQuill();
@@ -732,6 +797,21 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   $$('[data-close-parecer]').forEach(x => x.onclick = () => { mParecer.style.display = 'none'; });
   if (mParecer) mParecer.onclick = (e) => { if (e.target === mParecer) mParecer.style.display = 'none'; };
+
+  // Painel de jurisprudência
+  $('#btnJurisprudencia').onclick = openJurisModal;
+  $('#btnInserirCitacao').onclick = inserirCitacaoNoParecer;
+  $$('[data-juris-portal]').forEach(b => b.onclick = () => {
+      const q = $('#jr_tema')?.value.trim();
+      if (!q) { showToast('Digite o tema da pesquisa.', 'danger'); $('#jr_tema')?.focus(); return; }
+      window.open(JURIS_PORTAIS[b.dataset.jurisPortal](q), '_blank', 'noopener');
+  });
+  ['#jr_trib', '#jr_classe', '#jr_num', '#jr_relator', '#jr_orgao', '#jr_data', '#jr_ementa'].forEach(sel => {
+      const el = $(sel); if (el) el.oninput = atualizarPreviewJuris;
+  });
+  $$('[data-close-juris]').forEach(x => x.onclick = () => { $('#m_juris').style.display = 'none'; });
+  const mJuris = $('#m_juris');
+  if (mJuris) mJuris.onclick = (e) => { if (e.target === mJuris) mJuris.style.display = 'none'; };
 
   function renderModelos(resetPage = false) {
     if (resetPage) modeloCurrentPage = 1;
