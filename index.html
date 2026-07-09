@@ -17,7 +17,7 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=e1ed51a3d2">
+        <link rel="stylesheet" href="style.css?v=ff75275b87">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -548,8 +548,25 @@
                     <label for="jr_tema">Tema da pesquisa</label>
                     <input id="jr_tema" class="input" placeholder="Ex.: dispensa de licitação câmara municipal">
                 </div>
+                <div class="juris-busca-site">
+                    <select id="jr_fonte" class="select">
+                        <option value="lexml">Por tema (LexML — STF/STJ/leis)</option>
+                        <option value="datajud">Por nº de processo (Datajud/CNJ)</option>
+                    </select>
+                    <select id="jr_trib_dj" class="select" style="display:none">
+                        <option value="tjrj" selected>TJRJ</option>
+                        <option value="stj">STJ</option>
+                        <option value="stf">STF</option>
+                        <option value="tjsp">TJSP</option>
+                        <option value="tjmg">TJMG</option>
+                        <option value="trf2">TRF2</option>
+                        <option value="tst">TST</option>
+                    </select>
+                    <button type="button" class="btn primary" id="btnBuscarJurisSite">🔍 Buscar aqui</button>
+                </div>
+                <div id="jurisResultados" class="juris-resultados"></div>
                 <div class="juris-portais">
-                    <span class="juris-portais-label">Pesquisar em:</span>
+                    <span class="juris-portais-label">Ou pesquisar em:</span>
                     <button type="button" class="btn secondary" data-juris-portal="stf">STF</button>
                     <button type="button" class="btn secondary" data-juris-portal="stj">STJ</button>
                     <button type="button" class="btn secondary" data-juris-portal="tjrj">TJRJ</button>
@@ -632,7 +649,7 @@
 
     <script src="js/utils.js?v=970526615f"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
-    <script src="js/app.js?v=00fe6156ad"></script>
+    <script src="js/app.js?v=e503cbfbfd"></script>
 
 </body>
 </html>

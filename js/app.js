@@ -694,6 +694,77 @@ document.addEventListener('DOMContentLoaded', () => {
       tema?.focus();
   }
 
+  // ===== Busca integrada (Cloud Function `juris` — ver functions/index.js) =====
+  // Consulta LexML (por tema) e Datajud/CNJ (por nº de processo) sem sair do
+  // site. Se a função ainda não estiver publicada (exige plano Blaze), o painel
+  // degrada com uma mensagem e os botões dos portais continuam funcionando.
+  const JURIS_FUNCTION_URL = 'https://us-central1-juriscontrolcmdc.cloudfunctions.net/juris';
+  let JURIS_ULTIMOS = [];
+
+  async function buscarJurisNoSite() {
+      const alvo = $('#jurisResultados'); if (!alvo) return;
+      const q = $('#jr_tema')?.value.trim();
+      if (!q) { showToast('Digite o tema (ou o nº do processo) da pesquisa.', 'danger'); $('#jr_tema')?.focus(); return; }
+      const fonte = $('#jr_fonte')?.value || 'lexml';
+      const tribunal = $('#jr_trib_dj')?.value || 'tjrj';
+      alvo.innerHTML = '<div class="list-msg">Buscando…</div>';
+      try {
+          const usuarioFb = window.auth?.currentUser;
+          if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
+          const token = await usuarioFb.getIdToken();
+          const url = `${JURIS_FUNCTION_URL}?fonte=${encodeURIComponent(fonte)}&q=${encodeURIComponent(q)}&tribunal=${encodeURIComponent(tribunal)}`;
+          const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+          if (!resp.ok) {
+              const corpo = await resp.json().catch(() => ({}));
+              throw new Error(corpo.erro || `HTTP_${resp.status}`);
+          }
+          const dados = await resp.json();
+          renderJurisResultados(dados.resultados || []);
+      } catch (e) {
+          console.warn('Busca integrada indisponível:', e);
+          const rede = !e.message || /failed to fetch|networkerror|load failed|HTTP_404/i.test(e.message);
+          alvo.innerHTML = `<div class="list-msg">${rede
+              ? 'A busca integrada ainda não está ativa (a função de busca não foi publicada no Firebase). Enquanto isso, use os botões dos portais abaixo.'
+              : sanitizeHTML(e.message)}</div>`;
+      }
+  }
+
+  function renderJurisResultados(resultados) {
+      const alvo = $('#jurisResultados'); if (!alvo) return;
+      JURIS_ULTIMOS = resultados;
+      if (!resultados.length) {
+          alvo.innerHTML = '<div class="list-msg">Nenhum resultado encontrado. Refine o tema ou use os botões dos portais abaixo.</div>';
+          return;
+      }
+      alvo.innerHTML = '';
+      resultados.forEach((r, i) => {
+          const item = document.createElement('div');
+          item.className = 'juris-res-item';
+          const ementaCurta = r.ementa ? String(r.ementa).slice(0, 220) + (String(r.ementa).length > 220 ? '…' : '') : '';
+          item.innerHTML = `
+              <div class="juris-res-titulo">${sanitizeHTML(r.titulo || '')}</div>
+              <div class="juris-res-meta">${sanitizeHTML([r.tribunal, r.data].filter(Boolean).join(' · '))}</div>
+              ${ementaCurta ? `<div class="juris-res-ementa">${sanitizeHTML(ementaCurta)}</div>` : ''}
+              <div class="juris-res-acoes">
+                  <button type="button" class="btn secondary" data-juris-usar="${i}">Usar dados na citação</button>
+                  ${r.url ? `<a class="btn secondary" href="${sanitizeHTML(r.url)}" target="_blank" rel="noopener">Abrir fonte ↗</a>` : ''}
+              </div>`;
+          alvo.appendChild(item);
+      });
+  }
+
+  function usarResultadoJuris(i) {
+      const r = JURIS_ULTIMOS[i]; if (!r) return;
+      const setar = (sel, val) => { const el = $(sel); if (el && val) el.value = val; };
+      setar('#jr_trib', r.tribunal);
+      setar('#jr_classe', r.classe && r.classe !== 'Jurisprudência' ? r.classe : '');
+      setar('#jr_num', r.numero);
+      if (r.data && /^\d{4}-\d{2}-\d{2}$/.test(r.data)) setar('#jr_data', r.data);
+      if (r.ementa && !String(r.ementa).startsWith('Assuntos:')) setar('#jr_ementa', r.ementa);
+      atualizarPreviewJuris();
+      showToast('Dados preenchidos — complete o que faltar e insira no parecer.');
+  }
+
   function openParecerModal(processo) {
       currentParecerProcesso = processo;
       const quill = ensureParecerQuill();
@@ -812,6 +883,19 @@ document.addEventListener('DOMContentLoaded', () => {
   $$('[data-close-juris]').forEach(x => x.onclick = () => { $('#m_juris').style.display = 'none'; });
   const mJuris = $('#m_juris');
   if (mJuris) mJuris.onclick = (e) => { if (e.target === mJuris) mJuris.style.display = 'none'; };
+  $('#btnBuscarJurisSite').onclick = buscarJurisNoSite;
+  $('#jr_tema').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarJurisNoSite(); } };
+  $('#jr_fonte').onchange = () => {
+      const datajud = $('#jr_fonte').value === 'datajud';
+      $('#jr_trib_dj').style.display = datajud ? '' : 'none';
+      $('#jr_tema').placeholder = datajud
+          ? 'Ex.: 0002934-98.2018.8.19.0064'
+          : 'Ex.: dispensa de licitação câmara municipal';
+  };
+  $('#jurisResultados').onclick = (e) => {
+      const usar = e.target.closest('[data-juris-usar]');
+      if (usar) usarResultadoJuris(Number(usar.dataset.jurisUsar));
+  };
 
   function renderModelos(resetPage = false) {
     if (resetPage) modeloCurrentPage = 1;
