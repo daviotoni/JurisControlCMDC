@@ -63,8 +63,41 @@ function getMimeType(filename) {
   }
 }
 
+// ----- Filtro e ordenação de processos -----
+// Aplica busca textual, filtros e ordenação sobre uma lista de processos e
+// devolve uma NOVA lista (não muta a original). Função pura — toda a entrada
+// vem por `criterios`, incluindo o mapa de rótulos de status usado na busca.
+//
+// criterios = {
+//   busca, initialFilter:{status,prazo:'alerta'|'vencido',month}, status, setor,
+//   tipo, emissor, entradaDe, entradaAte, ordem:'prazo'|'status'|<entrada>, statusMap
+// }
+function filtrarOrdenarProcessos(lista, criterios = {}) {
+  const {
+    busca = '', initialFilter = null, status = '', setor = '', tipo = '',
+    emissor = '', entradaDe = '', entradaAte = '', ordem = '', statusMap = {},
+  } = criterios;
+  let L = (lista || []).slice();
+  const t = String(busca || '').toLowerCase().trim();
+  if (t) L = L.filter(p => [p.num, p.int, p.obj, p.setorOrigem, p.dest, p.acao, statusMap[p.stat]].some(v => String(v || '').toLowerCase().includes(t)));
+  if (initialFilter?.status) L = L.filter(p => p.stat === initialFilter.status);
+  if (initialFilter?.prazo === 'alerta') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) <= 5 && diffDays(todayUTC(), parse(p.prazo)) >= 0);
+  if (initialFilter?.prazo === 'vencido') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) < 0);
+  if (initialFilter?.month !== undefined && initialFilter?.month !== null) L = L.filter(p => p.ent && parse(p.ent).getUTCMonth() === initialFilter.month);
+  if (status) L = L.filter(p => p.stat === status);
+  if (setor) L = L.filter(p => p.setorOrigem === setor || p.dest === setor);
+  if (tipo) L = L.filter(p => p.tipo === tipo);
+  if (emissor) L = L.filter(p => String(p.emissorId || '') === emissor);
+  if (entradaDe) { const de = parse(entradaDe); L = L.filter(p => p.ent && parse(p.ent) >= de); }
+  if (entradaAte) { const ate = parse(entradaAte); L = L.filter(p => p.ent && parse(p.ent) <= ate); }
+  if (ordem === 'prazo') L.sort((a, b) => { const A = parse(a.prazo), B = parse(b.prazo); return (A ? A.getTime() : Infinity) - (B ? B.getTime() : Infinity); });
+  else if (ordem === 'status') L.sort((a, b) => (a.stat || '').localeCompare(b.stat || ''));
+  else L.sort((a, b) => { const A = parse(a.ent), B = parse(b.ent); return (B ? B.getTime() : 0) - (A ? A.getTime() : 0); });
+  return L;
+}
+
 // Exporta para ambientes de teste (Node/Vitest). No navegador `module` não
 // existe, então este bloco é ignorado e NÃO afeta o carregamento via <script>.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS, base64ToArrayBuffer, getMimeType, VALID_STATS, VALID_ACAO, VALID_CAT };
+  module.exports = { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS, base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, VALID_STATS, VALID_ACAO, VALID_CAT };
 }
