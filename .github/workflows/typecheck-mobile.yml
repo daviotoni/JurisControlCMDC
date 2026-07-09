@@ -1,8 +1,10 @@
 name: Typecheck mobile
 
-# Roda o type-check do TypeScript (tsc --noEmit) no app mobile (Expo/RN),
-# pegando erros de tipo antes de chegarem ao app. Job próprio e isolado: só
+# Roda o type-check do TypeScript (tsc --noEmit) e os testes de tela (jest-expo
+# + @testing-library/react-native) do app mobile (Expo/RN), pegando erros de
+# tipo e regressões de UI antes de chegarem ao app. Job próprio e isolado: só
 # dispara quando o mobile/ muda, e não afeta os testes rápidos nem o site.
+# (Os dois passos ficam no mesmo job para pagar o npm ci uma vez só.)
 
 on:
   push:
@@ -31,3 +33,4 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - run: npm test -- --ci
