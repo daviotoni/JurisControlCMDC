@@ -48,6 +48,14 @@ async function logoutFirebase() {
 }
 
 /**
+ * Envia e-mail de redefinição de senha via Firebase Auth
+ */
+async function resetSenhaFirebase(email) {
+  await auth.sendPasswordResetEmail(email);
+  console.log('✅ E-mail de redefinição enviado para:', email);
+}
+
+/**
  * Observa mudanças no estado de autenticação
  */
 function observarAuth(callback) {
@@ -55,7 +63,8 @@ function observarAuth(callback) {
 }
 
 // Expõe as funções globalmente
-window.loginComFirebase = loginComFirebase;
-window.logoutFirebase   = logoutFirebase;
-window.observarAuth     = observarAuth;
+window.loginComFirebase  = loginComFirebase;
+window.logoutFirebase    = logoutFirebase;
+window.observarAuth      = observarAuth;
+window.resetSenhaFirebase = resetSenhaFirebase;
 

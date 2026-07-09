@@ -506,6 +506,9 @@
         .login-card .grupo { margin-bottom: 1.1rem; text-align: left;}
         .login-card label { display: block; font-weight: 600; color: var(--text-secondary-light); margin-bottom: 0.4375rem; font-size: 0.8125rem; }
         .login-erro { color: var(--danger); font-weight: 600; margin-top: 1rem; min-height: 1.2em; text-align: left; }
+        .login-erro.info { color: var(--brand-600); }
+        .login-forgot { cursor: pointer; }
+        .login-forgot:hover, .login-forgot:focus-visible { text-decoration: underline; }
         .login-acoes { margin-top: 1.5rem; }
         .login-acoes .btn { width: 100%; padding: 0.75rem 1rem; font-size: 0.9375rem; box-shadow: 0 4px 14px rgba(10, 61, 115, 0.35); }
         .login-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem; }
@@ -1038,8 +1041,25 @@
         .notification-item.type-alerta { background-color: var(--warning-bg); }
         .notification-item.type-alerta .icon-wrapper { color: var(--warning); }
 
-        .list .user-item, .list .version-item, .list .emissor-item { display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+        .list .user-item, .list .version-item, .list .emissor-item { display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid var(--border-color); gap: 8px; flex-wrap: wrap; }
         .list .user-item:last-child, .list .version-item:last-child, .list .emissor-item:last-child { border-bottom: none; }
+        .list .list-msg { color: var(--text-secondary); font-size: 0.875rem; padding: 8px 0; }
+        .cfg-note { color: var(--text-secondary); font-size: 0.85rem; margin: -0.25rem 0 0.75rem; }
+        .user-email { color: var(--text-secondary); font-weight: 400; }
+        .user-badge { display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 999px; vertical-align: middle; }
+        .user-badge.badge-admin { background: rgba(10, 61, 115, 0.12); color: var(--brand-600); }
+        .user-badge.badge-user { background: rgba(22, 163, 74, 0.12); color: var(--success); }
+        .user-badge.badge-pendente { background: rgba(217, 119, 6, 0.15); color: #b45309; }
+        .user-item-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .user-item-actions .btn { padding: 4px 10px; font-size: 0.8rem; }
+        .aud-toolbar { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+        .aud-toolbar .input { flex: 1; min-width: 160px; }
+        .aud-list { max-height: 340px; overflow-y: auto; }
+        .aud-item { padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+        .aud-item:last-child { border-bottom: none; }
+        .aud-item-top { display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline; font-size: 0.875rem; }
+        .aud-item-top .aud-modulo { margin-left: auto; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); background: rgba(127, 127, 127, 0.12); padding: 2px 8px; border-radius: 999px; }
+        .aud-item-meta { color: var(--text-secondary); font-size: 0.78rem; margin-top: 2px; }
         .doc-list .doc-item {border:1px solid var(--border-color);border-radius:9px;padding:8px;display:flex;justify-content:space-between;align-items:center;background:var(--card-bg); gap: 8px;}
 
         #toast-container { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 350px; }

@@ -51,6 +51,30 @@ cd mobile && npm run build:site   # regenera /app
 O `.nojekyll` na raiz é obrigatório (sem ele o Pages ignora `app/_expo`).
 Não edite `/app` na mão — é build gerado.
 
+## Regras do Firestore (controle de acesso por papel)
+
+As `firestore.rules` implementam acesso por papel: cada usuário tem um doc em
+`perfis/{uid}` (`role: admin|user`, `aprovado: true|false`). No primeiro login
+o perfil é criado **pendente**; um admin aprova em Configurações → "Usuários e
+Aprovações". Sem aprovação, nada é lido/escrito.
+
+> ⚠️ As regras **NÃO** sobem com o push na `main` — o deploy é manual:
+>
+> ```bash
+> firebase deploy --only firestore:rules --token "<TOKEN>" --project juriscontrolcmdc
+> ```
+>
+> **Antes do primeiro deploy destas regras**, confirme que o e-mail admin de
+> bootstrap (anti-lockout) está correto em DOIS lugares: `bootstrapAdmin()`
+> em `firestore.rules` e `BOOTSTRAP_ADMINS` em `js/app.js`. Esse e-mail é
+> sempre admin, mesmo sem perfil — é ele que aprova os demais usuários.
+>
+> Enquanto as regras novas não forem publicadas, o app roda em modo de
+> compatibilidade (comportamento antigo: todo autenticado tem acesso total).
+
+Testes das regras: `npm run test:rules` (sobe o emulador do Firestore e valida
+aprovação, papéis, bootstrap e o append-only da auditoria).
+
 ## Deploy no Firebase (manual)
 
 ```bash

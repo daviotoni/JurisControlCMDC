@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // O window.dbHelper aponta automaticamente para o Firestore via firestoreHelper.js
       const dbHelper = window.dbHelper;
   // Variáveis de dados em memória
-  let DB_USERS = [], DB = [], CAL = [], DB_DOCS = [], DB_VERSOES = [], DB_MODELOS = [], DB_EMISSORES = [], DB_LEIS = [];
+  let DB_PERFIS = [], DB = [], CAL = [], DB_DOCS = [], DB_VERSOES = [], DB_MODELOS = [], DB_EMISSORES = [], DB_LEIS = [];
   let DB_PARECERES = [], DB_PARECER_VERSOES = [];
   let CFG;
   let allNotifications = [];
@@ -125,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
           procItemsPerPage: 10
       };
       
-      DB_USERS = await dbHelper.getAll('users');
       DB = await dbHelper.getAll('processos');
       CAL = await dbHelper.getAll('calendario');
       DB_DOCS = await dbHelper.getAll('documentos');
@@ -140,80 +139,49 @@ document.addEventListener('DOMContentLoaded', () => {
       CFG = loadedCfg ? { ...defaultConfig, ...loadedCfg.value } : defaultConfig;
   }
 
-  const cryptoHelper = {
-    bufferToHex(buffer) {
-        return [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, '0')).join('');
-    },
-    hexToBuffer(hex) {
-        const bytes = new Uint8Array(hex.length / 2);
-        for (let i = 0; i < hex.length; i += 2) {
-            bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-        }
-        return bytes.buffer;
-    },
-    async hashPassword(password) {
-        const salt = window.crypto.getRandomValues(new Uint8Array(16));
-        const encoder = new TextEncoder();
-        const keyMaterial = await window.crypto.subtle.importKey(
-            'raw',
-            encoder.encode(password),
-            { name: 'PBKDF2' },
-            false,
-            ['deriveBits', 'deriveKey']
-        );
-        const derivedKey = await window.crypto.subtle.deriveBits(
-            { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
-            keyMaterial,
-            256
-        );
-        return {
-            salt: this.bufferToHex(salt),
-            hash: this.bufferToHex(derivedKey)
-        };
-    },
-    async verifyPassword(password, saltHex, hashHex) {
-        const salt = this.hexToBuffer(saltHex);
-        const encoder = new TextEncoder();
-        const keyMaterial = await window.crypto.subtle.importKey(
-            'raw',
-            encoder.encode(password),
-            { name: 'PBKDF2' },
-            false,
-            ['deriveBits', 'deriveKey']
-        );
-        const derivedKey = await window.crypto.subtle.deriveBits(
-            { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
-            keyMaterial,
-            256
-        );
-        return this.bufferToHex(derivedKey) === hashHex;
-    }
-  };
+  // ===== PERFIS DE USUÁRIO (controle de acesso por papel) =====
+  // Cada usuário do Firebase Auth tem um doc em `perfis/{uid}` com
+  // { role: 'admin'|'user', aprovado: bool }. As firestore.rules só liberam os
+  // dados para perfis aprovados; um admin aprova novos usuários em Configurações.
+  //
+  // ⚠️ Espelhe esta lista na função bootstrapAdmin() de firestore.rules
+  //    (e-mails em minúsculas). Ela evita lockout: estes e-mails são sempre admin.
+  const BOOTSTRAP_ADMINS = ['dosvleite@yahoo.com.br'];
 
-  async function initializeUsers() {
-      // CORREÇÃO: Detecta o formato antigo de senha (sem 'salt') e força a recriação.
-      if (DB_USERS.length === 0 || !DB_USERS[0].salt) {
-          console.warn("Formato de senha antigo detectado ou nenhum usuário encontrado. Redefinindo para o padrão seguro.");
-          
-          // A notificação só será visível após o login, então a colocamos para depois.
-          
-          // Limpa os usuários antigos e inseguros do banco de dados
-          await dbHelper.clear('users');
-
-          const { salt, hash } = await cryptoHelper.hashPassword('admin');
-          const defaultUser = { 
-              id: Date.now(), 
-              name: 'Administrador', 
-              login: 'admin', 
-              salt: salt,
-              hashedPassword: hash, 
-              role: 'admin' 
+  async function carregarPerfil(firebaseUser) {
+      const email = (firebaseUser.email || '').toLowerCase();
+      const isBootstrap = BOOTSTRAP_ADMINS.includes(email);
+      const ref = window.db.collection('perfis').doc(firebaseUser.uid);
+      try {
+          const snap = await ref.get();
+          if (snap.exists) {
+              const perfil = snap.data();
+              // Garante que o admin de bootstrap nunca fique rebaixado/pendente.
+              if (isBootstrap && (perfil.role !== 'admin' || perfil.aprovado !== true)) {
+                  const corrigido = { ...perfil, role: 'admin', aprovado: true };
+                  await ref.set(corrigido);
+                  return corrigido;
+              }
+              return perfil;
+          }
+          // Primeiro login: registra o próprio perfil (pendente, salvo bootstrap).
+          const novo = {
+              id: firebaseUser.uid,
+              uid: firebaseUser.uid,
+              email,
+              name: email.split('@')[0],
+              role: isBootstrap ? 'admin' : 'user',
+              aprovado: isBootstrap,
+              criadoEm: new Date().toISOString()
           };
-          await dbHelper.put('users', defaultUser);
-          DB_USERS = [defaultUser];
-          
-          // Usamos um truque para mostrar a notificação após o login bem-sucedido
-          sessionStorage.setItem('showResetToast', 'true');
+          await ref.set(novo);
+          return novo;
+      } catch (e) {
+          // Modo de compatibilidade: regras antigas em produção ainda não conhecem
+          // a coleção `perfis` (deploy das rules é manual). Mantém o comportamento
+          // atual (todo autenticado tem acesso total) até as regras novas subirem.
+          console.warn('Perfil indisponível (regras antigas em produção?). Usando modo de compatibilidade.', e);
+          return { uid: firebaseUser.uid, email, name: email.split('@')[0], role: 'admin', aprovado: true, legado: true };
       }
   }
 
@@ -230,20 +198,43 @@ document.addEventListener('DOMContentLoaded', () => {
     loginOverlay.style.display = 'none';
     appLayout.style.display = 'flex';
     welcomeMsg.textContent = `Bem-vindo, ${sanitizeHTML(user.name)}`;
+    applyRoleUI(user.role);
     if (sidebar && CFG.sidebarCollapsed) sidebar.classList.add('collapsed');
     renderDashboard();
     showTab('dashboard');
-
-    // CORREÇÃO: Mostra a notificação de reset se necessário
-    if (sessionStorage.getItem('showResetToast')) {
-        showToast("Banco de usuários atualizado para novo padrão de segurança. Login redefinido para admin/admin.", "info");
-        sessionStorage.removeItem('showResetToast');
-    }
   }
+
+  // Esconde os recursos de administrador (gestão de usuários, restauração de
+  // backup, auditoria) para usuários comuns. As firestore.rules aplicam a mesma
+  // restrição no servidor — isto aqui é só para a interface não oferecer o que
+  // o usuário não pode fazer.
+  function applyRoleUI(role) {
+      const ehAdmin = role === 'admin';
+      $$('.admin-only').forEach(el => { el.style.display = ehAdmin ? '' : 'none'; });
+  }
+
+  function isAdminSession() {
+      try { return JSON.parse(sessionStorage.getItem('loggedInUser'))?.role === 'admin'; }
+      catch { return false; }
+  }
+
+  function mostrarMsgLogin(msg, tipo = 'erro') {
+      loginErro.textContent = msg;
+      loginErro.classList.toggle('info', tipo === 'info');
+  }
+
+  // Mensagem a exibir no próximo showLogin (sobrevive ao signout do observador
+  // de auth — ex.: aviso de "conta aguardando aprovação").
+  let msgLoginPersistente = null;
 
   function showLogin() {
     loginOverlay.style.display = 'flex';
-    loginErro.textContent = '';
+    btnEntrar.disabled = false;
+    mostrarMsgLogin('');
+    if (msgLoginPersistente) {
+        mostrarMsgLogin(msgLoginPersistente.msg, msgLoginPersistente.tipo);
+        msgLoginPersistente = null;
+    }
     loginPass.value = '';
     appLayout.style.display = 'none';
     welcomeMsg.textContent = '';
@@ -251,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function fazerLogout() {
+    await logAuditoria('auth', 'logout', currentUserName());
     sessionStorage.removeItem('loggedInUser');
     try { await logoutFirebase(); } catch (e) { console.warn('Erro ao encerrar sessão no Firebase:', e); }
     showLogin();
@@ -260,50 +252,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const email = loginUser.value.trim();
     const senha = loginPass.value;
 
-    loginErro.textContent = '';
+    mostrarMsgLogin('');
     btnEntrar.disabled = true;
 
     try {
         // === LOGIN PELO FIREBASE ===
-        const firebaseUser = await loginComFirebase(email, senha);
-
-        // Cria um objeto simples de sessão
-        const userSession = {
-            id: firebaseUser.uid,
-            name: firebaseUser.email.split('@')[0],
-            login: firebaseUser.email,
-            role: 'user'
-        };
-
-        sessionStorage.setItem('loggedInUser', JSON.stringify(userSession));
-        showApp(userSession);
-
+        // O restante do fluxo (perfil, aprovação, carga de dados) acontece no
+        // observador de autenticação em init() — vale para login e para reload.
+        await loginComFirebase(email, senha);
+        sessionStorage.setItem('registrarLoginAuditoria', 'true');
     } catch (error) {
         console.error(error);
-        loginErro.textContent = 'Login ou senha inválidos';
+        mostrarMsgLogin('Login ou senha inválidos');
         btnEntrar.disabled = false;
     }
   }
 
+  // "Esqueci a senha" — envia o link de redefinição pelo Firebase Auth.
+  async function esqueciSenha() {
+      const email = loginUser.value.trim();
+      if (!email) {
+          mostrarMsgLogin('Digite seu e-mail no campo acima e clique novamente em "Esqueci a senha".');
+          loginUser.focus();
+          return;
+      }
+      try {
+          await resetSenhaFirebase(email);
+      } catch (e) {
+          // Mensagem genérica de propósito (não revela se o e-mail existe);
+          // só erros de formato/rede merecem destaque.
+          if (e && e.code === 'auth/invalid-email') {
+              mostrarMsgLogin('E-mail inválido. Confira o endereço digitado.');
+              return;
+          }
+          console.warn('Redefinição de senha:', e && e.code);
+      }
+      mostrarMsgLogin('Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha. Confira também a caixa de spam.', 'info');
+  }
+
   // Sessão do app é validada contra o estado real do Firebase Auth (persistente entre reloads/deploys),
   // não só contra o sessionStorage — senão um simples refresh de página (ex.: após um deploy) desloga o usuário.
-  function checkLoginState(firebaseUser) {
+  function checkLoginState(firebaseUser, perfil = null) {
       if (!firebaseUser) {
           sessionStorage.removeItem('loggedInUser');
           showLogin();
           return;
       }
-      const stored = sessionStorage.getItem('loggedInUser');
-      let loggedInUser = stored ? JSON.parse(stored) : null;
-      if (!loggedInUser) {
-          loggedInUser = {
-              id: firebaseUser.uid,
-              name: firebaseUser.email.split('@')[0],
-              login: firebaseUser.email,
-              role: 'user'
-          };
-          sessionStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
-      }
+      const loggedInUser = {
+          id: firebaseUser.uid,
+          name: (perfil && perfil.name) || firebaseUser.email.split('@')[0],
+          login: firebaseUser.email,
+          role: (perfil && perfil.role) || 'user'
+      };
+      sessionStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
       showApp(loggedInUser);
   }
   
@@ -834,7 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderModelos(true);
     }
     if(key==='leis') renderLeis();
-    if(key==='cfg') { renderUsers(); renderEmissores(); }
+    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); }
   }
 
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
@@ -857,6 +858,35 @@ document.addEventListener('DOMContentLoaded', () => {
           await dbHelper.put('historico', entry);
       } catch (e) {
           console.warn('Erro ao registrar histórico:', e);
+      }
+      // Espelha no log central de auditoria (Configurações → Log de Auditoria).
+      const modulo = String(acao).startsWith('parecer') ? 'pareceres' : 'processos';
+      const detalhes = (changes || []).map(c => `${fieldLabels[c.campo] || c.campo}: "${c.de ?? ''}" → "${c.para ?? ''}"`).join('; ');
+      await logAuditoria(modulo, acao, `Processo ${processoNum || processoId}`, detalhes || null);
+  }
+
+  // ===== LOG DE AUDITORIA CENTRAL =====
+  // Registro append-only de quem fez o quê (coleção `auditoria`). As regras do
+  // Firestore permitem criar para qualquer usuário aprovado, mas ler/limpar só
+  // para admin — e ninguém edita um registro depois de criado.
+  async function logAuditoria(modulo, acao, alvo, detalhes = null) {
+      try {
+          const u = JSON.parse(sessionStorage.getItem('loggedInUser') || 'null');
+          const entry = {
+              id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              modulo,
+              acao,
+              alvo: alvo == null ? '' : String(alvo),
+              detalhes: detalhes || null,
+              usuario: u?.name || u?.login || 'Sistema',
+              login: u?.login || '',
+              uid: u?.id || '',
+              timestamp: new Date().toISOString()
+          };
+          await dbHelper.put('auditoria', entry);
+      } catch (e) {
+          // Nunca propaga: auditoria não pode derrubar a operação principal.
+          console.warn('Erro ao registrar auditoria:', e);
       }
   }
 
@@ -2239,12 +2269,14 @@ document.addEventListener('DOMContentLoaded', () => {
           if(fileData) rec.arquivo = fileData;
 
           const idx = DB_LEIS.findIndex(l => l.id == rec.id); if (idx > -1) DB_LEIS[idx] = rec; else DB_LEIS.unshift(rec);
-          await dbHelper.put('leis', rec); m.style.display = 'none'; renderLeis(); showToast('Lei salva com sucesso!');
+          await dbHelper.put('leis', rec); await logAuditoria('leis', isNew ? 'criado' : 'editado', `${rec.tipo || 'Lei'} Nº ${rec.numero || rec.id}`); m.style.display = 'none'; renderLeis(); showToast('Lei salva com sucesso!');
       };
       del.onclick = async () => {
           const idVal = Number(form.elements.id.value); if (!idVal) return;
           if (confirm('Tem certeza?')) {
+              const leiDel = DB_LEIS.find(l => l.id == idVal);
               DB_LEIS = DB_LEIS.filter(l => l.id != idVal); await dbHelper.delete('leis', idVal);
+              await logAuditoria('leis', 'excluido', leiDel ? `${leiDel.tipo || 'Lei'} Nº ${leiDel.numero || idVal}` : idVal);
               m.style.display = 'none'; renderLeis(); showToast('Lei excluída.', 'danger');
           }
       }; $$('[data-close-lei]').forEach(x => x.onclick = () => m.style.display = 'none');
@@ -2276,48 +2308,26 @@ document.addEventListener('DOMContentLoaded', () => {
       if (downloadBtn) { const lei = DB_LEIS.find(l => l.id == downloadBtn.dataset.downloadLei); if (lei && lei.arquivo) handleDownload(lei.arquivo.data, lei.arquivo.name); }
   };
 
-  async function openUserModal(mode, id = null) {
-    const m = $('#m_user'); m.style.display = 'flex';
-    $('#m_user_t').textContent = mode === 'new' ? 'Novo Usuário' : 'Editar Usuário';
-    const form = $('#f_user'), del = $('#fu_del'); form.reset(); $('#fu_pass').placeholder = mode === 'new' ? 'Defina uma senha' : 'Deixe em branco para não alterar';
-
-    if (mode === 'edit') {
-        const user = DB_USERS.find(u => u.id == id); if (!user) return;
-        form.elements.id.value = user.id; form.elements.name.value = user.name; form.elements.login.value = user.login; form.elements.role.value = user.role; del.style.display = 'inline-flex';
-    } else { form.elements.id.value = ''; del.style.display = 'none'; }
-
-    form.onsubmit = async (e) => {
-        e.preventDefault(); const formData = new FormData(form); const idVal = formData.get('id'); const isNew = !idVal;
-        const rec = { id: isNew ? Date.now() : Number(idVal), name: formData.get('name'), login: formData.get('login'), role: formData.get('role')};
-        const newPass = formData.get('pass');
-        if (isNew && !newPass) { showToast('Senha é obrigatória para novos usuários.', 'danger'); return; }
-        
-        if (newPass) { 
-            const { salt, hash } = await cryptoHelper.hashPassword(newPass);
-            rec.salt = salt;
-            rec.hashedPassword = hash;
-        }
-
-        const idx = DB_USERS.findIndex(u => u.id == rec.id);
-        if (idx > -1) { 
-            if (!rec.hashedPassword) { 
-                rec.salt = DB_USERS[idx].salt;
-                rec.hashedPassword = DB_USERS[idx].hashedPassword;
-            }
-            DB_USERS[idx] = rec; 
-        } else { DB_USERS.push(rec); }
-        
-        await dbHelper.put('users', rec); m.style.display = 'none'; renderUsers(); showToast('Usuário salvo!');
-    };
-    del.onclick = async () => {
-        const idVal = Number(form.elements.id.value); if (!idVal) return;
-        if (DB_USERS.length <= 1) { showToast('Não é possível excluir o único usuário.', 'danger'); return; }
-        if (confirm('Tem certeza?')) {
-            DB_USERS = DB_USERS.filter(u => u.id != idVal); await dbHelper.delete('users', idVal); m.style.display = 'none'; renderUsers(); showToast('Usuário excluído.', 'danger');
-        }
-    }; $$('[data-close-user]').forEach(x => x.onclick = () => m.style.display = 'none');
+  // Gestão de perfis (Configurações → Usuários e Aprovações).
+  // A conta em si (e-mail/senha) vive no Firebase Authentication; aqui o admin
+  // aprova quem entrou pela primeira vez, promove/rebaixa e revoga acesso.
+  async function atualizarPerfilUsuario(uid, changes, acaoAuditoria) {
+      const p = DB_PERFIS.find(x => x.uid === uid || x.id === uid);
+      if (!p) return;
+      const rec = { ...p, ...changes };
+      try {
+          await dbHelper.put('perfis', rec);
+      } catch (e) {
+          console.error('Erro ao atualizar perfil:', e);
+          showToast('Sem permissão para alterar perfis (recurso de administrador).', 'danger');
+          return;
+      }
+      await logAuditoria('usuarios', acaoAuditoria, rec.email || rec.name);
+      renderUsers();
+      showToast('Perfil atualizado!');
   }
-  
+
+
   function openEmissorModal(mode, id = null) {
     const m = $('#m_emissor'); m.style.display = 'flex'; 
     $('#m_emissor_t').textContent = mode === 'new' ? 'Novo Emissor' : 'Editar Emissor';
@@ -2328,32 +2338,123 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault(); const formData = new FormData(form); const idVal = formData.get('id'); const isNew = !idVal;
         const rec = { id: isNew ? Date.now() : Number(idVal), name: formData.get('name') };
         const idx = DB_EMISSORES.findIndex(em => em.id == rec.id); if (idx > -1) DB_EMISSORES[idx] = rec; else DB_EMISSORES.push(rec);
-        await dbHelper.put('emissores', rec); m.style.display = 'none'; renderEmissores(); showToast('Emissor salvo!');
+        await dbHelper.put('emissores', rec); await logAuditoria('emissores', isNew ? 'criado' : 'editado', rec.name); m.style.display = 'none'; renderEmissores(); showToast('Emissor salvo!');
     };
     del.onclick = async () => {
         const idVal = Number(form.elements.id.value); if (!idVal) return;
-        if (confirm('Tem certeza?')) { DB_EMISSORES = DB_EMISSORES.filter(e => e.id != idVal); await dbHelper.delete('emissores', idVal); m.style.display = 'none'; renderEmissores(); showToast('Emissor excluído.', 'danger'); }
+        const nomeEmissor = DB_EMISSORES.find(e => e.id == idVal)?.name || idVal;
+        if (confirm('Tem certeza?')) { DB_EMISSORES = DB_EMISSORES.filter(e => e.id != idVal); await dbHelper.delete('emissores', idVal); await logAuditoria('emissores', 'excluido', nomeEmissor); m.style.display = 'none'; renderEmissores(); showToast('Emissor excluído.', 'danger'); }
     }; $$('[data-close-emissor]').forEach(x => x.onclick = () => m.style.display = 'none');
 }
 
-  function renderUsers() {
-    const listEl = $('#userList'); listEl.innerHTML = '';
-    DB_USERS.forEach(user => { 
-        const item = document.createElement('div'); 
-        item.className = 'user-item'; 
-        item.innerHTML = `<span>${sanitizeHTML(user.name)} (${sanitizeHTML(user.role)})</span><div><button class="btn secondary" data-edit-user="${user.id}">Editar</button></div>`; 
-        listEl.appendChild(item); 
+  async function renderUsers() {
+    const listEl = $('#userList'); if (!listEl) return;
+    if (!isAdminSession()) return; // o cartão inteiro fica oculto para não-admins
+    listEl.innerHTML = '<div class="list-msg">Carregando usuários…</div>';
+    try {
+        DB_PERFIS = await dbHelper.getAll('perfis');
+    } catch (e) {
+        console.warn('Sem acesso à lista de perfis:', e);
+        listEl.innerHTML = '<div class="list-msg">Não foi possível listar os usuários (as regras novas do Firestore já foram publicadas?).</div>';
+        return;
+    }
+    listEl.innerHTML = '';
+    if (!DB_PERFIS.length) {
+        listEl.innerHTML = '<div class="list-msg">Nenhum perfil registrado ainda. Cada usuário aparece aqui após o primeiro login.</div>';
+        return;
+    }
+    // Pendentes primeiro (é o que o admin veio resolver), depois por nome.
+    DB_PERFIS.sort((a, b) => (!!a.aprovado === !!b.aprovado)
+        ? String(a.name || a.email).localeCompare(String(b.name || b.email))
+        : (a.aprovado ? 1 : -1));
+    const meuUid = (() => { try { return JSON.parse(sessionStorage.getItem('loggedInUser'))?.id; } catch { return null; } })();
+    DB_PERFIS.forEach(p => {
+        const uid = p.uid || p.id;
+        const item = document.createElement('div');
+        item.className = 'user-item';
+        const status = p.aprovado ? (p.role === 'admin' ? 'Admin' : 'Usuário') : 'Pendente';
+        const badgeCls = p.aprovado ? (p.role === 'admin' ? 'badge-admin' : 'badge-user') : 'badge-pendente';
+        const botoes = [];
+        if (!p.aprovado) botoes.push(`<button class="btn primary" data-aprovar-perfil="${sanitizeHTML(uid)}">Aprovar</button>`);
+        else if (uid !== meuUid) botoes.push(`<button class="btn secondary" data-toggle-role="${sanitizeHTML(uid)}">${p.role === 'admin' ? 'Tornar Usuário' : 'Tornar Admin'}</button>`);
+        if (uid !== meuUid) botoes.push(`<button class="btn danger" data-remover-perfil="${sanitizeHTML(uid)}">Remover</button>`);
+        item.innerHTML = `<span>${sanitizeHTML(p.name || p.email || uid)} <small class="user-email">${sanitizeHTML(p.email || '')}</small> <span class="user-badge ${badgeCls}">${status}</span></span><div class="user-item-actions">${botoes.join(' ')}</div>`;
+        listEl.appendChild(item);
     });
   }
 
   function renderEmissores() {
     const listEl = $('#emissorList'); listEl.innerHTML = '';
-    DB_EMISSORES.forEach(emissor => { 
-        const item = document.createElement('div'); 
-        item.className = 'emissor-item'; 
-        item.innerHTML = `<span>${sanitizeHTML(emissor.name)}</span><div><button class="btn secondary" data-edit-emissor="${emissor.id}">Editar</button></div>`; 
-        listEl.appendChild(item); 
+    DB_EMISSORES.forEach(emissor => {
+        const item = document.createElement('div');
+        item.className = 'emissor-item';
+        item.innerHTML = `<span>${sanitizeHTML(emissor.name)}</span><div><button class="btn secondary" data-edit-emissor="${emissor.id}">Editar</button></div>`;
+        listEl.appendChild(item);
     });
+  }
+
+  // ===== Painel do Log de Auditoria (Configurações, admin) =====
+  let AUD_ENTRIES = [];
+  const AUD_MODULOS = { processos: 'Processos', pareceres: 'Pareceres', usuarios: 'Usuários', emissores: 'Emissores', leis: 'Banco de Leis', modelos: 'Modelos', calendario: 'Calendário', backup: 'Backup', auth: 'Acesso' };
+  const AUD_ACOES = { criado: 'criou', editado: 'editou', excluido: 'excluiu', aprovado: 'aprovou', 'promovido-a-admin': 'promoveu a admin', 'rebaixado-a-usuario': 'rebaixou a usuário', 'acesso-revogado': 'revogou o acesso de', login: 'entrou no sistema', logout: 'saiu do sistema', exportado: 'exportou', restaurado: 'restaurou', 'parecer-criado': 'criou parecer —', 'parecer-editado': 'editou parecer —', 'parecer-emitido': 'emitiu parecer —', 'parecer-reaberto': 'reabriu parecer —' };
+
+  async function renderAuditoria() {
+      const listEl = $('#audList'); if (!listEl) return;
+      if (!isAdminSession()) return; // o cartão fica oculto para não-admins
+      listEl.innerHTML = '<div class="list-msg">Carregando registros…</div>';
+      try {
+          // Timestamps em ISO 8601 ordenam corretamente como texto.
+          const snap = await window.db.collection('auditoria').orderBy('timestamp', 'desc').limit(200).get();
+          AUD_ENTRIES = snap.docs.map(d => d.data());
+      } catch (e) {
+          console.warn('Sem acesso à auditoria:', e);
+          listEl.innerHTML = '<div class="list-msg">Não foi possível carregar a auditoria (as regras novas do Firestore já foram publicadas?).</div>';
+          return;
+      }
+      drawAuditoria();
+  }
+
+  function drawAuditoria() {
+      const listEl = $('#audList'); if (!listEl) return;
+      const q = ($('#audFiltro')?.value || '').toLowerCase().trim();
+      const entries = AUD_ENTRIES.filter(en => !q || [en.usuario, en.login, en.modulo, en.acao, en.alvo, en.detalhes].some(v => String(v || '').toLowerCase().includes(q)));
+      listEl.innerHTML = '';
+      if (!entries.length) {
+          listEl.innerHTML = '<div class="list-msg">Nenhum registro de auditoria encontrado.</div>';
+          return;
+      }
+      entries.forEach(en => {
+          const dt = new Date(en.timestamp);
+          const dataStr = isNaN(dt) ? (en.timestamp || '') : dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const item = document.createElement('div');
+          item.className = 'aud-item';
+          item.innerHTML = `
+              <div class="aud-item-top">
+                  <strong>${sanitizeHTML(en.usuario || 'Sistema')}</strong>
+                  <span class="aud-acao">${sanitizeHTML(AUD_ACOES[en.acao] || en.acao)}</span>
+                  <span class="aud-alvo">${sanitizeHTML(en.alvo || '')}</span>
+                  <span class="aud-modulo">${sanitizeHTML(AUD_MODULOS[en.modulo] || en.modulo)}</span>
+              </div>
+              <div class="aud-item-meta">${sanitizeHTML(dataStr)}${en.detalhes ? ' · ' + sanitizeHTML(en.detalhes) : ''}</div>`;
+          listEl.appendChild(item);
+      });
+  }
+
+  function exportAuditoriaCSV() {
+      if (!AUD_ENTRIES.length) { showToast('Nada para exportar — o log ainda não foi carregado.', 'danger'); return; }
+      const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const linhas = [['Data/Hora', 'Usuário', 'Login', 'Módulo', 'Ação', 'Item', 'Detalhes'].map(esc).join(';')];
+      AUD_ENTRIES.forEach(en => linhas.push([en.timestamp, en.usuario, en.login, AUD_MODULOS[en.modulo] || en.modulo, en.acao, en.alvo, en.detalhes || ''].map(esc).join(';')));
+      const blob = new Blob(['\ufeff' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `auditoria_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Log de auditoria exportado!');
   }
 
   function updateEmissorSelect(){
@@ -2501,11 +2602,11 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#f_evt').onsubmit= async (e)=>{
         e.preventDefault(); const r={id:id.value?(String(id.value).startsWith('pr-')?id.value:Number(id.value)):Date.now(),data:d.value,hora:h.value,desc:de.value.trim(),cat:c.value}; if(!r.data||!r.desc)return; if(String(r.id).startsWith('pr-')){m.style.display='none';return;}
         const i=CAL.findIndex(x=>String(x.id)===String(r.id)); if(i>-1)CAL[i]=r;else CAL.push(r);
-        await dbHelper.put('calendario', r); m.style.display='none'; drawView(); showToast('Compromisso salvo!');
+        await dbHelper.put('calendario', r); await logAuditoria('calendario', i>-1 ? 'editado' : 'criado', `${r.data} — ${r.desc}`); m.style.display='none'; drawView(); showToast('Compromisso salvo!');
     };
     dl.onclick= async ()=>{
         const idVal = Number(id.value); if(!idVal)return;
-        if(confirm('Certeza?')){ CAL=CAL.filter(x=>String(x.id)!==String(idVal)); await dbHelper.delete('calendario', idVal); m.style.display='none'; drawView(); showToast('Compromisso excluído.', 'danger'); }
+        if(confirm('Certeza?')){ const evtDel = CAL.find(x=>String(x.id)===String(idVal)); CAL=CAL.filter(x=>String(x.id)!==String(idVal)); await dbHelper.delete('calendario', idVal); await logAuditoria('calendario', 'excluido', evtDel ? `${evtDel.data} — ${evtDel.desc}` : idVal); m.style.display='none'; drawView(); showToast('Compromisso excluído.', 'danger'); }
     }
   }
 
@@ -2848,15 +2949,51 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   function setupEventListeners() {
+    const loginForgotEl = $('#loginForgot');
     btnEntrar.onclick = tentarEntrar;
-    loginOverlay.onkeydown = (e) => { if (e.key === 'Enter') tentarEntrar(); };
+    loginOverlay.onkeydown = (e) => { if (e.key === 'Enter' && e.target !== loginForgotEl) tentarEntrar(); };
     btnSair.onclick = fazerLogout;
+
+    if (loginForgotEl) {
+        loginForgotEl.onclick = esqueciSenha;
+        loginForgotEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); esqueciSenha(); } };
+    }
+
+    const audFiltroEl = $('#audFiltro');
+    if (audFiltroEl) audFiltroEl.oninput = drawAuditoria;
+    const audRefreshEl = $('#audRefresh');
+    if (audRefreshEl) audRefreshEl.onclick = renderAuditoria;
+    const audCsvEl = $('#audCsv');
+    if (audCsvEl) audCsvEl.onclick = exportAuditoriaCSV;
 
     setupEnhancedNav();
 
     $$('.tab').forEach(b => b.onclick = (e) => { e.preventDefault(); showTab(b.dataset.tab); if (window.closeMobileMenu) window.closeMobileMenu(); });
-    $('#btnAddUser').onclick = () => openUserModal('new');
-    $('#userList').onclick = (e) => { if (e.target.closest('[data-edit-user]')) openUserModal('edit', e.target.closest('[data-edit-user]').dataset.editUser); };
+    $('#userList').onclick = async (e) => {
+        const aprovar = e.target.closest('[data-aprovar-perfil]');
+        const toggle = e.target.closest('[data-toggle-role]');
+        const remover = e.target.closest('[data-remover-perfil]');
+        if (aprovar) await atualizarPerfilUsuario(aprovar.dataset.aprovarPerfil, { aprovado: true }, 'aprovado');
+        if (toggle) {
+            const p = DB_PERFIS.find(x => (x.uid || x.id) === toggle.dataset.toggleRole);
+            if (p) await atualizarPerfilUsuario(toggle.dataset.toggleRole, { role: p.role === 'admin' ? 'user' : 'admin' }, p.role === 'admin' ? 'rebaixado-a-usuario' : 'promovido-a-admin');
+        }
+        if (remover) {
+            const p = DB_PERFIS.find(x => (x.uid || x.id) === remover.dataset.removerPerfil);
+            if (!p) return;
+            if (!confirm(`Revogar o acesso de "${p.name || p.email}"?\n\nO perfil será removido e o acesso bloqueado. A conta de e-mail continua existindo no Firebase Authentication — exclua-a por lá se quiser removê-la de vez.`)) return;
+            try {
+                await dbHelper.delete('perfis', p.uid || p.id);
+            } catch (err) {
+                console.error('Erro ao remover perfil:', err);
+                showToast('Sem permissão para remover perfis.', 'danger');
+                return;
+            }
+            await logAuditoria('usuarios', 'acesso-revogado', p.email || p.name);
+            renderUsers();
+            showToast('Acesso revogado.', 'danger');
+        }
+    };
     $('#btnAddEmissor').onclick = () => openEmissorModal('new');
     $('#emissorList').onclick = (e) => { if (e.target.closest('[data-edit-emissor]')) openEmissorModal('edit', e.target.closest('[data-edit-emissor]').dataset.editEmissor); };
     $('#btnAddLei').onclick = () => openLeiModal('new');
@@ -2868,6 +3005,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = async (ev) => {
             const newModelo = { id: Date.now(), name: file.name, data: ev.target.result };
             DB_MODELOS.push(newModelo); await dbHelper.put('modelos', newModelo);
+            await logAuditoria('modelos', 'criado', newModelo.name);
             renderModelos(true);
             showToast('Modelo adicionado!');
         };
@@ -2876,7 +3014,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     $('#modeloList').onclick = async (e) => {
       const delBtn = e.target.closest('[data-del-modelo]'); const downloadBtn = e.target.closest('[data-download-modelo]');
-      if (delBtn) { const modeloId = Number(delBtn.dataset.delModelo); if (confirm('Excluir este modelo?')) { DB_MODELOS = DB_MODELOS.filter(m => m.id !== modeloId); await dbHelper.delete('modelos', modeloId); renderModelos(true); showToast('Modelo excluído.', 'danger'); } }
+      if (delBtn) { const modeloId = Number(delBtn.dataset.delModelo); if (confirm('Excluir este modelo?')) { const nomeModelo = DB_MODELOS.find(m => m.id === modeloId)?.name || modeloId; DB_MODELOS = DB_MODELOS.filter(m => m.id !== modeloId); await dbHelper.delete('modelos', modeloId); await logAuditoria('modelos', 'excluido', nomeModelo); renderModelos(true); showToast('Modelo excluído.', 'danger'); } }
       if (downloadBtn) { const modelo = DB_MODELOS.find(m => m.id === Number(downloadBtn.dataset.downloadModelo)); if(modelo) handleDownload(modelo.data, modelo.name); }
     };
     
@@ -2889,10 +3027,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (delBtn) {
           const docId = Number(delBtn.dataset.delDoc); if (confirm('Excluir este parecer e TODO o seu histórico?')) {
+              const nomeDocExcluido = getDoc(docId)?.name || `Documento ${docId}`;
               const versionsToDelete = getVersionsOfDoc(docId); DB_DOCS = DB_DOCS.filter(d => d.id !== docId); DB_VERSOES = DB_VERSOES.filter(v => v.idDocumento !== docId);
               const procsToUpdate = DB.filter(p => String(p.docId) === String(docId));
               await dbHelper.delete('documentos', docId); for(const v of versionsToDelete) await dbHelper.delete('versoes', v.id); for(const p of procsToUpdate) { p.docId = null; await dbHelper.put('processos', p); }
               DB = await dbHelper.getAll('processos'); currentlyDisplayedPareceres = buildPareceresListaCombinada();
+              await logAuditoria('pareceres', 'excluido', nomeDocExcluido);
               $('#buscaConteudo').value = ''; drawPareceres(true); showToast('Parecer excluído.', 'danger');
           }
       }
@@ -2903,12 +3043,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if(mVersoes) mVersoes.onclick = (e) => { if (e.target.matches('.modal') || e.target.closest('[data-close-versoes]')) { mVersoes.style.display = 'none'; } };
     $('#lista_versoes').onclick = (e) => { const downloadBtn = e.target.closest('[data-download-version]'); if (downloadBtn) { const version = getVersion(Number(downloadBtn.dataset.downloadVersion)); if (version) handleDownload(version.data, version.nomeArquivo); } };
 
-    $('#bk_csv').onclick = () => exportCSV(DB);
+    $('#bk_csv').onclick = () => { exportCSV(DB); logAuditoria('backup', 'exportado', 'Processos (CSV)'); };
 
     $('#bk_down').onclick = async () => {
         try {
             const backupData = {
-                users: await dbHelper.getAll('users'),
+                perfis: await dbHelper.getAll('perfis').catch(() => []),
+                users: await dbHelper.getAll('users').catch(() => []),
                 processos: await dbHelper.getAll('processos'),
                 calendario: await dbHelper.getAll('calendario'),
                 documentos: await dbHelper.getAll('documentos'),
@@ -2930,6 +3071,7 @@ document.addEventListener('DOMContentLoaded', () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            await logAuditoria('backup', 'exportado', 'Backup completo (.json)');
             showToast('Backup completo baixado com sucesso!');
         } catch (error) {
             console.error("Erro ao criar backup:", error);
@@ -2952,7 +3094,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = async (event) => {
             try {
                 const backupData = JSON.parse(event.target.result);
-                if (!backupData.processos || !backupData.users) {
+                if (!backupData.processos) {
                     throw new Error('Arquivo de backup inválido ou corrompido.');
                 }
                 
@@ -2961,7 +3103,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Coleções restauráveis (o Firestore substituiu o IndexedDB;
                     // 'config' é tratado à parte logo abaixo).
-                    const COLECOES = ['users', 'processos', 'calendario', 'documentos', 'versoes', 'modelos', 'emissores', 'leis', 'pareceres', 'parecerVersoes'];
+                    const COLECOES = ['perfis', 'users', 'processos', 'calendario', 'documentos', 'versoes', 'modelos', 'emissores', 'leis', 'pareceres', 'parecerVersoes'];
                     for (const storeName of COLECOES) {
                          if (backupData[storeName]) {
                             await dbHelper.clear(storeName);
@@ -2974,6 +3116,7 @@ document.addEventListener('DOMContentLoaded', () => {
                        await dbHelper.put('config', { key: 'main_cfg', value: backupData.config });
                     }
 
+                    await logAuditoria('backup', 'restaurado', file.name);
                     showToast('Backup restaurado com sucesso! O sistema será reiniciado.', 'success');
                     setTimeout(() => location.reload(), 2000);
                 }, 500);
@@ -2997,21 +3140,45 @@ document.addEventListener('DOMContentLoaded', () => {
               setupEventListeners();
               showLogin();
 
-              // Aguarda autenticação Firebase e carrega dados
+              // Aguarda autenticação Firebase, resolve o perfil e carrega dados
               observarAuth(async (user) => {
-                          if (user) {
-                                        try {
-                                                        await loadAllData();
-                                                                        initTheme();
-                                                        await initializeUsers();
-                                                        checkLoginState(user);
-                                        } catch (err) {
-                                                        console.error('Erro ao carregar dados após autenticação:', err);
-                                                        showLogin();
-                                        }
-                          } else {
-                                        checkLoginState(null);
-                          }
+                  if (!user) { checkLoginState(null); return; }
+                  try {
+                      const perfil = await carregarPerfil(user);
+
+                      // Conta ainda não aprovada por um administrador: registra o
+                      // perfil pendente, encerra a sessão e avisa na tela de login.
+                      if (!perfil.aprovado) {
+                          sessionStorage.removeItem('loggedInUser');
+                          msgLoginPersistente = {
+                              msg: 'Sua conta foi registrada e aguarda aprovação de um administrador. Tente novamente mais tarde.',
+                              tipo: 'info'
+                          };
+                          try { await logoutFirebase(); } catch { showLogin(); }
+                          return;
+                      }
+
+                      // Sessão antes de loadAllData: logAuditoria usa o usuário logado.
+                      sessionStorage.setItem('loggedInUser', JSON.stringify({
+                          id: user.uid,
+                          name: perfil.name || user.email.split('@')[0],
+                          login: user.email,
+                          role: perfil.role || 'user'
+                      }));
+
+                      // Auditoria de login apenas em login de verdade (não em reload).
+                      if (sessionStorage.getItem('registrarLoginAuditoria')) {
+                          sessionStorage.removeItem('registrarLoginAuditoria');
+                          logAuditoria('auth', 'login', user.email);
+                      }
+
+                      await loadAllData();
+                      initTheme();
+                      checkLoginState(user, perfil);
+                  } catch (err) {
+                      console.error('Erro ao carregar dados após autenticação:', err);
+                      showLogin();
+                  }
               });
     } catch (error) {
         console.error("Falha na inicialização do aplicativo:", error);
