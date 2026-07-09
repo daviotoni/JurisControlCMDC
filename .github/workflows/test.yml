@@ -1,0 +1,42 @@
+name: Test
+
+# Roda os testes de unidade (Vitest) da lógica pura — datas, regras de prazo,
+# KPIs, notificações e sanitização — em cada push e pull request. Cobre as duas
+# implementações (web: js/utils.js; mobile: mobile/src/lib) e a paridade entre
+# elas. Não afeta o site servido.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/**'
+      - 'mobile/src/**'
+      - 'test/**'
+      - 'vitest.config.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/test.yml'
+  pull_request:
+    paths:
+      - 'js/**'
+      - 'mobile/src/**'
+      - 'test/**'
+      - 'vitest.config.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/test.yml'
+
+jobs:
+  vitest:
+    runs-on: ubuntu-latest
+    env:
+      # Fixa o fuso para os testes de data serem determinísticos.
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:run

@@ -24,3 +24,9 @@ const VALID_STATS = new Set(['pendente', 'em-analise', 'aguardando-documentacao'
 const VALID_ACAO  = new Set(['criado', 'editado', 'excluido', 'parecer-criado', 'parecer-editado', 'parecer-emitido', 'parecer-reaberto']);
 const VALID_CAT   = new Set(['g', 'a', 'r', 'p', 'u', 'e', 'o']);
 const safeCSSClass = (value, whitelist) => whitelist.has(value) ? value : '';
+
+// Exporta para ambientes de teste (Node/Vitest). No navegador `module` não
+// existe, então este bloco é ignorado e NÃO afeta o carregamento via <script>.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, VALID_STATS, VALID_ACAO, VALID_CAT };
+}
