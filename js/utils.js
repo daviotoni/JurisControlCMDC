@@ -36,8 +36,35 @@ function getChanges(oldRec, newRec) {
     .map(f => ({ campo: f, de: oldRec[f] || '', para: newRec[f] || '' }));
 }
 
+// ----- Arquivos (download / MIME) -----
+// Decodifica um dataURL base64 (ex.: "data:...;base64,XXXX") num ArrayBuffer.
+// Em caso de erro (base64 inválido/sem vírgula) retorna um buffer vazio. Puro
+// (depende só de window.atob). Usado pelo download de modelos/anexos.
+function base64ToArrayBuffer(base64) {
+  try {
+    const binaryString = window.atob(base64.split(',')[1]);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); }
+    return bytes.buffer;
+  } catch (e) {
+    console.error("Erro ao decodificar base64:", e);
+    return new ArrayBuffer(0); // Retorna buffer vazio em caso de erro
+  }
+}
+
+// MIME a partir da extensão do arquivo (fallback: .docx). Função pura.
+function getMimeType(filename) {
+  const extension = filename.split('.').pop().toLowerCase();
+  switch (extension) {
+    case 'doc': return 'application/msword';
+    case 'pdf': return 'application/pdf';
+    default: return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  }
+}
+
 // Exporta para ambientes de teste (Node/Vitest). No navegador `module` não
 // existe, então este bloco é ignorado e NÃO afeta o carregamento via <script>.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS, VALID_STATS, VALID_ACAO, VALID_CAT };
+  module.exports = { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS, base64ToArrayBuffer, getMimeType, VALID_STATS, VALID_ACAO, VALID_CAT };
 }

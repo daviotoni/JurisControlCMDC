@@ -317,27 +317,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return getVersion(doc.idVersaoAtual);
   };
   
-  function base64ToArrayBuffer(base64) {
-      try {
-        const binaryString = window.atob(base64.split(',')[1]);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); }
-        return bytes.buffer;
-      } catch (e) {
-        console.error("Erro ao decodificar base64:", e);
-        return new ArrayBuffer(0); // Retorna buffer vazio em caso de erro
-      }
-  }
-  
-  function getMimeType(filename) {
-      const extension = filename.split('.').pop().toLowerCase();
-      switch (extension) {
-        case 'doc': return 'application/msword';
-        case 'pdf': return 'application/pdf';
-        default: return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      }
-  }
+  // base64ToArrayBuffer e getMimeType foram movidos para js/utils.js (funções
+  // puras, testáveis). Continuam disponíveis como globais.
 
   function handleDownload(base64Data, filename) {
       try {
