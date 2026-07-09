@@ -3,7 +3,7 @@
 // `module.exports` guardado para ambientes de teste (ver o fim do arquivo).
 import utils from '../../js/utils.js';
 
-const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
+const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
 
 describe('datas (UTC-safe)', () => {
   describe('parse', () => {
@@ -117,5 +117,41 @@ describe('safeCSSClass + whitelists', () => {
   it('whitelist de categorias de evento aceita só as chaves conhecidas', () => {
     ['g', 'a', 'r', 'p', 'u', 'e', 'o'].forEach((c) => expect(VALID_CAT.has(c)).toBe(true));
     expect(VALID_CAT.has('x')).toBe(false);
+  });
+});
+
+describe('getChanges (diff do histórico de processos)', () => {
+  const base = {
+    num: '001', int: 'Fulano', tipo: 'administrativo', obj: 'Objeto',
+    acao: '', stat: 'pendente', setorOrigem: 'CPL', dest: '', ent: '2024-01-01', prazo: '2024-02-01', saida: '',
+  };
+
+  it('não detecta mudança quando os registros são iguais', () => {
+    expect(getChanges(base, { ...base })).toEqual([]);
+  });
+
+  it('detecta um campo alterado e reporta de/para', () => {
+    const changes = getChanges(base, { ...base, stat: 'finalizado' });
+    expect(changes).toEqual([{ campo: 'stat', de: 'pendente', para: 'finalizado' }]);
+  });
+
+  it('detecta múltiplos campos alterados', () => {
+    const changes = getChanges(base, { ...base, int: 'Ciclano', prazo: '2024-03-01' });
+    expect(changes.map((c) => c.campo).sort()).toEqual(['int', 'prazo']);
+  });
+
+  it('trata null/undefined/"" como equivalentes (não gera falso positivo)', () => {
+    expect(getChanges({ ...base, dest: '' }, { ...base, dest: undefined })).toEqual([]);
+    expect(getChanges({ ...base, dest: null }, { ...base, dest: '' })).toEqual([]);
+  });
+
+  it('detecta preenchimento de um campo antes vazio', () => {
+    const changes = getChanges({ ...base, dest: '' }, { ...base, dest: 'Presidência' });
+    expect(changes).toEqual([{ campo: 'dest', de: '', para: 'Presidência' }]);
+  });
+
+  it('ignora campos fora da lista rastreada (ex.: id, anotacoes)', () => {
+    const changes = getChanges({ ...base, id: 1 }, { ...base, id: 999 });
+    expect(changes).toEqual([]);
   });
 });

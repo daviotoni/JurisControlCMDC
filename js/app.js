@@ -900,12 +900,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
   const fieldLabels = { num: 'Nº Processo', int: 'Interessado', tipo: 'Tipo', obj: 'Objeto', acao: 'Ação Tomada', stat: 'Status', setorOrigem: 'Setor de Origem', dest: 'Setor Enviado', ent: 'Data de Entrada', prazo: 'Prazo Final', saida: 'Data de Saída' };
 
-  function getChanges(oldRec, newRec) {
-      const trackFields = ['num','int','tipo','obj','acao','stat','setorOrigem','dest','ent','prazo','saida'];
-      return trackFields
-          .filter(f => String(oldRec[f] || '') !== String(newRec[f] || ''))
-          .map(f => ({ campo: f, de: oldRec[f] || '', para: newRec[f] || '' }));
-  }
+  // getChanges foi movido para js/utils.js (função pura, testável). Continua
+  // disponível como global, pois utils.js é carregado antes do app.js.
 
   async function logHistorico(processoId, processoNum, acao, changes = []) {
       try {

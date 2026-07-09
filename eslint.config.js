@@ -84,6 +84,7 @@ module.exports = [
         ymd: 'readonly',
         sanitizeHTML: 'readonly',
         safeCSSClass: 'readonly',
+        getChanges: 'readonly',
         VALID_STATS: 'readonly',
         VALID_ACAO: 'readonly',
         VALID_CAT: 'readonly',
