@@ -17,7 +17,7 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=7bf1d12226">
+        <link rel="stylesheet" href="style.css?v=de66a96dd7">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
-    <script src="js/firebase.js"></script>
+    <script src="js/firebase.js?v=505ad962cb"></script>
     <script src="js/firestoreHelper.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -66,7 +66,7 @@
                         <input type="checkbox" id="lembrarUser" style="width: auto;">
                         <label for="lembrarUser" style="margin:0;">Lembrar-me</label>
                     </div>
-                    <span class="login-forgot">Esqueci a senha</span>
+                    <span id="loginForgot" class="login-forgot" role="button" tabindex="0">Esqueci a senha</span>
                 </div>
                 <div class="login-acoes">
                     <button id="btnEntrar" class="btn primary">Entrar</button>
@@ -353,10 +353,10 @@
                 <section id="secCfg" style="display:none">
                   <h2>Configurações</h2>
                   <div class="two-col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem">
-                     <div class="card">
-                        <h3>Gerenciamento de Usuários</h3>
+                     <div class="card admin-only">
+                        <h3>Usuários e Aprovações</h3>
+                        <p class="cfg-note">Crie a conta (e-mail/senha) no Firebase Authentication. No primeiro acesso, o usuário aparece aqui como <strong>Pendente</strong> — aprove-o para liberar o sistema.</p>
                         <div id="userList" class="list"></div>
-                        <div style="margin-top: 1rem;"><button id="btnAddUser" class="btn primary">Adicionar Usuário</button></div>
                     </div>
                      <div class="card">
                         <h3>Gerenciamento de Emissores</h3>
@@ -367,10 +367,20 @@
                         <h3>Backup e Restauração</h3>
                          <div style="display:flex;flex-wrap:wrap;gap:0.75rem">
                            <button id="bk_csv" class="btn secondary">Exportar Processos (CSV)</button>
-                           <button id="bk_down" class="btn secondary">Baixar Backup (.json)</button>
-                           <button id="bk_up" class="btn secondary">Restaurar Backup</button>
+                           <button id="bk_down" class="btn secondary admin-only">Baixar Backup (.json)</button>
+                           <button id="bk_up" class="btn secondary admin-only">Restaurar Backup</button>
                            <input id="bk_file" type="file" accept=".json" class="sr-only">
                          </div>
+                    </div>
+                    <div class="card admin-only">
+                        <h3>Log de Auditoria</h3>
+                        <p class="cfg-note">Registro de quem fez o quê no sistema (últimos 200 eventos).</p>
+                        <div class="aud-toolbar">
+                           <input id="audFiltro" class="input" placeholder="Filtrar por usuário, ação ou item…">
+                           <button id="audRefresh" class="btn secondary">Atualizar</button>
+                           <button id="audCsv" class="btn secondary">Exportar CSV</button>
+                        </div>
+                        <div id="audList" class="list aud-list"></div>
                     </div>
                   </div>
                 </section>
@@ -527,27 +537,6 @@
             </div>
         </div>
     </div>
-    <div id="m_user" class="modal">
-        <div class="dialog">
-            <div class="dialog-header"><h3 id="m_user_t"></h3></div>
-            <form id="f_user">
-                <div class="dialog-body">
-                    <div class="form-grid">
-                        <div class="form-group full-width"><label for="fu_name">Nome Completo</label><input id="fu_name" name="name" class="input" required></div>
-                        <div class="form-group"><label for="fu_login">Login</label><input id="fu_login" name="login" class="input" required></div>
-                        <div class="form-group"><label for="fu_pass">Senha</label><input id="fu_pass" name="pass" type="password" class="input" placeholder="Deixe em branco para não alterar"></div>
-                        <div class="form-group"><label for="fu_role">Cargo</label><select id="fu_role" name="role" class="select"><option value="user">Usuário</option><option value="admin">Admin</option></select></div>
-                    </div>
-                </div>
-                <div class="dialog-footer">
-                    <button type="button" class="btn danger" id="fu_del" style="display:none; margin-right: auto;">Excluir</button>
-                    <button type="button" class="btn secondary" data-close-user>Cancelar</button>
-                    <button type="submit" class="btn primary">Salvar</button>
-                </div>
-                <input type="hidden" id="fu_id" name="id">
-            </form>
-        </div>
-    </div>
     <div id="m_emissor" class="modal">
         <div class="dialog" style="max-width: 500px;">
             <div class="dialog-header"><h3 id="m_emissor_t"></h3></div>
@@ -601,7 +590,7 @@
 
     <script src="js/utils.js?v=970526615f"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
-    <script src="js/app.js?v=51b9edbdf4"></script>
+    <script src="js/app.js?v=959ea8252b"></script>
 
 </body>
 </html>

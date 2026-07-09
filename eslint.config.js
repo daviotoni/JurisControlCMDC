@@ -76,6 +76,7 @@ module.exports = [
         loginComFirebase: 'readonly',
         logoutFirebase: 'readonly',
         observarAuth: 'readonly',
+        resetSenhaFirebase: 'readonly',
         // Definidos em js/utils.js (carregado antes do app.js)
         fmtBR: 'readonly',
         parse: 'readonly',

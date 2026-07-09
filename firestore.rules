@@ -2,40 +2,96 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Usuário autenticado no Firebase Auth (login por e-mail/senha do app).
+    // ============================================================
+    // CONTROLE DE ACESSO POR PAPEL (perfis/{uid})
+    //
+    // Cada usuário do Firebase Auth tem um doc em `perfis/{uid}`:
+    //   { uid, email, name, role: 'admin'|'user', aprovado: bool, criadoEm }
+    //
+    // Fluxo: no primeiro login o app cria o próprio perfil como
+    // PENDENTE (role 'user', aprovado false). Um admin aprova na tela
+    // de Configurações. Só perfis aprovados acessam os dados.
+    //
+    // ⚠️ BOOTSTRAP ANTI-LOCKOUT: os e-mails abaixo são SEMPRE admin,
+    // mesmo sem perfil aprovado. Mantenha aqui o e-mail que você usa
+    // para entrar no sistema (em minúsculas) — e espelhe qualquer
+    // mudança na constante BOOTSTRAP_ADMINS em js/app.js.
+    // ============================================================
     function autenticado() {
       return request.auth != null;
     }
+    function bootstrapAdmin() {
+      return autenticado()
+        && request.auth.token.email in ['dosvleite@yahoo.com.br'];
+    }
+    function temPerfil() {
+      return exists(/databases/$(database)/documents/perfis/$(request.auth.uid));
+    }
+    function meuPerfil() {
+      return get(/databases/$(database)/documents/perfis/$(request.auth.uid)).data;
+    }
+    // Usuário aprovado (qualquer papel) — acesso de trabalho normal.
+    function aprovado() {
+      return autenticado()
+        && (bootstrapAdmin() || (temPerfil() && meuPerfil().aprovado == true));
+    }
+    // Administrador — gestão de usuários, backup/restauração, auditoria.
+    function admin() {
+      return autenticado()
+        && (bootstrapAdmin()
+            || (temPerfil() && meuPerfil().aprovado == true && meuPerfil().role == 'admin'));
+    }
 
+    // ---- Perfis de usuário -------------------------------------
+    match /perfis/{uid} {
+      // Ler o próprio perfil (necessário no login, antes da aprovação).
+      allow get: if autenticado() && request.auth.uid == uid;
+      // Listar/gerenciar todos os perfis: só admin.
+      allow list, create, update, delete: if admin();
+      // Auto-registro no primeiro login: o usuário cria o PRÓPRIO perfil,
+      // sempre como usuário comum PENDENTE (nunca se auto-aprova).
+      allow create: if autenticado()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'user'
+        && request.resource.data.aprovado == false;
+      // Usuário pode ajustar o próprio nome, sem mexer em role/aprovado.
+      allow update: if autenticado()
+        && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.aprovado == resource.data.aprovado;
+    }
+
+    // ---- Dados de trabalho (qualquer usuário APROVADO) ----------
     // Coleções efetivamente usadas pelo JurisControl (web + mobile).
-    // Só estas são acessíveis. NÃO há mais regra curinga (`{document=**}`):
-    // qualquer coleção não listada abaixo é NEGADA por padrão, impedindo que
-    // um cliente autenticado grave em coleções arbitrárias (ex.: exfiltrar
-    // dados ou poluir o banco com coleções inventadas).
-    //
-    // ⚠️ Ao criar uma coleção nova no app, adicione a regra dela aqui —
-    //    senão as leituras/gravações vão falhar em produção.
-    match /processos/{id}      { allow read, write: if autenticado(); }
-    match /pareceres/{id}      { allow read, write: if autenticado(); }
-    match /parecerVersoes/{id} { allow read, write: if autenticado(); }
-    match /documentos/{id}     { allow read, write: if autenticado(); }
-    match /versoes/{id}        { allow read, write: if autenticado(); }
-    match /calendario/{id}     { allow read, write: if autenticado(); }
-    match /emissores/{id}      { allow read, write: if autenticado(); }
-    match /modelos/{id}        { allow read, write: if autenticado(); }
-    match /leis/{id}           { allow read, write: if autenticado(); }
-    match /historico/{id}      { allow read, write: if autenticado(); }
-    match /config/{id}         { allow read, write: if autenticado(); }
-    match /users/{id}          { allow read, write: if autenticado(); }
+    // Não há regra curinga: coleção não listada é NEGADA por padrão.
+    // ⚠️ Ao criar uma coleção nova no app, adicione a regra dela aqui.
+    match /processos/{id}      { allow read, write: if aprovado(); }
+    match /pareceres/{id}      { allow read, write: if aprovado(); }
+    match /parecerVersoes/{id} { allow read, write: if aprovado(); }
+    match /documentos/{id}     { allow read, write: if aprovado(); }
+    match /versoes/{id}        { allow read, write: if aprovado(); }
+    match /calendario/{id}     { allow read, write: if aprovado(); }
+    match /emissores/{id}      { allow read, write: if aprovado(); }
+    match /modelos/{id}        { allow read, write: if aprovado(); }
+    match /leis/{id}           { allow read, write: if aprovado(); }
+    match /config/{id}         { allow read, write: if aprovado(); }
 
-    // PRÓXIMO PASSO (controle por papel / anti-cadastro público):
-    // Hoje qualquer conta autenticada tem acesso total. Para restringir a
-    // usuários aprovados e distinguir "admin", o caminho recomendado é manter
-    // um doc por UID (ex.: users/{request.auth.uid}) ou usar Custom Claims,
-    // e então trocar `autenticado()` por algo como:
-    //   function aprovado() { return exists(/databases/$(database)/documents/aprovados/$(request.auth.uid)); }
-    //   function admin()    { return get(/databases/$(database)/documents/aprovados/$(request.auth.uid)).data.role == 'admin'; }
-    // Isso exige provisionar esses docs para os usuários atuais (senão eles
-    // perdem o acesso), por isso não está ativado aqui.
+    // ---- Histórico por processo (imutável para não-admin) -------
+    match /historico/{id} {
+      allow read, create: if aprovado();
+      allow update, delete: if admin();
+    }
+
+    // ---- Auditoria central (append-only) ------------------------
+    // Qualquer aprovado registra; só admin lê/limpa; ninguém edita.
+    match /auditoria/{id} {
+      allow create: if aprovado();
+      allow read, delete: if admin();
+      allow update: if false;
+    }
+
+    // ---- Coleção legada de usuários (PBKDF2, pré-Firebase Auth) --
+    // Mantida só para backups antigos; o app não a usa mais.
+    match /users/{id} { allow read, write: if admin(); }
   }
 }
