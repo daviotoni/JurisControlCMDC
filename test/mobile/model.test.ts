@@ -4,6 +4,7 @@
 //
 // Datas são sempre relativas a hoje (todayUTC) para os testes serem
 // determinísticos, não importando o dia em que rodam.
+import { afterEach, vi } from 'vitest';
 import { addDays, todayUTC, ymd } from '../../mobile/src/lib/dates';
 import {
   bannerPrazos,
@@ -12,6 +13,7 @@ import {
   generateNotifications,
   prazoColor,
   prazoInfo,
+  saudacao,
   unreadCount,
 } from '../../mobile/src/lib/model';
 import type { EventoCal, Processo } from '../../mobile/src/lib/types';
@@ -189,6 +191,36 @@ describe('unreadCount', () => {
     );
     expect(unreadCount(notifs, null)).toBe(2);
     expect(unreadCount(notifs, { readNotifications: [notifs[0].id] })).toBe(1);
+  });
+});
+
+describe('saudacao (depende da hora local)', () => {
+  afterEach(() => vi.useRealTimers());
+
+  const emHora = (h: number) => {
+    vi.useFakeTimers();
+    // Data arbitrária, só a hora importa (getHours é local).
+    vi.setSystemTime(new Date(2024, 6, 9, h, 0, 0));
+  };
+
+  it('"Bom dia," antes do meio-dia', () => {
+    emHora(9);
+    expect(saudacao()).toBe('Bom dia,');
+  });
+
+  it('"Boa tarde," entre 12h e 17h59', () => {
+    emHora(15);
+    expect(saudacao()).toBe('Boa tarde,');
+  });
+
+  it('"Boa noite," a partir das 18h', () => {
+    emHora(21);
+    expect(saudacao()).toBe('Boa noite,');
+  });
+
+  it('vira "Boa tarde," exatamente ao meio-dia (limite <12)', () => {
+    emHora(12);
+    expect(saudacao()).toBe('Boa tarde,');
   });
 });
 
