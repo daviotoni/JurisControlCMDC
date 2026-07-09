@@ -36,7 +36,8 @@
     "build:site": "expo export --platform web --output-dir ../app && rm -f ../app/metadata.json && printf '# Build gerado (mobile: npm run build:site). Re-inclui as fontes que o\\n# node_modules/ do .gitignore da raiz esconderia.\\n!assets/node_modules/\\n' > ../app/.gitignore",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit"
   },
   "private": true
 }
