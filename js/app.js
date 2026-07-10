@@ -402,7 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="status ${emitido ? 'emitido' : 'rascunho'}" style="margin-top: 4px; display: inline-block;">${emitido ? 'Emitido' : 'Rascunho'}</span>
             </div>
             <div class="actions">
-              <button class="btn" data-abrir-parecer="${pz.processoId}">Abrir</button>
+              <button class="btn" data-abrir-parecer="${pz.processoId}" title="Abrir parecer">Abrir</button>
+              <button class="btn danger" data-del-parecer="${pz.id}" title="Excluir parecer">Excluir</button>
             </div>`;
             list.appendChild(el);
             return;
@@ -3303,10 +3304,28 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     $('#parecerList').onclick = async (e) => {
-      const delBtn = e.target.closest('[data-del-doc]'); const versionsBtn = e.target.closest('[data-versions-for]'); const downloadBtn = e.target.closest('[data-download-version]'); const abrirParecerBtn = e.target.closest('[data-abrir-parecer]');
+      const delBtn = e.target.closest('[data-del-doc]'); const versionsBtn = e.target.closest('[data-versions-for]'); const downloadBtn = e.target.closest('[data-download-version]'); const abrirParecerBtn = e.target.closest('[data-abrir-parecer]'); const delParecerBtn = e.target.closest('[data-del-parecer]');
       if (abrirParecerBtn) {
           const proc = DB.find(p => String(p.id) === String(abrirParecerBtn.dataset.abrirParecer));
           if (proc) openParecerModal(proc); else showToast('Processo vinculado não encontrado.', 'danger');
+          return;
+      }
+      if (delParecerBtn) {
+          const pzId = Number(delParecerBtn.dataset.delParecer);
+          const pz = DB_PARECERES.find(x => x.id === pzId);
+          if (!pz) { showToast('Parecer não encontrado.', 'danger'); return; }
+          const proc = DB.find(p => String(p.id) === String(pz.processoId));
+          const nomeParecer = `Parecer — Processo ${proc?.num || pz.processoId}`;
+          const ok = await confirmDialog('Este parecer e todo o seu histórico de versões serão removidos permanentemente. O processo vinculado <strong>não</strong> será excluído.', { title: 'Excluir parecer', confirmLabel: 'Excluir' });
+          if (!ok) return;
+          const versoes = getParecerVersoes(pz.id);
+          DB_PARECERES = DB_PARECERES.filter(x => x.id !== pz.id);
+          DB_PARECER_VERSOES = DB_PARECER_VERSOES.filter(v => v.parecerId !== pz.id);
+          await dbHelper.delete('pareceres', pz.id);
+          for (const v of versoes) await dbHelper.delete('parecerVersoes', v.id);
+          currentlyDisplayedPareceres = buildPareceresListaCombinada();
+          await logAuditoria('pareceres', 'excluido', nomeParecer);
+          $('#buscaConteudo').value = ''; drawPareceres(true); showToast('Parecer excluído.', 'danger');
           return;
       }
       if (delBtn) {
