@@ -570,20 +570,40 @@ document.addEventListener('DOMContentLoaded', () => {
       };
   }
 
+  // Frases-lixo que o Word/Gemini injeta ao copiar de documentos com campos de
+  // formulário — não são conteúdo do parecer e precisam ser descartadas ao colar.
+  const WORD_ARTIFACT_RE = /^(parte (superior|inferior) do formul[aá]rio|top of form|bottom of form)$/i;
+
   function ensureParecerQuill() {
       if (parecerQuill) return parecerQuill;
       parecerQuill = new Quill('#parecerEditor', {
           theme: 'snow',
+          // Whitelist de formatos: só estes sobrevivem ao colar. Cor, fonte,
+          // tamanho e "mso-*" do Word são descartados automaticamente, deixando
+          // o parecer com a tipografia padrão do sistema.
+          formats: ['bold', 'italic', 'underline', 'header', 'align', 'list', 'indent'],
           modules: {
               toolbar: [
                   ['bold', 'italic', 'underline'],
                   [{ header: [1, 2, 3, false] }],
                   [{ align: [] }],
                   [{ list: 'ordered' }, { list: 'bullet' }],
+                  [{ indent: '-1' }, { indent: '+1' }],
                   ['clean']
               ]
           }
       });
+
+      // Limpeza ao colar do Word/Gemini (cobre também o carregamento de modelos,
+      // que passa por clipboard.convert): descarta parágrafos que são apenas
+      // marcadores de formulário do Word.
+      const DeltaCtor = Quill.import('delta');
+      parecerQuill.clipboard.addMatcher(Node.ELEMENT_NODE, (node, delta) => {
+          const txt = (node.textContent || '').replace(/\s+/g, ' ').trim();
+          if (txt && WORD_ARTIFACT_RE.test(txt)) return new DeltaCtor();
+          return delta;
+      });
+
       return parecerQuill;
   }
 
