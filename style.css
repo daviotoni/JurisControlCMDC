@@ -573,6 +573,42 @@
         .prazo-info .type, .alert-info .type { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
         .prazo-info .desc, .alert-info .desc { font-weight: 600; color: var(--text-primary); }
 
+        /* ===== Radar de Prazos (dashboard) — faixa dos próximos 7 dias ===== */
+        .dash-radar-card .radar-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+        .radar-legend { display: flex; gap: 0.9rem; flex-wrap: wrap; font-size: 0.7rem; color: var(--text-secondary); }
+        .radar-legend .lg { display: inline-flex; align-items: center; gap: 5px; }
+        .radar-legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .radar-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.55rem; margin-top: 0.85rem; }
+        .radar-week.has-overdue { grid-template-columns: 0.75fr repeat(7, 1fr); }
+        .radar-day { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0.6rem 0.25rem 0.7rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); cursor: pointer; min-height: 104px; transition: box-shadow .15s, transform .15s, border-color .15s; text-align: center; font-family: inherit; }
+        .radar-day:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,42,74,.1); border-color: var(--brand-200); }
+        .radar-dow { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-secondary); }
+        .radar-num { font-size: 1.5rem; font-weight: 800; line-height: 1; color: var(--text-primary); }
+        .radar-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 8px; max-width: 62px; align-items: center; }
+        .radar-dots .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .radar-dots .radar-more { font-size: 0.6rem; font-weight: 700; color: var(--text-muted); }
+        .dot.d-danger { background: var(--danger); } .dot.d-warning { background: var(--warning); }
+        .dot.d-proc { background: var(--brand-500); } .dot.d-event { background: var(--purple); }
+        .radar-count { font-size: 0.64rem; font-weight: 600; color: var(--text-secondary); margin-top: 1px; }
+        .radar-day.is-empty { opacity: .5; } .radar-day.is-empty:hover { transform: none; }
+        .radar-day.is-today { border-color: var(--brand-600); box-shadow: inset 0 0 0 1.5px var(--brand-600); }
+        .radar-day.is-today .radar-dow { color: var(--brand-600); }
+        .radar-day.lvl-danger { background: rgba(180,35,35,0.09); border-color: rgba(180,35,35,0.40); }
+        .radar-day.lvl-warning { background: rgba(178,94,9,0.10); border-color: rgba(178,94,9,0.40); }
+        .radar-overdue { background: rgba(180,35,35,0.12); border-color: var(--danger); }
+        .radar-overdue .radar-num, .radar-overdue .radar-count { color: var(--danger); }
+        .radar-overdue .radar-warn { font-size: 1.1rem; line-height: 1; color: var(--danger); }
+        body[data-theme="dark"] .radar-overdue .radar-num, body[data-theme="dark"] .radar-overdue .radar-warn { color: #ff7a7a; }
+        body[data-theme="dark"] .radar-overdue .radar-count { color: #ff9a9a; }
+        body[data-theme="dark"] .radar-day.lvl-danger { border-color: rgba(255,120,120,0.5); }
+        body[data-theme="dark"] .radar-day.lvl-warning { border-color: rgba(240,160,80,0.5); }
+        body[data-theme="dark"] .radar-day.is-today { border-color: var(--brand-500); box-shadow: inset 0 0 0 1.5px var(--brand-500); }
+        body[data-theme="dark"] .radar-day.is-today .radar-dow { color: #bcd3ee; }
+        @media (max-width: 720px) {
+            .radar-week, .radar-week.has-overdue { grid-template-columns: repeat(4, 1fr); }
+            .radar-day { min-height: 90px; }
+        }
+
         .chart-container { position: relative; width: 100%; height: 300px; }
 
         .toolbar { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
