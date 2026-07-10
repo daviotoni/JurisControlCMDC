@@ -580,6 +580,46 @@
         .toolbar .select { max-width: 200px;}
         .toolbar .actions-group { margin-left: auto; display: flex; gap: 1rem; flex-wrap: wrap; }
 
+        /* Barra de ferramentas dos Processos: painel contido em duas linhas */
+        .proc-toolbar {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 0.85rem 1rem;
+            box-shadow: 0 1px 3px rgba(16, 42, 74, 0.06);
+            margin-bottom: 1.5rem;
+            display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .proc-toolbar .tb-row { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
+        .proc-toolbar .tb-row > .input { flex: 1; min-width: 180px; max-width: none; }
+        .proc-toolbar .tb-row > .select { max-width: 190px; }
+        .proc-toolbar .tb-left { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
+        .proc-toolbar .tb-right { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-left: auto; }
+        @media (max-width: 640px) {
+            .proc-toolbar .tb-right { width: 100%; }
+        }
+        /* Menu "Exportar" — dropdown nativo (<details>), sem JS obrigatório */
+        .menu-export { position: relative; }
+        .menu-export > summary { list-style: none; user-select: none; }
+        .menu-export > summary::-webkit-details-marker { display: none; }
+        .menu-export > summary::after {
+            content: ""; width: 7px; height: 7px; margin-left: 1px;
+            border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+            transform: rotate(45deg) translateY(-2px); opacity: 0.65;
+        }
+        .menu-export[open] > summary::after { transform: rotate(-135deg); }
+        .menu-pop {
+            position: absolute; right: 0; top: calc(100% + 6px); z-index: 1200;
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 10px; box-shadow: 0 8px 24px rgba(16, 42, 74, 0.16);
+            padding: 6px; min-width: 200px; display: flex; flex-direction: column; gap: 4px;
+        }
+        .menu-pop .btn {
+            justify-content: flex-start; width: 100%; border: none; background: transparent;
+            color: var(--text-primary); padding: 8px 10px; border-radius: 7px; font-weight: 500;
+        }
+        .menu-pop .btn:hover { background: rgba(127, 127, 127, 0.12); transform: none; box-shadow: none; }
+
         #btnToggleFiltros { position: relative; }
         #btnToggleFiltros.active { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
         #btnSelecionar.active { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
