@@ -15,7 +15,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const { getFirestore } = require('firebase-admin/firestore');
-const { normalizarLexml, normalizarDatajud } = require('./normalizadores');
+const { normalizarLexml, normalizarDatajud, normalizarJurisai } = require('./normalizadores');
 
 initializeApp();
 
@@ -38,6 +38,19 @@ const TRIBUNAIS_DATAJUD = new Set([
   'tjrj', 'tjsp', 'tjmg', 'tjrs', 'tjpr', 'tjsc', 'tjba', 'tjce', 'tjgo',
   'tjma', 'tjmt', 'tjpe', 'tjdft',
 ]);
+
+// Bases indexadas pelo Jurisprudências.ai (GET /api/v1/courts confirma a lista).
+const TRIBUNAIS_JURISAI = new Set([
+  'stf', 'stj', 'tst', 'trf3', 'trf4', 'tjce', 'tjgo', 'tjma', 'tjmg',
+  'tjmt', 'tjpr', 'tjrj', 'tjrs', 'tjsc', 'tjsp', 'carf',
+]);
+
+// Erro com status HTTP dedicado para o cliente (mensagem amigável no painel).
+function erroCliente(status, msg) {
+  const e = new Error(msg);
+  e.statusCliente = status;
+  return e;
+}
 
 function aplicarCors(req, res) {
   const origem = req.headers.origin || '';
@@ -74,6 +87,26 @@ async function buscarLexml(tema) {
     if (resultados.length) return resultados;
   }
   return [];
+}
+
+// Token da conta Jurisprudências.ai: o admin cola em Configurações →
+// "Integração Jurisprudências.ai", que grava em segredos/jurisai (coleção
+// restrita a admin nas firestore.rules). O Admin SDK lê direto daqui.
+async function buscarJurisai(q, tribunal) {
+  const doc = await getFirestore().collection('segredos').doc('jurisai').get();
+  const token = doc.exists ? String(doc.data().token || '').trim() : '';
+  if (!token) {
+    throw erroCliente(424, 'Token do Jurisprudências.ai não configurado. Um administrador precisa colá-lo em Configurações → Integração Jurisprudências.ai.');
+  }
+  const url = `https://jurisprudencias.ai/api/v1/courts/${tribunal}/decisions?q=${encodeURIComponent(q)}`;
+  const resp = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}` },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (resp.status === 401) throw erroCliente(424, 'Token do Jurisprudências.ai inválido ou revogado. Gere um novo em jurisprudencias.ai/api-tokens e atualize em Configurações.');
+  if (resp.status === 429) throw erroCliente(429, 'Limite diário de buscas do Jurisprudências.ai atingido. Tente amanhã ou use as fontes LexML/Datajud.');
+  if (!resp.ok) throw new Error(`Jurisprudências.ai respondeu ${resp.status}`);
+  return normalizarJurisai(await resp.json(), tribunal);
 }
 
 async function buscarDatajud(numero, tribunal) {
@@ -114,8 +147,11 @@ exports.juris = onRequest(
 
     try {
       let resultados;
-      if (fonte === 'datajud') {
-        const tribunal = String(req.query.tribunal || 'tjrj').toLowerCase();
+      const tribunal = String(req.query.tribunal || 'tjrj').toLowerCase();
+      if (fonte === 'jurisai') {
+        if (!TRIBUNAIS_JURISAI.has(tribunal)) { res.status(400).json({ erro: `Tribunal não suportado pelo Jurisprudências.ai: ${tribunal}` }); return; }
+        resultados = await buscarJurisai(q, tribunal);
+      } else if (fonte === 'datajud') {
         if (!TRIBUNAIS_DATAJUD.has(tribunal)) { res.status(400).json({ erro: `Tribunal não suportado: ${tribunal}` }); return; }
         resultados = await buscarDatajud(q, tribunal);
       } else if (fonte === 'lexml') {
@@ -127,6 +163,7 @@ exports.juris = onRequest(
       res.status(200).json({ resultados });
     } catch (e) {
       console.error(`Erro na busca (${fonte}):`, e);
+      if (e.statusCliente) { res.status(e.statusCliente).json({ erro: e.message }); return; }
       res.status(502).json({ erro: 'A fonte externa não respondeu. Tente novamente em instantes.' });
     }
   }
