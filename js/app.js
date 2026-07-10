@@ -618,6 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
       $('#btnEmitirParecer').style.display = emitido ? 'none' : '';
       $('#btnReabrirParecer').style.display = emitido ? '' : 'none';
       $('#btnGerarPdfParecer').style.display = emitido ? '' : 'none';
+      $('#btnExportarWordParecer').style.display = ''; // disponível em rascunho e emitido
       const modeloPicker = $('#parecerModeloPicker');
       if (modeloPicker) modeloPicker.style.display = emitido ? 'none' : '';
       if (parecerQuill) parecerQuill.enable(!emitido);
@@ -883,6 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btnEmitirParecer').onclick = () => emitirParecer();
   $('#btnReabrirParecer').onclick = () => reabrirParecer();
   $('#btnGerarPdfParecer').onclick = () => generateParecerPDF(currentParecerProcesso);
+  $('#btnExportarWordParecer').onclick = () => generateParecerDoc(currentParecerProcesso);
   $('#btnCarregarModelo').onclick = async () => {
       const modeloId = Number($('#pz_modelo_select').value);
       if (!modeloId) { showToast('Selecione um modelo primeiro.', 'info'); return; }
@@ -1763,9 +1765,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <p style="margin:0; font-weight: 600;">${sanitizeHTML(dataInfo)}</p>
             <button id="btnAbrirParecerView" class="btn primary">${parecerInfo.emitido ? 'Ver Parecer' : 'Continuar Redigindo'}</button>
             ${parecerInfo.emitido ? '<button id="btnGerarPdfParecerView" class="btn secondary">Gerar PDF Oficial</button>' : ''}
+            <button id="btnExportarWordParecerView" class="btn secondary">Exportar Word</button>
         `;
         $('#btnAbrirParecerView').onclick = () => openParecerModal(p);
         if (parecerInfo.emitido) $('#btnGerarPdfParecerView').onclick = () => generateParecerPDF(p);
+        $('#btnExportarWordParecerView').onclick = () => generateParecerDoc(p);
     } else if (parecerInfo?.tipo === 'legado') {
         const parecerDoc = parecerInfo.docLegado;
         const currentVersion = getCurrentVersion(parecerDoc.id);
@@ -2249,6 +2253,107 @@ document.addEventListener('DOMContentLoaded', () => {
       renderParecerDeltaToPdf(doc, writer, pz.delta);
       doc.save(`parecer_${String(processo.num || pz.processoNum || '').replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
       showToast('PDF do parecer gerado com sucesso!');
+  }
+
+  // Converte o Delta do Quill em HTML de parágrafos (para exportar .doc do Word).
+  // Corpo justificado por padrão (padrão jurídico); respeita header/align/list/indent,
+  // negrito/itálico/sublinhado por trecho, e descarta os artefatos de formulário do Word.
+  function parecerDeltaToHtml(delta) {
+      const ops = (delta && delta.ops) || [];
+      let buffer = [];
+      const blocks = [];
+
+      function flush(attrs) {
+          if (buffer.length === 0 && !attrs) return;
+          const norm = buffer.map(r => r.text).join('').replace(/\s+/g, ' ').trim();
+          if (norm && WORD_ARTIFACT_RE.test(norm)) { buffer = []; return; }
+          if (buffer.length === 0 || norm === '') { blocks.push({ empty: true }); buffer = []; return; }
+          const inner = buffer.map(r => {
+              let t = sanitizeHTML(r.text);
+              if (r.bold) t = `<strong>${t}</strong>`;
+              if (r.italic) t = `<em>${t}</em>`;
+              if (r.underline) t = `<u>${t}</u>`;
+              return t;
+          }).join('');
+          blocks.push({
+              header: attrs && attrs.header,
+              align: (attrs && attrs.align) || 'justify',
+              list: attrs && attrs.list,
+              indent: (attrs && attrs.indent) || 0,
+              inner
+          });
+          buffer = [];
+      }
+
+      ops.forEach(op => {
+          if (typeof op.insert !== 'string') return;
+          op.insert.split('\n').forEach((seg, i, arr) => {
+              if (seg) buffer.push({
+                  text: seg,
+                  bold: !!(op.attributes && op.attributes.bold),
+                  italic: !!(op.attributes && op.attributes.italic),
+                  underline: !!(op.attributes && op.attributes.underline)
+              });
+              if (i < arr.length - 1) flush(op.attributes);
+          });
+      });
+      flush(null);
+
+      let html = '', openList = null;
+      const closeList = () => { if (openList) { html += `</${openList}>`; openList = null; } };
+      blocks.forEach(b => {
+          if (b.empty) { closeList(); return; }
+          const style = ` style="text-align:${b.align}${b.indent ? `;margin-left:${b.indent * 1.2}cm` : ''}"`;
+          if (b.list) {
+              const tag = b.list === 'ordered' ? 'ol' : 'ul';
+              if (openList && openList !== tag) closeList();
+              if (!openList) { html += `<${tag}>`; openList = tag; }
+              html += `<li>${b.inner}</li>`;
+              return;
+          }
+          closeList();
+          if (b.header) { const h = `h${b.header}`; html += `<${h}${style}>${b.inner}</${h}>`; }
+          else html += `<p${style}>${b.inner}</p>`;
+      });
+      closeList();
+      return html;
+  }
+
+  // Exporta o parecer estruturado como .doc (HTML compatível com Word). Sem biblioteca
+  // extra: o Word abre HTML com esta assinatura, preservando justificação, negrito e
+  // alinhamentos — e o documento fica totalmente editável.
+  function generateParecerDoc(processo) {
+      const info = getParecerInfo(processo);
+      if (!info || info.tipo !== 'estruturado') {
+          showToast('Somente pareceres do editor interno podem ser exportados para Word.', 'danger');
+          return;
+      }
+      const pz = info.parecer;
+      const corpo = parecerDeltaToHtml(pz.delta);
+      const numProc = sanitizeHTML(processo.num || pz.processoNum || '');
+      const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Parecer ${numProc}</title>
+<style>
+@page { size: 21cm 29.7cm; margin: 2.5cm 2.5cm 2.5cm 3cm; }
+body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; text-align: justify; color: #000; }
+.cabecalho { text-align: center; font-weight: bold; margin-bottom: 20pt; }
+.cabecalho .sub { font-weight: normal; }
+p { margin: 0 0 8pt 0; }
+h1 { font-size: 14pt; } h2 { font-size: 13pt; } h3 { font-size: 12pt; }
+h1, h2, h3 { margin: 12pt 0 6pt 0; }
+</style></head>
+<body>
+<div class="cabecalho">ESTADO DO RIO DE JANEIRO<br>CÂMARA MUNICIPAL DE DUQUE DE CAXIAS<br><span class="sub">PROCURADORIA-GERAL</span></div>
+${corpo}
+</body></html>`;
+      const blob = new Blob(['﻿' + html], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `parecer_${String(processo.num || pz.processoNum || '').replace(/[^a-zA-Z0-9]/g, '-')}.doc`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('Parecer exportado para Word!');
   }
 
     function exportCSV(data) {
