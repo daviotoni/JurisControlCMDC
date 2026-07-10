@@ -898,6 +898,48 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   let JURIS_ULTIMOS = [];
 
+  // Consulta compartilhada à Cloud Function `juris` — usada tanto pelo modal do
+  // parecer quanto pela aba dedicada de Jurisprudência. Retorna a lista de
+  // resultados ou lança um Error (tratado pelos chamadores).
+  async function fetchJurisResultados(fonte, q, tribunal) {
+      const usuarioFb = window.auth?.currentUser;
+      if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
+      const token = await usuarioFb.getIdToken();
+      const url = `${JURIS_FUNCTION_URL}?fonte=${encodeURIComponent(fonte)}&q=${encodeURIComponent(q)}&tribunal=${encodeURIComponent(tribunal)}`;
+      const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (!resp.ok) {
+          const corpo = await resp.json().catch(() => ({}));
+          throw new Error(corpo.erro || `HTTP_${resp.status}`);
+      }
+      const dados = await resp.json();
+      return dados.resultados || [];
+  }
+
+  function mensagemErroJuris(e) {
+      const rede = !e.message || /failed to fetch|networkerror|load failed|HTTP_404/i.test(e.message);
+      return rede
+          ? 'A busca integrada ainda não está ativa (a função de busca não foi publicada no Firebase). Enquanto isso, use os botões dos portais oficiais.'
+          : sanitizeHTML(e.message);
+  }
+
+  // Sincroniza o <select> de tribunais conforme a fonte escolhida e ajusta o
+  // placeholder do campo de tema. Parametrizado para servir modal e aba.
+  function sincronizarFonteTribunais(fonteEl, tribEl, temaEl) {
+      if (!fonteEl || !tribEl) return;
+      const bases = JURIS_TRIBUNAIS[fonteEl.value];
+      if (bases) {
+          const atual = tribEl.value;
+          tribEl.innerHTML = bases.map(([id, nome]) => `<option value="${id}">${nome}</option>`).join('');
+          tribEl.value = bases.some(([id]) => id === atual) ? atual : 'tjrj';
+          tribEl.style.display = '';
+      } else {
+          tribEl.style.display = 'none'; // LexML busca na base toda
+      }
+      if (temaEl) temaEl.placeholder = fonteEl.value === 'datajud'
+          ? 'Ex.: 0002934-98.2018.8.19.0064'
+          : 'Ex.: dispensa de licitação câmara municipal';
+  }
+
   async function buscarJurisNoSite() {
       const alvo = $('#jurisResultados'); if (!alvo) return;
       const q = $('#jr_tema')?.value.trim();
@@ -906,23 +948,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const tribunal = $('#jr_trib_dj')?.value || 'tjrj';
       alvo.innerHTML = '<div class="list-msg">Buscando…</div>';
       try {
-          const usuarioFb = window.auth?.currentUser;
-          if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
-          const token = await usuarioFb.getIdToken();
-          const url = `${JURIS_FUNCTION_URL}?fonte=${encodeURIComponent(fonte)}&q=${encodeURIComponent(q)}&tribunal=${encodeURIComponent(tribunal)}`;
-          const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-          if (!resp.ok) {
-              const corpo = await resp.json().catch(() => ({}));
-              throw new Error(corpo.erro || `HTTP_${resp.status}`);
-          }
-          const dados = await resp.json();
-          renderJurisResultados(dados.resultados || []);
+          renderJurisResultados(await fetchJurisResultados(fonte, q, tribunal));
       } catch (e) {
           console.warn('Busca integrada indisponível:', e);
-          const rede = !e.message || /failed to fetch|networkerror|load failed|HTTP_404/i.test(e.message);
-          alvo.innerHTML = `<div class="list-msg">${rede
-              ? 'A busca integrada ainda não está ativa (a função de busca não foi publicada no Firebase). Enquanto isso, use os botões dos portais abaixo.'
-              : sanitizeHTML(e.message)}</div>`;
+          alvo.innerHTML = `<div class="list-msg">${mensagemErroJuris(e)}</div>`;
       }
   }
 
@@ -962,6 +991,100 @@ document.addEventListener('DOMContentLoaded', () => {
       if (r.ementa && !String(r.ementa).startsWith('Assuntos:')) setar('#jr_ementa', r.ementa);
       atualizarPreviewJuris();
       showToast('Dados preenchidos — complete o que faltar e insira no parecer.');
+  }
+
+  // ===== Aba dedicada de Jurisprudência =====
+  // Mesma busca do painel do parecer, porém em tela cheia (não fica escondida no
+  // editor). Aqui os resultados podem ser abertos na fonte ou ter a citação
+  // copiada; a inserção direta no parecer continua no botão do editor.
+  let JURIS_ABA_ULTIMOS = [];
+  let jurisAbaInit = false;
+
+  function renderJurisAbaResultados(resultados) {
+      const alvo = $('#jurisAbaResultados'); if (!alvo) return;
+      JURIS_ABA_ULTIMOS = resultados;
+      if (!resultados.length) {
+          alvo.innerHTML = '<div class="list-msg">Nenhum resultado encontrado. Refine o tema ou use os portais oficiais acima.</div>';
+          return;
+      }
+      alvo.innerHTML = '';
+      resultados.forEach((r, i) => {
+          const item = document.createElement('div');
+          item.className = 'juris-res-item';
+          const ementaCurta = r.ementa ? String(r.ementa).slice(0, 320) + (String(r.ementa).length > 320 ? '…' : '') : '';
+          item.innerHTML = `
+              <div class="juris-res-titulo">${sanitizeHTML(r.titulo || '')}</div>
+              <div class="juris-res-meta">${sanitizeHTML([r.tribunal, r.orgao, r.relator, r.data].filter(Boolean).join(' · '))}</div>
+              ${ementaCurta ? `<div class="juris-res-ementa">${sanitizeHTML(ementaCurta)}</div>` : ''}
+              <div class="juris-res-acoes">
+                  <button type="button" class="btn secondary" data-juris-copiar="${i}">Copiar citação</button>
+                  ${r.url ? `<a class="btn secondary" href="${sanitizeHTML(r.url)}" target="_blank" rel="noopener">Abrir fonte ↗</a>` : ''}
+              </div>`;
+          alvo.appendChild(item);
+      });
+  }
+
+  async function buscarJurisNaAba() {
+      const alvo = $('#jurisAbaResultados'); if (!alvo) return;
+      const q = $('#jr_tema_aba')?.value.trim();
+      if (!q) { showToast('Digite o tema (ou o nº do processo) da pesquisa.', 'danger'); $('#jr_tema_aba')?.focus(); return; }
+      const fonte = $('#jr_fonte_aba')?.value || 'jurisai';
+      const tribunal = $('#jr_trib_dj_aba')?.value || 'tjrj';
+      alvo.innerHTML = '<div class="list-msg">Buscando…</div>';
+      try {
+          renderJurisAbaResultados(await fetchJurisResultados(fonte, q, tribunal));
+      } catch (e) {
+          console.warn('Busca integrada indisponível:', e);
+          alvo.innerHTML = `<div class="list-msg">${mensagemErroJuris(e)}</div>`;
+      }
+  }
+
+  // Monta o texto da citação a partir de um resultado (mesmo formato do parecer).
+  function formatarCitacaoDeResultado(r) {
+      const partes = [];
+      if (r.tribunal) partes.push(r.tribunal);
+      const classe = r.classe && r.classe !== 'Jurisprudência' ? r.classe : '';
+      if (classe || r.numero) partes.push(`${classe || 'Processo'}${r.numero ? ' nº ' + r.numero : ''}`);
+      if (r.relator) partes.push(`Relator(a): ${r.relator}`);
+      if (r.orgao) partes.push(r.orgao);
+      if (r.data && /^\d{4}-\d{2}-\d{2}$/.test(r.data)) { const [a, m, d] = r.data.split('-'); partes.push(`julgado em ${d}/${m}/${a}`); }
+      const referencia = partes.length ? `(${partes.join(', ')})` : '';
+      const ementa = r.ementa && !String(r.ementa).startsWith('Assuntos:') ? String(r.ementa) : '';
+      return [ementa ? `“${ementa}”` : '', referencia].filter(Boolean).join('\n');
+  }
+
+  async function copiarCitacaoJuris(i) {
+      const r = JURIS_ABA_ULTIMOS[i]; if (!r) return;
+      const texto = formatarCitacaoDeResultado(r);
+      if (!texto) { showToast('Sem dados suficientes para montar a citação.', 'info'); return; }
+      try {
+          await navigator.clipboard.writeText(texto);
+          showToast('Citação copiada para a área de transferência.');
+      } catch (e) {
+          console.warn('Clipboard indisponível:', e);
+          showToast('Não foi possível copiar automaticamente — selecione o texto e copie manualmente.', 'danger');
+      }
+  }
+
+  // Liga os controles da aba na primeira vez que ela é aberta (lazy).
+  function initJurisAba() {
+      if (jurisAbaInit) return;
+      jurisAbaInit = true;
+      const atualizar = () => sincronizarFonteTribunais($('#jr_fonte_aba'), $('#jr_trib_dj_aba'), $('#jr_tema_aba'));
+      const fonteEl = $('#jr_fonte_aba'); if (fonteEl) fonteEl.onchange = atualizar;
+      atualizar();
+      const btn = $('#btnBuscarJurisAba'); if (btn) btn.onclick = buscarJurisNaAba;
+      const tema = $('#jr_tema_aba'); if (tema) tema.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarJurisNaAba(); } };
+      $$('[data-juris-portal-aba]').forEach(b => b.onclick = () => {
+          const q = $('#jr_tema_aba')?.value.trim();
+          if (!q) { showToast('Digite o tema da pesquisa.', 'danger'); $('#jr_tema_aba')?.focus(); return; }
+          window.open(JURIS_PORTAIS[b.dataset.jurisPortalAba](q), '_blank', 'noopener');
+      });
+      const alvo = $('#jurisAbaResultados');
+      if (alvo) alvo.onclick = (e) => {
+          const copiar = e.target.closest('[data-juris-copiar]');
+          if (copiar) copiarCitacaoJuris(Number(copiar.dataset.jurisCopiar));
+      };
   }
 
   function openParecerModal(processo) {
@@ -1182,22 +1305,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (mJuris) mJuris.onclick = (e) => { if (e.target === mJuris) mJuris.style.display = 'none'; };
   $('#btnBuscarJurisSite').onclick = buscarJurisNoSite;
   $('#jr_tema').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarJurisNoSite(); } };
-  const atualizarFonteJuris = () => {
-      const fonte = $('#jr_fonte').value;
-      const tribEl = $('#jr_trib_dj');
-      const bases = JURIS_TRIBUNAIS[fonte];
-      if (bases) {
-          const atual = tribEl.value;
-          tribEl.innerHTML = bases.map(([id, nome]) => `<option value="${id}">${nome}</option>`).join('');
-          tribEl.value = bases.some(([id]) => id === atual) ? atual : 'tjrj';
-          tribEl.style.display = '';
-      } else {
-          tribEl.style.display = 'none'; // LexML busca na base toda
-      }
-      $('#jr_tema').placeholder = fonte === 'datajud'
-          ? 'Ex.: 0002934-98.2018.8.19.0064'
-          : 'Ex.: dispensa de licitação câmara municipal';
-  };
+  const atualizarFonteJuris = () => sincronizarFonteTribunais($('#jr_fonte'), $('#jr_trib_dj'), $('#jr_tema'));
   $('#jr_fonte').onchange = atualizarFonteJuris;
   atualizarFonteJuris();
   $('#jurisResultados').onclick = (e) => {
@@ -1265,8 +1373,8 @@ document.addEventListener('DOMContentLoaded', () => {
       drawPareceres(true);
   };
 
-  const sections={dashboard: $('#secDashboard'), proc:$('#secProc'), cal:$('#secCal'), docs:$('#secDoc'), leis: $('#secLeis'), cfg:$('#secCfg')};
-  const tabTitles = { dashboard: 'Dashboard', proc: 'Processos', cal: 'Calendário', docs: 'Documentos', leis: 'Banco de Leis', cfg: 'Configurações' };
+  const sections={dashboard: $('#secDashboard'), proc:$('#secProc'), cal:$('#secCal'), docs:$('#secDoc'), leis: $('#secLeis'), juris: $('#secJuris'), cfg:$('#secCfg')};
+  const tabTitles = { dashboard: 'Dashboard', proc: 'Processos', cal: 'Calendário', docs: 'Documentos', leis: 'Banco de Leis', juris: 'Jurisprudência', cfg: 'Configurações' };
 
   const mobileMenuToggle = $('#mobile-menu-toggle');
   const sidebar = $('#sidebar');
@@ -1307,6 +1415,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderModelos(true);
     }
     if(key==='leis') renderLeis();
+    if(key==='juris') { initJurisAba(); $('#jr_tema_aba')?.focus(); }
     if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); }
   }
 

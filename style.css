@@ -1151,7 +1151,10 @@
         .juris-preview { border: 1px dashed var(--border-color); border-radius: 9px; padding: 0.75rem; font-size: 0.875rem; color: var(--text-primary); background: var(--card-bg); min-height: 3em; white-space: pre-wrap; }
         .juris-busca-site { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem; }
         .juris-busca-site .select { width: auto; max-width: 100%; }
+        .juris-aba-busca { margin-bottom: 0.75rem; }
+        .juris-aba-busca #jr_tema_aba { flex: 1 1 240px; min-width: 200px; }
         .juris-resultados { max-height: 260px; overflow-y: auto; margin-bottom: 0.5rem; }
+        .juris-aba-resultados { max-height: none; overflow-y: visible; }
         .juris-res-item { border: 1px solid var(--border-color); border-radius: 9px; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; background: var(--card-bg); }
         .juris-res-titulo { font-weight: 600; font-size: 0.9rem; }
         .juris-res-meta { color: var(--text-secondary); font-size: 0.78rem; margin: 2px 0; }
