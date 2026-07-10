@@ -1503,6 +1503,16 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#add').onclick = () => openProc('new');
     $('#exportCsv').onclick = () => exportCSV(filterSort());
     $('#exportXlsx').onclick = () => exportXLSX(filterSort());
+
+    // Menu "Exportar" (<details>): fecha ao escolher uma opção ou ao clicar fora.
+    const menuExport = $('#menuExport');
+    if (menuExport) {
+        menuExport.querySelectorAll('.menu-pop .btn').forEach(b =>
+            b.addEventListener('click', () => menuExport.removeAttribute('open')));
+        document.addEventListener('click', (e) => {
+            if (menuExport.open && !menuExport.contains(e.target)) menuExport.removeAttribute('open');
+        });
+    }
     
     const procContainer = $('#secProc');
     procContainer.onclick = async (e) => {
