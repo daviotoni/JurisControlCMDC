@@ -98,6 +98,7 @@ module.exports = [
         VALID_STATS: 'readonly',
         VALID_ACAO: 'readonly',
         VALID_CAT: 'readonly',
+        VALID_PARECER_STATUS: 'readonly',
         // Definido em js/assets.js
         BRASAO_DUQUE_DE_CAXIAS_B64: 'readonly',
       },
