@@ -80,6 +80,7 @@ const NOMES_TRIBUNAIS = {
   trf1: 'TRF1', trf2: 'TRF2', trf3: 'TRF3', trf4: 'TRF4', trf5: 'TRF5', trf6: 'TRF6',
   tjrj: 'TJRJ', tjsp: 'TJSP', tjmg: 'TJMG', tjrs: 'TJRS', tjpr: 'TJPR', tjsc: 'TJSC',
   tjba: 'TJBA', tjce: 'TJCE', tjgo: 'TJGO', tjma: 'TJMA', tjmt: 'TJMT', tjpe: 'TJPE', tjdft: 'TJDFT',
+  carf: 'CARF',
 };
 
 function formatarNumeroCNJ(n) {
@@ -116,4 +117,44 @@ function normalizarDatajud(json, tribunalId) {
   return out;
 }
 
-module.exports = { normalizarLexml, normalizarDatajud, formatarNumeroCNJ, extrairTags, tribunalDaUrn };
+// ---------- Jurisprudências.ai (API REST /api/v1) ----------
+
+// A API ora devolve datas ISO (2024-03-10), ora no formato brasileiro
+// (14/04/2026). Normaliza para YYYY-MM-DD (o formato do <input type="date">).
+function normalizarDataJuris(d) {
+  const s = String(d || '').trim();
+  const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+  return s.slice(0, 10);
+}
+
+/**
+ * Converte a resposta do Jurisprudências.ai (busca: data[] com `excerpt`;
+ * lookup: data{} com `summary`) em resultados normalizados.
+ * Nunca lança: entrada inesperada resulta em lista vazia.
+ */
+function normalizarJurisai(json, courtId) {
+  const bruto = json && json.data;
+  const itens = Array.isArray(bruto) ? bruto : (bruto && typeof bruto === 'object' ? [bruto] : []);
+  const out = [];
+  for (const d of itens) {
+    if (!d || (!d.process_number && !d.excerpt && !d.summary)) continue;
+    const numero = String(d.process_number || '').trim();
+    const classe = String(d.process_type || '').trim();
+    out.push({
+      fonte: 'jurisai',
+      titulo: `${classe || 'Decisão'}${numero ? ' ' + numero : ''}`.trim(),
+      tribunal: NOMES_TRIBUNAIS[courtId] || String(d.court || courtId || '').toUpperCase(),
+      classe,
+      numero,
+      relator: String(d.rapporteur || '').trim(),
+      orgao: String(d.adjudicating_body || '').trim(),
+      data: normalizarDataJuris(d.trial_date || d.publication_date),
+      ementa: String(d.excerpt || d.summary || '').trim(),
+      url: String(d.url || '').trim(),
+    });
+  }
+  return out;
+}
+
+module.exports = { normalizarLexml, normalizarDatajud, normalizarJurisai, normalizarDataJuris, formatarNumeroCNJ, extrairTags, tribunalDaUrn };

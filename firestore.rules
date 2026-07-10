@@ -90,6 +90,11 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ---- Segredos de integrações (ex.: token do Jurisprudências.ai) --
+    // Só admin lê/grava pelo app; a Cloud Function lê via Admin SDK
+    // (que não passa por estas regras).
+    match /segredos/{id} { allow read, write: if admin(); }
+
     // ---- Coleção legada de usuários (PBKDF2, pré-Firebase Auth) --
     // Mantida só para backups antigos; o app não a usa mais.
     match /users/{id} { allow read, write: if admin(); }

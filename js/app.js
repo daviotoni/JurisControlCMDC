@@ -695,17 +695,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ===== Busca integrada (Cloud Function `juris` — ver functions/index.js) =====
-  // Consulta LexML (por tema) e Datajud/CNJ (por nº de processo) sem sair do
-  // site. Se a função ainda não estiver publicada (exige plano Blaze), o painel
-  // degrada com uma mensagem e os botões dos portais continuam funcionando.
+  // Consulta Jurisprudências.ai (por tema, com ementa), Datajud/CNJ (por nº de
+  // processo) e LexML (legislação) sem sair do site. Se a função ainda não
+  // estiver publicada (exige plano Blaze), o painel degrada com uma mensagem e
+  // os botões dos portais continuam funcionando.
   const JURIS_FUNCTION_URL = 'https://us-central1-juriscontrolcmdc.cloudfunctions.net/juris';
+  // Bases disponíveis por fonte (espelha TRIBUNAIS_* em functions/index.js).
+  const JURIS_TRIBUNAIS = {
+      jurisai: [['tjrj', 'TJRJ'], ['stj', 'STJ'], ['stf', 'STF'], ['tjsp', 'TJSP'], ['tjmg', 'TJMG'], ['tjrs', 'TJRS'], ['tjpr', 'TJPR'], ['tjsc', 'TJSC'], ['tjce', 'TJCE'], ['tjgo', 'TJGO'], ['tjma', 'TJMA'], ['tjmt', 'TJMT'], ['trf3', 'TRF3'], ['trf4', 'TRF4'], ['tst', 'TST'], ['carf', 'CARF']],
+      datajud: [['tjrj', 'TJRJ'], ['stj', 'STJ'], ['stf', 'STF'], ['tjsp', 'TJSP'], ['tjmg', 'TJMG'], ['trf2', 'TRF2'], ['tst', 'TST']]
+  };
   let JURIS_ULTIMOS = [];
 
   async function buscarJurisNoSite() {
       const alvo = $('#jurisResultados'); if (!alvo) return;
       const q = $('#jr_tema')?.value.trim();
       if (!q) { showToast('Digite o tema (ou o nº do processo) da pesquisa.', 'danger'); $('#jr_tema')?.focus(); return; }
-      const fonte = $('#jr_fonte')?.value || 'lexml';
+      const fonte = $('#jr_fonte')?.value || 'jurisai';
       const tribunal = $('#jr_trib_dj')?.value || 'tjrj';
       alvo.innerHTML = '<div class="list-msg">Buscando…</div>';
       try {
@@ -743,7 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const ementaCurta = r.ementa ? String(r.ementa).slice(0, 220) + (String(r.ementa).length > 220 ? '…' : '') : '';
           item.innerHTML = `
               <div class="juris-res-titulo">${sanitizeHTML(r.titulo || '')}</div>
-              <div class="juris-res-meta">${sanitizeHTML([r.tribunal, r.data].filter(Boolean).join(' · '))}</div>
+              <div class="juris-res-meta">${sanitizeHTML([r.tribunal, r.orgao, r.relator, r.data].filter(Boolean).join(' · '))}</div>
               ${ementaCurta ? `<div class="juris-res-ementa">${sanitizeHTML(ementaCurta)}</div>` : ''}
               <div class="juris-res-acoes">
                   <button type="button" class="btn secondary" data-juris-usar="${i}">Usar dados na citação</button>
@@ -759,6 +765,8 @@ document.addEventListener('DOMContentLoaded', () => {
       setar('#jr_trib', r.tribunal);
       setar('#jr_classe', r.classe && r.classe !== 'Jurisprudência' ? r.classe : '');
       setar('#jr_num', r.numero);
+      setar('#jr_relator', r.relator);
+      setar('#jr_orgao', r.orgao);
       if (r.data && /^\d{4}-\d{2}-\d{2}$/.test(r.data)) setar('#jr_data', r.data);
       if (r.ementa && !String(r.ementa).startsWith('Assuntos:')) setar('#jr_ementa', r.ementa);
       atualizarPreviewJuris();
@@ -885,13 +893,24 @@ document.addEventListener('DOMContentLoaded', () => {
   if (mJuris) mJuris.onclick = (e) => { if (e.target === mJuris) mJuris.style.display = 'none'; };
   $('#btnBuscarJurisSite').onclick = buscarJurisNoSite;
   $('#jr_tema').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarJurisNoSite(); } };
-  $('#jr_fonte').onchange = () => {
-      const datajud = $('#jr_fonte').value === 'datajud';
-      $('#jr_trib_dj').style.display = datajud ? '' : 'none';
-      $('#jr_tema').placeholder = datajud
+  const atualizarFonteJuris = () => {
+      const fonte = $('#jr_fonte').value;
+      const tribEl = $('#jr_trib_dj');
+      const bases = JURIS_TRIBUNAIS[fonte];
+      if (bases) {
+          const atual = tribEl.value;
+          tribEl.innerHTML = bases.map(([id, nome]) => `<option value="${id}">${nome}</option>`).join('');
+          tribEl.value = bases.some(([id]) => id === atual) ? atual : 'tjrj';
+          tribEl.style.display = '';
+      } else {
+          tribEl.style.display = 'none'; // LexML busca na base toda
+      }
+      $('#jr_tema').placeholder = fonte === 'datajud'
           ? 'Ex.: 0002934-98.2018.8.19.0064'
           : 'Ex.: dispensa de licitação câmara municipal';
   };
+  $('#jr_fonte').onchange = atualizarFonteJuris;
+  atualizarFonteJuris();
   $('#jurisResultados').onclick = (e) => {
       const usar = e.target.closest('[data-juris-usar]');
       if (usar) usarResultadoJuris(Number(usar.dataset.jurisUsar));
@@ -999,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderModelos(true);
     }
     if(key==='leis') renderLeis();
-    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); }
+    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); }
   }
 
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
@@ -2559,8 +2578,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ===== Painel do Log de Auditoria (Configurações, admin) =====
   let AUD_ENTRIES = [];
-  const AUD_MODULOS = { processos: 'Processos', pareceres: 'Pareceres', usuarios: 'Usuários', emissores: 'Emissores', leis: 'Banco de Leis', modelos: 'Modelos', calendario: 'Calendário', backup: 'Backup', auth: 'Acesso' };
+  const AUD_MODULOS = { processos: 'Processos', pareceres: 'Pareceres', usuarios: 'Usuários', emissores: 'Emissores', leis: 'Banco de Leis', modelos: 'Modelos', calendario: 'Calendário', backup: 'Backup', auth: 'Acesso', integracoes: 'Integrações' };
   const AUD_ACOES = { criado: 'criou', editado: 'editou', excluido: 'excluiu', aprovado: 'aprovou', 'promovido-a-admin': 'promoveu a admin', 'rebaixado-a-usuario': 'rebaixou a usuário', 'acesso-revogado': 'revogou o acesso de', login: 'entrou no sistema', logout: 'saiu do sistema', exportado: 'exportou', restaurado: 'restaurou', 'parecer-criado': 'criou parecer —', 'parecer-editado': 'editou parecer —', 'parecer-emitido': 'emitiu parecer —', 'parecer-reaberto': 'reabriu parecer —' };
+
+  // ===== Cartão do token do Jurisprudências.ai (Configurações, admin) =====
+  // O token fica em segredos/jurisai (coleção admin-only nas rules); a Cloud
+  // Function `juris` o lê via Admin SDK para consultar a API.
+  async function renderJurisaiTokenCard() {
+      const statusEl = $('#jurisaiTokenStatus'); if (!statusEl) return;
+      if (!isAdminSession()) return; // o cartão fica oculto para não-admins
+      try {
+          const doc = await dbHelper.get('segredos', 'jurisai');
+          const token = doc && doc.token ? String(doc.token) : '';
+          statusEl.textContent = token
+              ? `✅ Token configurado (termina em …${token.slice(-4)}). Cole um novo para substituir.`
+              : 'Nenhum token configurado ainda — a busca pelo Jurisprudências.ai fica indisponível até colar um.';
+      } catch (e) {
+          console.warn('Sem acesso ao token do Jurisprudências.ai:', e);
+          statusEl.textContent = 'Não foi possível verificar o token (as regras novas do Firestore já foram publicadas?).';
+      }
+  }
+
+  async function salvarJurisaiToken() {
+      const input = $('#jurisaiToken'); if (!input) return;
+      const token = input.value.trim();
+      if (!token.startsWith('jur_') || token.length < 20) {
+          showToast('Token inválido — ele começa com "jur_". Copie-o de jurisprudencias.ai/api-tokens.', 'danger');
+          input.focus();
+          return;
+      }
+      try {
+          await dbHelper.put('segredos', { id: 'jurisai', token, atualizadoEm: new Date().toISOString() });
+      } catch (e) {
+          console.error('Erro ao salvar token:', e);
+          showToast('Sem permissão para salvar o token (recurso de administrador).', 'danger');
+          return;
+      }
+      input.value = '';
+      await logAuditoria('integracoes', 'editado', 'Token do Jurisprudências.ai');
+      renderJurisaiTokenCard();
+      showToast('Token salvo! A busca pelo Jurisprudências.ai já pode ser usada.');
+  }
 
   async function renderAuditoria() {
       const listEl = $('#audList'); if (!listEl) return;
@@ -3129,6 +3187,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (audRefreshEl) audRefreshEl.onclick = renderAuditoria;
     const audCsvEl = $('#audCsv');
     if (audCsvEl) audCsvEl.onclick = exportAuditoriaCSV;
+    const btnJurisaiTk = $('#btnSalvarJurisaiToken');
+    if (btnJurisaiTk) btnJurisaiTk.onclick = salvarJurisaiToken;
 
     setupEnhancedNav();
 

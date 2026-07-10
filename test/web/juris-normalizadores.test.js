@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest';
 import {
   extrairTags,
   formatarNumeroCNJ,
+  normalizarDataJuris,
   normalizarDatajud,
+  normalizarJurisai,
   normalizarLexml,
   tribunalDaUrn,
 } from '../../functions/normalizadores.js';
@@ -100,6 +102,65 @@ describe('normalizarDatajud', () => {
     expect(normalizarDatajud(null, 'tjrj')).toEqual([]);
     expect(normalizarDatajud({}, 'tjrj')).toEqual([]);
     expect(normalizarDatajud({ hits: { hits: 'x' } }, 'tjrj')).toEqual([]);
+  });
+});
+
+describe('normalizarJurisai', () => {
+  // Formato do endpoint de BUSCA (data[] com excerpt) — exemplo da documentação.
+  const BUSCA = {
+    data: [
+      {
+        process_number: '0002934-98.2018.8.19.0064',
+        process_type: 'APELAÇÃO',
+        rapporteur: 'Des(a). MARCO ANTONIO IBRAHIM',
+        adjudicating_body: 'SÉTIMA CÂMARA DE DIREITO PÚBLICO',
+        publication_date: '2026-04-14',
+        trial_date: '14/04/2026', // a API usa formato BR neste campo
+        excerpt: 'Apelação Cível. Administrativo. Improbidade Administrativa. Dispensa de licitação por Câmara Municipal...',
+        url: 'https://www3.tjrj.jus.br/gedcacheweb/default.aspx?GEDID=xyz',
+      },
+    ],
+    meta: { page: 0, per_page: 10, has_next_page: false },
+  };
+
+  it('normaliza busca: título, relator, órgão, data BR→ISO, ementa e url', () => {
+    const r = normalizarJurisai(BUSCA, 'tjrj');
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({
+      fonte: 'jurisai',
+      titulo: 'APELAÇÃO 0002934-98.2018.8.19.0064',
+      tribunal: 'TJRJ',
+      classe: 'APELAÇÃO',
+      numero: '0002934-98.2018.8.19.0064',
+      relator: 'Des(a). MARCO ANTONIO IBRAHIM',
+      orgao: 'SÉTIMA CÂMARA DE DIREITO PÚBLICO',
+      data: '2026-04-14',
+      url: 'https://www3.tjrj.jus.br/gedcacheweb/default.aspx?GEDID=xyz',
+    });
+    expect(r[0].ementa).toContain('Dispensa de licitação');
+  });
+
+  it('normaliza lookup (data como objeto único, ementa em `summary`)', () => {
+    const LOOKUP = { data: { process_number: '123', process_type: 'Acórdão', summary: 'RECURSO ESPECIAL. Dano moral.', trial_date: '2024-03-10', court: 'stj' } };
+    const r = normalizarJurisai(LOOKUP, 'stj');
+    expect(r).toHaveLength(1);
+    expect(r[0].ementa).toBe('RECURSO ESPECIAL. Dano moral.');
+    expect(r[0].tribunal).toBe('STJ');
+    expect(r[0].data).toBe('2024-03-10');
+  });
+
+  it('não lança com entradas inesperadas', () => {
+    expect(normalizarJurisai(null, 'tjrj')).toEqual([]);
+    expect(normalizarJurisai({}, 'tjrj')).toEqual([]);
+    expect(normalizarJurisai({ data: [{}] }, 'tjrj')).toEqual([]);
+    expect(normalizarJurisai({ data: 'x' }, 'tjrj')).toEqual([]);
+  });
+
+  it('normalizarDataJuris converte DD/MM/YYYY e preserva ISO', () => {
+    expect(normalizarDataJuris('14/04/2026')).toBe('2026-04-14');
+    expect(normalizarDataJuris('2024-03-15')).toBe('2024-03-15');
+    expect(normalizarDataJuris('2024-03-15T00:00:00Z')).toBe('2024-03-15');
+    expect(normalizarDataJuris(undefined)).toBe('');
   });
 });
 

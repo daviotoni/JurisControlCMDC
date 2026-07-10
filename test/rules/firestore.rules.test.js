@@ -22,7 +22,7 @@ const COLECOES_APROVADO = [
   'calendario', 'emissores', 'modelos', 'leis', 'config',
 ];
 // Coleções com regra própria (também declaradas em firestore.rules).
-const COLECOES_ESPECIAIS = ['perfis', 'historico', 'auditoria', 'users'];
+const COLECOES_ESPECIAIS = ['perfis', 'historico', 'auditoria', 'users', 'segredos'];
 
 // Deve bater com a lista BOOTSTRAP_ADMINS em js/app.js e bootstrapAdmin() nas rules.
 const EMAIL_BOOTSTRAP = 'dosvleite@yahoo.com.br';
@@ -137,6 +137,12 @@ describe('usuário APROVADO (papel: user)', () => {
     await assertSucceeds(updateDoc(doc(db, 'perfis', UID), { name: 'Novo Nome' }));
   });
 
+  it('NÃO acessa `segredos` (token de integrações é só de admin)', async () => {
+    const db = testEnv.authenticatedContext(UID).firestore();
+    await assertFails(getDoc(doc(db, 'segredos', 'jurisai')));
+    await assertFails(setDoc(doc(db, 'segredos', 'jurisai'), { token: 'roubado' }));
+  });
+
   it('NÃO acessa a coleção legada `users` nem coleções fora da allowlist', async () => {
     const db = testEnv.authenticatedContext(UID).firestore();
     await assertFails(getDoc(doc(db, 'users', 'u1')));
@@ -173,6 +179,12 @@ describe('ADMIN aprovado', () => {
     const db = testEnv.authenticatedContext(UID).firestore();
     await assertSucceeds(setDoc(doc(db, 'users', 'u1'), { legado: true }));
     await assertSucceeds(getDoc(doc(db, 'users', 'u1')));
+  });
+
+  it('grava e lê `segredos` (token do Jurisprudências.ai)', async () => {
+    const db = testEnv.authenticatedContext(UID).firestore();
+    await assertSucceeds(setDoc(doc(db, 'segredos', 'jurisai'), { id: 'jurisai', token: 'jur_teste' }));
+    await assertSucceeds(getDoc(doc(db, 'segredos', 'jurisai')));
   });
 });
 

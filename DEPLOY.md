@@ -78,9 +78,18 @@ aprovação, papéis, bootstrap e o append-only da auditoria).
 ## Busca de jurisprudência integrada (Cloud Function `juris`)
 
 O painel "⚖ Jurisprudência" do editor de parecer tem uma busca integrada
-("Buscar aqui") que consulta o LexML (por tema) e o Datajud/CNJ (por nº de
-processo) através da Cloud Function `functions/juris`. A função valida o
+("Buscar aqui") que consulta o **Jurisprudências.ai** (por tema, com ementa —
+fonte principal), o **Datajud/CNJ** (por nº de processo) e o **LexML**
+(legislação) através da Cloud Function `functions/juris`. A função valida o
 ID token do Firebase e exige perfil **aprovado** (mesma política das rules).
+
+**Token do Jurisprudências.ai:** um admin gera o token (`jur_...`) em
+jurisprudencias.ai/api-tokens e cola em **Configurações → Integração
+Jurisprudências.ai** no próprio site. Ele fica em `segredos/jurisai` no
+Firestore (coleção restrita a admin nas rules) e a função o lê via Admin SDK.
+Limites da conta: os da assinatura do Jurisprudências.ai (plano pago:
+500 buscas/dia). Sem token configurado, a fonte responde com aviso e as
+demais continuam funcionando.
 
 > ⚠️ **Ativação (2 passos manuais, uma única vez):**
 >

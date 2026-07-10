@@ -373,6 +373,15 @@
                          </div>
                     </div>
                     <div class="card admin-only">
+                        <h3>Integração Jurisprudências.ai</h3>
+                        <p class="cfg-note">Cole o token de API (<code>jur_...</code>) da conta do Jurisprudências.ai. Ele fica guardado no banco (visível só para administradores) e alimenta a busca integrada do painel ⚖ Jurisprudência.</p>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                            <input id="jurisaiToken" type="password" class="input" placeholder="jur_..." autocomplete="off" style="flex:1; min-width:200px;">
+                            <button id="btnSalvarJurisaiToken" class="btn primary">Salvar token</button>
+                        </div>
+                        <p id="jurisaiTokenStatus" class="cfg-note" style="margin-top:0.5rem;"></p>
+                    </div>
+                    <div class="card admin-only">
                         <h3>Log de Auditoria</h3>
                         <p class="cfg-note">Registro de quem fez o quê no sistema (últimos 200 eventos).</p>
                         <div class="aud-toolbar">
@@ -550,17 +559,12 @@
                 </div>
                 <div class="juris-busca-site">
                     <select id="jr_fonte" class="select">
-                        <option value="lexml">Por tema (LexML — STF/STJ/leis)</option>
-                        <option value="datajud">Por nº de processo (Datajud/CNJ)</option>
+                        <option value="jurisai" selected>Jurisprudências.ai (por tema)</option>
+                        <option value="datajud">Datajud/CNJ (nº do processo)</option>
+                        <option value="lexml">LexML (legislação/STF/STJ)</option>
                     </select>
-                    <select id="jr_trib_dj" class="select" style="display:none">
+                    <select id="jr_trib_dj" class="select">
                         <option value="tjrj" selected>TJRJ</option>
-                        <option value="stj">STJ</option>
-                        <option value="stf">STF</option>
-                        <option value="tjsp">TJSP</option>
-                        <option value="tjmg">TJMG</option>
-                        <option value="trf2">TRF2</option>
-                        <option value="tst">TST</option>
                     </select>
                     <button type="button" class="btn primary" id="btnBuscarJurisSite">🔍 Buscar aqui</button>
                 </div>
@@ -649,7 +653,7 @@
 
     <script src="js/utils.js?v=970526615f"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
-    <script src="js/app.js?v=e503cbfbfd"></script>
+    <script src="js/app.js?v=b872fba0e2"></script>
 
 </body>
 </html>
