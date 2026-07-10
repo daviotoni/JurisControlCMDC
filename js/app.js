@@ -37,6 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
       'parecer-reaberto': {
           icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>`,
           label: 'Parecer reaberto para edição'
+      },
+      'parecer-enviado-revisao': {
+          icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+          label: 'Parecer enviado para revisão'
+      },
+      'parecer-devolvido': {
+          icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`,
+          label: 'Parecer devolvido para ajustes'
       }
   };
 
@@ -395,11 +403,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (item.tipo === 'estruturado') {
             const pz = item.ref;
-            const emitido = pz.status === 'emitido';
+            const st = pz.status || 'rascunho';
+            const stLabel = (PARECER_STATUS_LABEL[st] || 'Rascunho') + (pz.numero ? ` · nº ${pz.numero}` : '');
             el.innerHTML = `
             <div>
               <span class="name" title="${sanitizeHTML(item.titulo)}">${sanitizeHTML(item.titulo)}</span>
-              <span class="status ${emitido ? 'emitido' : 'rascunho'}" style="margin-top: 4px; display: inline-block;">${emitido ? 'Emitido' : 'Rascunho'}</span>
+              <span class="status ${safeCSSClass(st, VALID_PARECER_STATUS)}" style="margin-top: 4px; display: inline-block;">${sanitizeHTML(stLabel)}</span>
             </div>
             <div class="actions">
               <button class="btn" data-abrir-parecer="${pz.processoId}" title="Abrir parecer">Abrir</button>
@@ -551,23 +560,120 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (e) { return 'Sistema'; }
   }
 
-  function buildParecerSeedDelta(processo) {
+  // ===== Modelos de parecer por matéria (Frente 1) =====
+  // Cada modelo gera um "esqueleto" (Quill Delta) já com as seções que aquela
+  // matéria costuma exigir, e um checklist de pontos a verificar exibido ao
+  // lado do editor. São modelos INTERNOS (definidos em código), independentes
+  // dos .docx enviados pelo usuário — não têm custo e padronizam a redação.
+  function parecerHeaderOps(processo) {
       const numTxt = (processo && processo.num) ? processo.num : '';
-      return {
-          ops: [
-              { insert: 'PARECER JURÍDICO' },
-              { insert: '\n', attributes: { header: 2, align: 'center' } },
-              { insert: `Processo n. ${numTxt}` },
-              { insert: '\n', attributes: { align: 'center' } },
-              { insert: '\n' },
-              { insert: 'I. RELATÓRIO', attributes: { bold: true } },
-              { insert: '\n' }, { insert: '\n' },
-              { insert: 'II. DA ANÁLISE JURÍDICA', attributes: { bold: true } },
-              { insert: '\n' }, { insert: '\n' },
-              { insert: 'III. CONCLUSÃO', attributes: { bold: true } },
-              { insert: '\n' }, { insert: '\n' }
-          ]
-      };
+      return [
+          { insert: 'PARECER JURÍDICO' },
+          { insert: '\n', attributes: { header: 2, align: 'center' } },
+          { insert: `Processo n. ${numTxt}` },
+          { insert: '\n', attributes: { align: 'center' } },
+          { insert: '\n' },
+      ];
+  }
+  // Monta as seções (títulos em negrito) a partir de uma lista de rótulos, com
+  // uma linha em branco entre elas — mesmo formato do modelo genérico original.
+  function parecerSecoesOps(titulos) {
+      const ops = [];
+      titulos.forEach(t => { ops.push({ insert: t, attributes: { bold: true } }, { insert: '\n' }, { insert: '\n' }); });
+      return ops;
+  }
+
+  const PARECER_TEMPLATES = [
+      {
+          id: 'generico', nome: 'Parecer genérico',
+          descricao: 'Estrutura padrão: Relatório, Análise Jurídica e Conclusão.',
+          secoes: ['I. RELATÓRIO', 'II. DA ANÁLISE JURÍDICA', 'III. CONCLUSÃO'],
+          checklist: [
+              'Delimitar com clareza o objeto do processo/consulta',
+              'Indicar a legislação e os atos normativos aplicáveis',
+              'Enfrentar as questões controvertidas de forma fundamentada',
+              'Concluir de forma objetiva (favorável, desfavorável ou com ressalvas)',
+          ],
+      },
+      {
+          id: 'licitacao', nome: 'Licitação e contratação (Lei 14.133/2021)',
+          descricao: 'Análise da fase interna/edital ou da contratação direta.',
+          secoes: ['I. RELATÓRIO', 'II. DA LEGISLAÇÃO APLICÁVEL', 'III. DA ANÁLISE JURÍDICA', 'IV. CONCLUSÃO'],
+          checklist: [
+              'Modalidade/procedimento e fundamento legal (Lei 14.133/2021)',
+              'Existência de estudo técnico preliminar, termo de referência e pesquisa de preços',
+              'Dotação orçamentária e autorização da autoridade competente',
+              'Minuta de edital/contrato conforme art. 92 da Lei 14.133/2021',
+              'Se contratação direta: enquadramento da dispensa/inexigibilidade (arts. 74/75) e justificativa de preço',
+              'Regularidade fiscal e habilitação do contratado',
+          ],
+      },
+      {
+          id: 'aditivo', nome: 'Aditivo / prorrogação contratual',
+          descricao: 'Alteração, prorrogação ou reajuste de contrato administrativo.',
+          secoes: ['I. RELATÓRIO', 'II. DA POSSIBILIDADE JURÍDICA DA ALTERAÇÃO', 'III. DA ANÁLISE', 'IV. CONCLUSÃO'],
+          checklist: [
+              'Vigência atual do contrato e tempestividade do pedido',
+              'Fundamento da alteração (arts. 124 a 136 da Lei 14.133/2021)',
+              'Limites legais de acréscimo/supressão (25% / 50% para reforma)',
+              'Justificativa técnica e manutenção do equilíbrio econômico-financeiro',
+              'Comprovação da vantajosidade (no caso de prorrogação)',
+              'Regularidade fiscal do contratado e dotação orçamentária',
+          ],
+      },
+      {
+          id: 'pessoal', nome: 'Pessoal e servidores',
+          descricao: 'Nomeação, cessão, licença, vantagens e regime dos servidores.',
+          secoes: ['I. RELATÓRIO', 'II. DO ENQUADRAMENTO LEGAL', 'III. DA ANÁLISE JURÍDICA', 'IV. CONCLUSÃO'],
+          checklist: [
+              'Fundamento no Estatuto dos Servidores e/ou na Lei Orgânica do Município',
+              'Existência de cargo/vaga e previsão na lei de criação',
+              'Requisitos de investidura e/ou requisitos da vantagem pretendida',
+              'Impacto financeiro e observância da LC 101/2000 (LRF)',
+              'Competência do órgão para o ato',
+          ],
+      },
+      {
+          id: 'legislativo', nome: 'Projeto de lei / processo legislativo',
+          descricao: 'Análise de constitucionalidade, competência e técnica legislativa.',
+          secoes: ['I. RELATÓRIO', 'II. DA CONSTITUCIONALIDADE E DA COMPETÊNCIA', 'III. DA TÉCNICA LEGISLATIVA', 'IV. CONCLUSÃO'],
+          checklist: [
+              'Competência legislativa do Município (art. 30 da CF)',
+              'Iniciativa correta da proposição (reserva de iniciativa)',
+              'Compatibilidade com a Constituição Federal, Estadual e a Lei Orgânica',
+              'Adequação à técnica legislativa (LC 95/1998)',
+              'Existência de impacto orçamentário/financeiro e sua adequação',
+          ],
+      },
+      {
+          id: 'consulta', nome: 'Consulta jurídica',
+          descricao: 'Resposta a consulta abstrata formulada por órgão ou autoridade.',
+          secoes: ['I. DA CONSULTA', 'II. DA ANÁLISE JURÍDICA', 'III. CONCLUSÃO'],
+          checklist: [
+              'Delimitar objetivamente a dúvida jurídica formulada',
+              'Identificar as normas e a jurisprudência aplicáveis',
+              'Responder de forma clara a cada quesito da consulta',
+              'Ressalvar que o parecer é opinativo e não vincula a autoridade',
+          ],
+      },
+  ];
+
+  const getParecerTemplate = (id) => PARECER_TEMPLATES.find(t => t.id === id) || PARECER_TEMPLATES[0];
+
+  function buildParecerDelta(templateId, processo) {
+      const t = getParecerTemplate(templateId);
+      return { ops: [...parecerHeaderOps(processo), ...parecerSecoesOps(t.secoes)] };
+  }
+
+  // Mantido para compatibilidade: um parecer novo nasce com o modelo genérico.
+  function buildParecerSeedDelta(processo) { return buildParecerDelta('generico', processo); }
+
+  // Para exportação (PDF/Word): se o parecer já tem número, insere uma linha
+  // "Parecer nº NNN/AAAA" alinhada à direita no topo, sem alterar o Delta salvo.
+  function deltaParecerParaExport(pz) {
+      if (!pz || !pz.numero) return pz && pz.delta;
+      const ops = (pz.delta && pz.delta.ops) || [];
+      return { ops: [{ insert: `Parecer nº ${pz.numero}` }, { insert: '\n', attributes: { align: 'right' } }, ...ops] };
   }
 
   // Frases-lixo que o Word/Gemini injeta ao copiar de documentos com campos de
@@ -607,21 +713,48 @@ document.addEventListener('DOMContentLoaded', () => {
       return parecerQuill;
   }
 
+  const PARECER_STATUS_LABEL = { rascunho: 'Rascunho', 'em-revisao': 'Em revisão', emitido: 'Emitido' };
+
   function updateParecerModalUI(pz) {
-      const emitido = pz.status === 'emitido';
+      const st = pz.status || 'rascunho';
+      const emitido = st === 'emitido';
+      const emRevisao = st === 'em-revisao';
+      const editavel = st === 'rascunho';        // só o rascunho é editável
       const statusEl = $('#m_parecer_status');
-      statusEl.textContent = emitido ? 'Emitido' : 'Rascunho';
-      statusEl.className = `status ${emitido ? 'emitido' : 'rascunho'}`;
+      const numeroTxt = pz.numero ? ` · Parecer nº ${pz.numero}` : '';
+      statusEl.textContent = (PARECER_STATUS_LABEL[st] || 'Rascunho') + numeroTxt;
+      statusEl.className = `status ${safeCSSClass(st, VALID_PARECER_STATUS)}`;
+
       $('#pz_ementa').value = pz.ementa || '';
-      $('#pz_ementa').disabled = emitido;
-      $('#btnSalvarRascunho').style.display = emitido ? 'none' : '';
-      $('#btnEmitirParecer').style.display = emitido ? 'none' : '';
-      $('#btnReabrirParecer').style.display = emitido ? '' : 'none';
-      $('#btnGerarPdfParecer').style.display = emitido ? '' : 'none';
-      $('#btnExportarWordParecer').style.display = ''; // disponível em rascunho e emitido
+      $('#pz_ementa').disabled = !editavel;
+
+      // Observação do revisor (aparece quando o parecer foi devolvido para ajustes).
+      const obsEl = $('#parecerRevisorObs');
+      if (obsEl) {
+          if (editavel && pz.revisorObs) {
+              obsEl.innerHTML = `<strong>Devolvido para ajustes${pz.devolvidoPor ? ' por ' + sanitizeHTML(pz.devolvidoPor) : ''}:</strong> ${sanitizeHTML(pz.revisorObs)}`;
+              obsEl.style.display = '';
+          } else {
+              obsEl.style.display = 'none';
+          }
+      }
+
+      // Botões por estado do fluxo (rascunho → em-revisão → emitido).
+      const show = (sel, cond) => { const el = $(sel); if (el) el.style.display = cond ? '' : 'none'; };
+      show('#btnSalvarRascunho', editavel);
+      show('#btnEnviarRevisao', editavel);
+      show('#btnEmitirParecer', editavel);        // emissão direta continua disponível
+      show('#btnDevolverRevisao', emRevisao);
+      show('#btnAprovarEmitir', emRevisao);
+      show('#btnReabrirParecer', emitido);
+      show('#btnGerarPdfParecer', emitido);
+      show('#btnExportarWordParecer', true);       // disponível em qualquer estado
+
       const modeloPicker = $('#parecerModeloPicker');
-      if (modeloPicker) modeloPicker.style.display = emitido ? 'none' : '';
-      if (parecerQuill) parecerQuill.enable(!emitido);
+      if (modeloPicker) modeloPicker.style.display = editavel ? '' : 'none';
+      const materiaPicker = $('#parecerMateriaPicker');
+      if (materiaPicker) materiaPicker.style.display = editavel ? '' : 'none';
+      if (parecerQuill) parecerQuill.enable(editavel);
   }
 
   // Popula o <select> de modelos disponíveis para carregar como base do parecer em edição.
@@ -649,6 +782,42 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error('Erro ao carregar modelo no editor:', e);
           showToast('Não foi possível carregar o modelo (formato incompatível?).', 'danger');
       }
+  }
+
+  // ===== Modelos por matéria — UI (Frente 1) =====
+  // Popula o <select> de modelos internos por matéria.
+  function populateParecerMateriaSelect() {
+      const select = $('#pz_materia_select');
+      if (!select) return;
+      select.innerHTML = PARECER_TEMPLATES
+          .map(t => `<option value="${t.id}">${sanitizeHTML(t.nome)}</option>`).join('');
+  }
+
+  // Renderiza, ao lado do editor, o checklist de pontos a verificar da matéria.
+  function renderParecerChecklist(materiaId) {
+      const box = $('#parecerChecklist');
+      if (!box) return;
+      const t = getParecerTemplate(materiaId);
+      const itens = t.checklist.map(p => `<li>${sanitizeHTML(p)}</li>`).join('');
+      box.innerHTML = `<div class="parecer-checklist-titulo">Pontos a verificar — ${sanitizeHTML(t.nome)}</div>
+          <ul class="parecer-checklist-lista">${itens}</ul>
+          <p class="parecer-checklist-nota">Lembrete de conferência — não faz parte do texto do parecer.</p>`;
+  }
+
+  // Substitui o conteúdo do editor pelo esqueleto da matéria escolhida.
+  async function carregarMateriaNoEditor(materiaId) {
+      const quill = ensureParecerQuill();
+      if (!quill.isEnabled()) { showToast('O parecer está bloqueado — reabra para edição antes de trocar o modelo.', 'danger'); return; }
+      const t = getParecerTemplate(materiaId);
+      const ok = await confirmDialog(
+          `Isso vai <strong>substituir todo o conteúdo atual</strong> do editor pelo modelo "${sanitizeHTML(t.nome)}". Deseja continuar?`,
+          { title: 'Carregar modelo por matéria', confirmLabel: 'Carregar e substituir' }
+      );
+      if (!ok) return;
+      quill.setContents(buildParecerDelta(materiaId, currentParecerProcesso));
+      if (currentParecerRecord) currentParecerRecord.materia = materiaId;
+      renderParecerChecklist(materiaId);
+      showToast('Modelo carregado no editor.', 'success');
   }
 
   // ===== Pesquisa de jurisprudência (painel do editor de parecer) =====
@@ -806,20 +975,30 @@ document.addEventListener('DOMContentLoaded', () => {
               processoId: processo.id,
               processoNum: processo.num,
               status: 'rascunho',
+              materia: 'generico',
               ementa: '',
               delta: buildParecerSeedDelta(processo),
               textoBusca: '',
+              numero: null, numeroSeq: null, numeroAno: null,
               criadoEm: new Date().toISOString(),
               criadoPor: currentUserName(),
               atualizadoEm: null,
               emitidoEm: null, emitidoPor: null,
-              reabertoEm: null, reabertoPor: null
+              reabertoEm: null, reabertoPor: null,
+              enviadoRevisaoEm: null, enviadoRevisaoPor: null,
+              revisadoEm: null, revisadoPor: null,
+              devolvidoEm: null, devolvidoPor: null, revisorObs: null
           };
       }
       currentParecerRecord = pz;
       quill.setContents(pz.delta);
       updateParecerModalUI(pz);
       if (pz.status !== 'emitido') populateParecerModeloSelect();
+      populateParecerMateriaSelect();
+      const materiaAtual = pz.materia || 'generico';
+      const materiaSelect = $('#pz_materia_select');
+      if (materiaSelect) materiaSelect.value = materiaAtual;
+      renderParecerChecklist(materiaAtual);
       $('#m_parecer_t').textContent = `Parecer Jurídico — Processo ${sanitizeHTML(processo.num || '')}`;
       mParecer.style.display = 'flex';
   }
@@ -829,6 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const pz = currentParecerRecord;
       const isNew = currentParecerIsNew;
       pz.ementa = $('#pz_ementa').value.trim();
+      pz.materia = $('#pz_materia_select')?.value || pz.materia || 'generico';
       pz.delta = { ops: parecerQuill.getContents().ops };
       pz.textoBusca = parecerQuill.getText().toLowerCase();
       pz.atualizadoEm = new Date().toISOString();
@@ -840,12 +1020,27 @@ document.addEventListener('DOMContentLoaded', () => {
       return pz;
   }
 
-  async function emitirParecer() {
-      if (!currentParecerRecord) return;
-      const ok = await confirmDialog('Ao emitir, o parecer ficará <strong>somente leitura</strong>. Deseja continuar?', { title: 'Emitir Parecer', confirmLabel: 'Emitir' });
-      if (!ok) return;
-      const pz = await salvarRascunhoParecer(true);
-      if (!pz) return;
+  // Próximo número sequencial de parecer do ano corrente (formato NNN/AAAA).
+  // Calculado a partir dos pareceres já numerados em memória (max + 1). Para uma
+  // procuradoria pequena isso é suficiente e auto-corrige lacunas; segue o mesmo
+  // padrão dos ids baseados em Date.now() usados no resto do app.
+  function proximoNumeroParecer() {
+      const ano = new Date().getFullYear();
+      const seqs = DB_PARECERES
+          .filter(p => p.numeroAno === ano && typeof p.numeroSeq === 'number')
+          .map(p => p.numeroSeq);
+      const seq = (seqs.length ? Math.max(...seqs) : 0) + 1;
+      return { seq, ano, numero: `${String(seq).padStart(3, '0')}/${ano}` };
+  }
+
+  // Registro comum de emissão (usado pela emissão direta e pela aprovação da
+  // revisão): atribui número na 1ª emissão, marca como emitido, grava versão e
+  // registra no histórico. Reemissão (após reabrir) mantém o número original.
+  async function emitirParecerRegistro(pz) {
+      if (!pz.numero) {
+          const n = proximoNumeroParecer();
+          pz.numero = n.numero; pz.numeroSeq = n.seq; pz.numeroAno = n.ano;
+      }
       pz.status = 'emitido';
       pz.emitidoEm = new Date().toISOString();
       pz.emitidoPor = currentUserName();
@@ -860,8 +1055,72 @@ document.addEventListener('DOMContentLoaded', () => {
       await dbHelper.put('parecerVersoes', novaVersao);
 
       await logHistorico(currentParecerProcesso.id, currentParecerProcesso.num, 'parecer-emitido', []);
+  }
+
+  async function emitirParecer() {
+      if (!currentParecerRecord) return;
+      const ok = await confirmDialog('Ao emitir, o parecer receberá um <strong>número</strong> e ficará <strong>somente leitura</strong>. Deseja continuar?', { title: 'Emitir Parecer', confirmLabel: 'Emitir' });
+      if (!ok) return;
+      const pz = await salvarRascunhoParecer(true);
+      if (!pz) return;
+      await emitirParecerRegistro(pz);
       updateParecerModalUI(pz);
-      showToast('Parecer emitido com sucesso!');
+      showToast(`Parecer emitido${pz.numero ? ' — nº ' + pz.numero : ''}!`);
+      openProcDetails(currentParecerProcesso.id);
+  }
+
+  // Envia o rascunho para revisão: salva, bloqueia edição (somente leitura) e
+  // limpa observação anterior do revisor.
+  async function enviarParaRevisao() {
+      if (!currentParecerRecord) return;
+      const ok = await confirmDialog('O parecer será enviado para revisão e ficará <strong>somente leitura</strong> até ser aprovado ou devolvido. Deseja continuar?', { title: 'Enviar para revisão', confirmLabel: 'Enviar' });
+      if (!ok) return;
+      const pz = await salvarRascunhoParecer(true);
+      if (!pz) return;
+      pz.status = 'em-revisao';
+      pz.enviadoRevisaoEm = new Date().toISOString();
+      pz.enviadoRevisaoPor = currentUserName();
+      pz.revisorObs = null;
+      await dbHelper.put('pareceres', pz);
+      await logHistorico(currentParecerProcesso.id, currentParecerProcesso.num, 'parecer-enviado-revisao', []);
+      updateParecerModalUI(pz);
+      showToast('Parecer enviado para revisão.', 'info');
+      openProcDetails(currentParecerProcesso.id);
+  }
+
+  // Revisor devolve o parecer para ajustes (volta a rascunho editável), com
+  // observação opcional exibida ao elaborador ao reabrir o parecer.
+  async function devolverParaAjustes() {
+      if (!currentParecerRecord) return;
+      const ok = await confirmDialog(
+          'Descreva o que precisa ser ajustado (opcional). O parecer volta a ser <strong>rascunho editável</strong>.<br><br><textarea id="__revisorObs" class="input" rows="3" style="width:100%" placeholder="Observações do revisor..."></textarea>',
+          { title: 'Devolver para ajustes', confirmLabel: 'Devolver' }
+      );
+      const obs = $('#__revisorObs')?.value.trim() || '';
+      if (!ok) return;
+      const pz = currentParecerRecord;
+      pz.status = 'rascunho';
+      pz.devolvidoEm = new Date().toISOString();
+      pz.devolvidoPor = currentUserName();
+      pz.revisorObs = obs || null;
+      await dbHelper.put('pareceres', pz);
+      await logHistorico(currentParecerProcesso.id, currentParecerProcesso.num, 'parecer-devolvido', obs ? [{ campo: 'Observação', de: '', para: obs }] : []);
+      updateParecerModalUI(pz);
+      showToast('Parecer devolvido para ajustes.', 'info');
+      openProcDetails(currentParecerProcesso.id);
+  }
+
+  // Revisor aprova e emite o parecer em revisão (registra também quem revisou).
+  async function aprovarEEmitir() {
+      if (!currentParecerRecord) return;
+      const ok = await confirmDialog('Aprovar a revisão e <strong>emitir</strong> o parecer? Ele receberá um número e ficará somente leitura.', { title: 'Aprovar e emitir', confirmLabel: 'Aprovar e emitir' });
+      if (!ok) return;
+      const pz = currentParecerRecord;
+      pz.revisadoEm = new Date().toISOString();
+      pz.revisadoPor = currentUserName();
+      await emitirParecerRegistro(pz);
+      updateParecerModalUI(pz);
+      showToast(`Parecer aprovado e emitido${pz.numero ? ' — nº ' + pz.numero : ''}!`);
       openProcDetails(currentParecerProcesso.id);
   }
 
@@ -882,9 +1141,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('#btnSalvarRascunho').onclick = () => salvarRascunhoParecer();
   $('#btnEmitirParecer').onclick = () => emitirParecer();
+  $('#btnEnviarRevisao').onclick = () => enviarParaRevisao();
+  $('#btnDevolverRevisao').onclick = () => devolverParaAjustes();
+  $('#btnAprovarEmitir').onclick = () => aprovarEEmitir();
   $('#btnReabrirParecer').onclick = () => reabrirParecer();
   $('#btnGerarPdfParecer').onclick = () => generateParecerPDF(currentParecerProcesso);
   $('#btnExportarWordParecer').onclick = () => generateParecerDoc(currentParecerProcesso);
+  const btnCarregarMateria = $('#btnCarregarMateria');
+  if (btnCarregarMateria) btnCarregarMateria.onclick = () => carregarMateriaNoEditor($('#pz_materia_select')?.value || 'generico');
+  const materiaSel = $('#pz_materia_select');
+  if (materiaSel) materiaSel.onchange = () => renderParecerChecklist(materiaSel.value);
   $('#btnCarregarModelo').onclick = async () => {
       const modeloId = Number($('#pz_modelo_select').value);
       if (!modeloId) { showToast('Selecione um modelo primeiro.', 'info'); return; }
@@ -1759,11 +2025,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const parecerContainer = $('#view-parecer-details');
     const parecerInfo = getParecerInfo(p);
     if (parecerInfo?.tipo === 'estruturado') {
-        const dataInfo = parecerInfo.emitido ? `Emitido em ${fmtBR(parecerInfo.dataRef)}` : `Última atualização: ${fmtBR(parecerInfo.dataRef)}`;
+        const st = parecerInfo.status || (parecerInfo.emitido ? 'emitido' : 'rascunho');
+        const emRevisao = st === 'em-revisao';
+        const dataInfo = parecerInfo.emitido
+            ? `Emitido em ${fmtBR(parecerInfo.dataRef)}${parecerInfo.numero ? ' — nº ' + parecerInfo.numero : ''}`
+            : `Última atualização: ${fmtBR(parecerInfo.dataRef)}`;
+        const btnLabel = parecerInfo.emitido ? 'Ver Parecer' : emRevisao ? 'Revisar Parecer' : 'Continuar Redigindo';
         parecerContainer.innerHTML = `
-            <span class="status ${parecerInfo.emitido ? 'emitido' : 'rascunho'}">${parecerInfo.label}</span>
+            <span class="status ${safeCSSClass(st, VALID_PARECER_STATUS)}">${sanitizeHTML(parecerInfo.label)}</span>
             <p style="margin:0; font-weight: 600;">${sanitizeHTML(dataInfo)}</p>
-            <button id="btnAbrirParecerView" class="btn primary">${parecerInfo.emitido ? 'Ver Parecer' : 'Continuar Redigindo'}</button>
+            <button id="btnAbrirParecerView" class="btn primary">${btnLabel}</button>
             ${parecerInfo.emitido ? '<button id="btnGerarPdfParecerView" class="btn secondary">Gerar PDF Oficial</button>' : ''}
             <button id="btnExportarWordParecerView" class="btn secondary">Exportar Word</button>
         `;
@@ -2250,7 +2521,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
       const writer = createParecerPdfWriter(doc);
-      renderParecerDeltaToPdf(doc, writer, pz.delta);
+      renderParecerDeltaToPdf(doc, writer, deltaParecerParaExport(pz));
       doc.save(`parecer_${String(processo.num || pz.processoNum || '').replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
       showToast('PDF do parecer gerado com sucesso!');
   }
@@ -2329,7 +2600,7 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
       }
       const pz = info.parecer;
-      const corpo = parecerDeltaToHtml(pz.delta);
+      const corpo = parecerDeltaToHtml(deltaParecerParaExport(pz));
       const numProc = sanitizeHTML(processo.num || pz.processoNum || '');
       const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8"><title>Parecer ${numProc}</title>
@@ -2778,7 +3049,7 @@ ${corpo}
   // ===== Painel do Log de Auditoria (Configurações, admin) =====
   let AUD_ENTRIES = [];
   const AUD_MODULOS = { processos: 'Processos', pareceres: 'Pareceres', usuarios: 'Usuários', emissores: 'Emissores', leis: 'Banco de Leis', modelos: 'Modelos', calendario: 'Calendário', backup: 'Backup', auth: 'Acesso', integracoes: 'Integrações' };
-  const AUD_ACOES = { criado: 'criou', editado: 'editou', excluido: 'excluiu', aprovado: 'aprovou', 'promovido-a-admin': 'promoveu a admin', 'rebaixado-a-usuario': 'rebaixou a usuário', 'acesso-revogado': 'revogou o acesso de', login: 'entrou no sistema', logout: 'saiu do sistema', exportado: 'exportou', restaurado: 'restaurou', 'parecer-criado': 'criou parecer —', 'parecer-editado': 'editou parecer —', 'parecer-emitido': 'emitiu parecer —', 'parecer-reaberto': 'reabriu parecer —' };
+  const AUD_ACOES = { criado: 'criou', editado: 'editou', excluido: 'excluiu', aprovado: 'aprovou', 'promovido-a-admin': 'promoveu a admin', 'rebaixado-a-usuario': 'rebaixou a usuário', 'acesso-revogado': 'revogou o acesso de', login: 'entrou no sistema', logout: 'saiu do sistema', exportado: 'exportou', restaurado: 'restaurou', 'parecer-criado': 'criou parecer —', 'parecer-editado': 'editou parecer —', 'parecer-emitido': 'emitiu parecer —', 'parecer-reaberto': 'reabriu parecer —', 'parecer-enviado-revisao': 'enviou p/ revisão —', 'parecer-devolvido': 'devolveu p/ ajustes —' };
 
   // ===== Cartão do token do Jurisprudências.ai (Configurações, admin) =====
   // O token fica em segredos/jurisai (coleção admin-only nas rules); a Cloud

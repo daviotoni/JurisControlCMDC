@@ -712,6 +712,14 @@
         .status.em-analise{background:var(--warning-bg);color:var(--warning);} .status.pendente{background:var(--danger-bg);color:var(--danger);} .status.finalizado{background:var(--success-bg);color:var(--success);}
         .status.aguardando-documentacao{background:var(--info-bg);color:var(--info);} .status.em-diligencia{background:var(--purple-bg);color:var(--purple);} .status.arquivado{background:#eef1f5;color:#5a6b82;}
         .status.rascunho{background:var(--warning-bg);color:var(--warning);} .status.emitido{background:var(--success-bg);color:var(--success);}
+        .status.em-revisao{background:var(--info-bg);color:var(--info);}
+        .parecer-materia-picker label{font-weight:600;}
+        .parecer-checklist{margin-top:0.75rem;border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;background:var(--info-bg);}
+        .parecer-checklist-titulo{font-weight:700;font-size:0.85rem;color:var(--info);margin-bottom:0.4rem;}
+        .parecer-checklist-lista{margin:0;padding-left:1.2rem;font-size:0.85rem;color:var(--text-secondary);}
+        .parecer-checklist-lista li{margin-bottom:0.25rem;}
+        .parecer-checklist-nota{margin:0.5rem 0 0;font-size:0.75rem;color:var(--text-muted);font-style:italic;}
+        .parecer-revisor-obs{margin-bottom:0.75rem;border-left:4px solid var(--warning);background:var(--warning-bg);padding:0.6rem 0.9rem;border-radius:6px;font-size:0.88rem;color:var(--text-secondary);}
         body[data-theme="dark"] .status.arquivado{background:rgba(255,255,255,0.08);color:var(--text-secondary-dark);}
 
         /* ===== Indicador de urgência de prazo (lista e cards) ===== */

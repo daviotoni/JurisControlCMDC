@@ -17,7 +17,7 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=0a0ed7d28a">
+        <link rel="stylesheet" href="style.css?v=f13975ec28">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -554,8 +554,16 @@
                     <label for="pz_ementa">Ementa</label>
                     <textarea id="pz_ementa" class="input" rows="2" placeholder="Resumo do parecer em caixa alta (ex: CONTRATO ADMINISTRATIVO. PRORROGAÇÃO DE PRAZO...)"></textarea>
                 </div>
+                <div id="parecerRevisorObs" class="parecer-revisor-obs" style="display:none;"></div>
+                <div class="form-group parecer-materia-picker" id="parecerMateriaPicker">
+                    <label for="pz_materia_select">Modelo por matéria</label>
+                    <div style="display:flex; gap:0.5rem;">
+                        <select id="pz_materia_select" class="select" style="flex:1;"></select>
+                        <button type="button" class="btn secondary" id="btnCarregarMateria">Carregar</button>
+                    </div>
+                </div>
                 <div class="form-group parecer-modelo-picker" id="parecerModeloPicker">
-                    <label for="pz_modelo_select">Carregar a partir de um modelo</label>
+                    <label for="pz_modelo_select">Carregar a partir de um modelo (.docx)</label>
                     <div style="display:flex; gap:0.5rem;">
                         <select id="pz_modelo_select" class="select" style="flex:1;">
                             <option value="">Selecione um modelo...</option>
@@ -564,17 +572,21 @@
                     </div>
                 </div>
                 <div id="parecerEditor" class="parecer-editor"></div>
+                <div id="parecerChecklist" class="parecer-checklist"></div>
                 <div class="parecer-timbre-rodape">Página 1</div>
             </div>
             <div class="dialog-footer">
                 <div style="margin-right:auto; display:flex; gap:0.5rem; flex-wrap:wrap;">
                     <button type="button" class="btn secondary" id="btnJurisprudencia">⚖ Jurisprudência</button>
+                    <button type="button" class="btn danger" id="btnDevolverRevisao" style="display:none;">Devolver para ajustes</button>
                     <button type="button" class="btn danger" id="btnReabrirParecer" style="display:none;">Reabrir para edição</button>
                 </div>
                 <button type="button" class="btn secondary" id="btnGerarPdfParecer" style="display:none;">Gerar PDF Oficial</button>
                 <button type="button" class="btn secondary" id="btnExportarWordParecer" style="display:none;">Exportar Word</button>
                 <button type="button" class="btn secondary" data-close-parecer>Fechar</button>
                 <button type="button" class="btn secondary" id="btnSalvarRascunho">Salvar Rascunho</button>
+                <button type="button" class="btn secondary" id="btnEnviarRevisao">Enviar para Revisão</button>
+                <button type="button" class="btn primary" id="btnAprovarEmitir" style="display:none;">Aprovar e Emitir</button>
                 <button type="button" class="btn primary" id="btnEmitirParecer">Emitir Parecer</button>
             </div>
         </div>
@@ -681,9 +693,9 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/utils.js?v=970526615f"></script>
+    <script src="js/utils.js?v=74fd47f07c"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
-    <script src="js/app.js?v=18cacc73f4"></script>
+    <script src="js/app.js?v=c346663d22"></script>
 
 </body>
 </html>

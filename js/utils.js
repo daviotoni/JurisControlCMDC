@@ -21,7 +21,9 @@ const sanitizeHTML = (str) => {
 
 // Whitelists de valores válidos para classes CSS dinâmicas (evita injeção via Firestore).
 const VALID_STATS = new Set(['pendente', 'em-analise', 'aguardando-documentacao', 'em-diligencia', 'finalizado', 'arquivado']);
-const VALID_ACAO  = new Set(['criado', 'editado', 'excluido', 'parecer-criado', 'parecer-editado', 'parecer-emitido', 'parecer-reaberto']);
+const VALID_ACAO  = new Set(['criado', 'editado', 'excluido', 'parecer-criado', 'parecer-editado', 'parecer-emitido', 'parecer-reaberto', 'parecer-enviado-revisao', 'parecer-devolvido']);
+// Estados do fluxo de revisão do parecer (whitelist p/ classe CSS do badge).
+const VALID_PARECER_STATUS = new Set(['rascunho', 'em-revisao', 'emitido']);
 const VALID_CAT   = new Set(['g', 'a', 'r', 'p', 'u', 'e', 'o']);
 const safeCSSClass = (value, whitelist) => whitelist.has(value) ? value : '';
 
@@ -144,12 +146,15 @@ function versoesDoParecer(parecerVersoes = [], parecerId) {
 function inferirParecerInfo(processo, pareceres = [], docs = []) {
   const estruturado = pareceres.find(pz => String(pz.processoId) === String(processo.id));
   if (estruturado) {
-    const emitido = estruturado.status === 'emitido';
+    const status = estruturado.status || 'rascunho';
+    const emitido = status === 'emitido';
+    const LABELS = { rascunho: 'Rascunho', 'em-revisao': 'Em revisão', emitido: 'Emitido' };
+    const label = LABELS[status] || 'Rascunho';
     return {
-      tipo: 'estruturado', emitido,
-      label: emitido ? 'Emitido' : 'Rascunho',
+      tipo: 'estruturado', emitido, status, label,
+      numero: estruturado.numero || null,
       dataRef: emitido ? estruturado.emitidoEm : (estruturado.atualizadoEm || estruturado.criadoEm),
-      nomeDocumento: `Parecer redigido no sistema (${emitido ? 'Emitido' : 'Rascunho'})`,
+      nomeDocumento: `Parecer redigido no sistema (${label})`,
       parecer: estruturado, docLegado: null,
     };
   }
@@ -170,6 +175,6 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
     base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
-    VALID_STATS, VALID_ACAO, VALID_CAT,
+    VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,
   };
 }
