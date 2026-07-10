@@ -2919,6 +2919,56 @@ document.addEventListener('DOMContentLoaded', () => {
         if(p.prazo && p.stat!=='finalizado'&&p.stat!=='arquivado'){ const d=parse(p.prazo); if(d){ const df=diffDays(hoje,d); if(df<0) venc++; else if(df<=5) alert++; } }
       }); return { total: DB.length, pend, anal, fin, alert, venc };
   }
+  // Radar de Prazos: faixa dos próximos 7 dias (hoje + 6) no topo do dashboard.
+  // Cada dia mostra bolinhas por urgência (prazo de processo) / roxo (compromisso
+  // de agenda); "hoje" é destacado e os vencidos aparecem num bloco vermelho à
+  // esquerda. Clicar num dia abre o Calendário; clicar em "vencidos" filtra os
+  // processos vencidos. As chaves de dia são geradas em UTC para casar com as
+  // strings YYYY-MM-DD de prazo/agenda (evita erro de fuso).
+  function renderRadarPrazos() {
+      const el = $('#dashboard-radar'); if (!el) return;
+      const hoje = todayUTC();
+      const ativos = DB.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado');
+      const vencidos = ativos.filter(p => diffDays(hoje, parse(p.prazo)) < 0).length;
+      const attrEsc = (s) => sanitizeHTML(s).replace(/"/g, '&quot;');
+      const fmtKey = (dt) => `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+      const MAXD = 5;
+      const cells = [];
+      for (let i = 0; i < 7; i++) {
+          const d = new Date(hoje); d.setUTCDate(hoje.getUTCDate() + i);
+          const key = fmtKey(d);
+          const items = [];
+          ativos.forEach(p => { if (p.prazo === key) items.push({ dot: i === 0 ? 'd-danger' : i <= 2 ? 'd-warning' : 'd-proc', label: `Proc ${p.num}` }); });
+          CAL.forEach(c => { if (c.data === key) items.push({ dot: 'd-event', label: c.desc || 'Compromisso' }); });
+          let lvl = '';
+          if (items.some(it => it.dot === 'd-danger')) lvl = 'lvl-danger';
+          else if (items.some(it => it.dot === 'd-warning')) lvl = 'lvl-warning';
+          const dow = i === 0 ? 'HOJE' : d.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'UTC' }).replace('.', '').replace('-feira', '');
+          const dotsHtml = items.slice(0, MAXD).map(it => `<span class="dot ${it.dot}"></span>`).join('')
+              + (items.length > MAXD ? `<span class="radar-more">+${items.length - MAXD}</span>` : '');
+          const countTxt = items.length ? `${items.length} ${items.length === 1 ? 'item' : 'itens'}` : '&nbsp;';
+          const title = items.length ? items.map(it => '• ' + attrEsc(it.label)).join('&#10;') : 'Sem prazos neste dia';
+          cells.push(`<button type="button" class="radar-day ${i === 0 ? 'is-today' : ''} ${lvl} ${items.length ? '' : 'is-empty'}" data-date="${key}" title="${title}">
+              <span class="radar-dow">${sanitizeHTML(dow)}</span>
+              <span class="radar-num">${d.getUTCDate()}</span>
+              <span class="radar-dots">${dotsHtml}</span>
+              <span class="radar-count">${countTxt}</span>
+          </button>`);
+      }
+      const overdueHtml = vencidos > 0
+          ? `<button type="button" class="radar-day radar-overdue" data-goto-vencidos="1" title="${vencidos} processo(s) vencido(s) — clique para ver">
+              <span class="radar-warn">⚠</span>
+              <span class="radar-num">${vencidos}</span>
+              <span class="radar-count">vencido${vencidos > 1 ? 's' : ''}</span>
+          </button>` : '';
+      el.classList.toggle('has-overdue', vencidos > 0);
+      el.innerHTML = overdueHtml + cells.join('');
+      el.onclick = (e) => {
+          if (e.target.closest('[data-goto-vencidos]')) { showTab('proc', { filterBy: { prazo: 'vencido' } }); return; }
+          if (e.target.closest('[data-date]')) showTab('cal');
+      };
+  }
+
   function renderProximosPrazos() {
       const listEl = $('#dashboard-prazos'); if(!listEl) return; listEl.innerHTML = '';
       const hoje = todayUTC(); const futuro = new Date(hoje); futuro.setDate(hoje.getDate() + 15);
@@ -2969,7 +3019,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (filter === 'alerta' || filter === 'vencido') { filterBy.prazo = filter; } else { filterBy.status = filter; }
           showTab('proc', { filterBy });
       };
-      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
+      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderRadarPrazos(); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
   }
 
   async function renderUltimasAtividades() {

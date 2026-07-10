@@ -17,7 +17,7 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=03d50300b8">
+        <link rel="stylesheet" href="style.css?v=bf83a3cd0c">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -161,6 +161,18 @@
                 <section id="secDashboard" style="display:block;">
                     <div class="dash-grid">
                         <div id="dashboard-kpis" class="dash-kpis"></div>
+                        <div class="card dash-radar-card" style="grid-column: 1 / -1;">
+                            <div class="radar-head">
+                                <h3 style="margin:0">Radar de Prazos — Próximos 7 dias</h3>
+                                <div class="radar-legend">
+                                    <span class="lg"><span class="dot d-danger"></span>Vence hoje/atrasado</span>
+                                    <span class="lg"><span class="dot d-warning"></span>1–2 dias</span>
+                                    <span class="lg"><span class="dot d-proc"></span>Prazo de processo</span>
+                                    <span class="lg"><span class="dot d-event"></span>Compromisso</span>
+                                </div>
+                            </div>
+                            <div id="dashboard-radar" class="radar-week"></div>
+                        </div>
                         <div class="dash-left-col">
                             <div class="card">
                                 <h3>Entradas por Mês</h3>
@@ -670,7 +682,7 @@
 
     <script src="js/utils.js?v=970526615f"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
-    <script src="js/app.js?v=b602c8ab5e"></script>
+    <script src="js/app.js?v=ce060d06f1"></script>
 
 </body>
 </html>
