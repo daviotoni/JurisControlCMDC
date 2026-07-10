@@ -2108,55 +2108,118 @@ document.addEventListener('DOMContentLoaded', () => {
       };
   }
 
-  // Converte um Quill Delta ({ ops: [...] }) em texto desenhado no PDF, respeitando bold/italic/
-  // header(1-3)/align/list (ordered numerado de verdade, reiniciando quando a sequência quebra;
-  // recuo cresce por nível de indentação — lineAttrs.indent).
-  // Limitações aceitas (não são bugs): 'underline' não tem equivalente simples em texto jsPDF puro
-  // (sai sem sublinhado); 'justify' vira 'left' (jsPDF não tem justificação nativa de texto);
-  // a numeração de lista ordenada não reinicia por nível de indentação (contador único, achatado).
-  // Simplificação assumida: se qualquer trecho da linha for bold/italic, a linha inteira sai
-  // bold/italic (sem rich-text por run no jsPDF).
+  // Converte um Quill Delta ({ ops: [...] }) em texto desenhado no PDF, com qualidade
+  // de documento jurídico:
+  //  - JUSTIFICAÇÃO real (distribui os espaços para preencher a linha, como no Word),
+  //    exceto na última linha do parágrafo, em títulos e em linhas centradas/à direita;
+  //  - NEGRITO/ITÁLICO por trecho (rich-text de verdade — só a palavra formatada muda,
+  //    não a linha inteira);
+  //  - header(1-3), align (left/center/right/justify), list (bullet/ordered numerado que
+  //    reinicia quando a sequência quebra) e indent (recuo por nível);
+  //  - descarta parágrafos-lixo do Word ("Parte superior/inferior do formulário").
+  // Limitação aceita: 'underline' não é renderizado (jsPDF puro não sublinha texto);
+  // palavras isoladas mais largas que a coluna não são quebradas no meio (raro em texto).
   function renderParecerDeltaToPdf(doc, writer, delta) {
       const ops = (delta && delta.ops) || [];
       let lineBuffer = [];
       let orderedListCounter = 0;
 
+      const styleOf = (bold, italic) => (bold && italic) ? 'bolditalic' : bold ? 'bold' : italic ? 'italic' : 'normal';
+      const measure = (text, style, size) => { doc.setFont('helvetica', style); doc.setFontSize(size); return doc.getTextWidth(text); };
+
       function flushLine(lineAttrs) {
-          if (lineBuffer.length === 0 && !lineAttrs) return;
           const header = lineAttrs && lineAttrs.header;
+          const fontSize = header === 1 ? 15 : header === 2 ? 13 : header === 3 ? 12 : 11;
+
+          // Parágrafo vazio (só \n): vira espaço vertical; no fim do delta, ignora.
+          if (lineBuffer.length === 0) {
+              if (!lineAttrs) return;
+              orderedListCounter = 0;
+              writer.ensureSpace(fontSize * 0.5);
+              writer.y += fontSize * 0.5;
+              return;
+          }
+
+          const norm = lineBuffer.map(r => r.text).join('').replace(/\s+/g, ' ').trim();
+          if (norm === '') { lineBuffer = []; return; }
+          // Descarta marcadores de formulário do Word que tenham sobrado no conteúdo salvo.
+          if (WORD_ARTIFACT_RE.test(norm)) { lineBuffer = []; orderedListCounter = 0; return; }
+
           const align = (lineAttrs && lineAttrs.align) || 'left';
           const listType = lineAttrs && lineAttrs.list;
-          const fontSize = header === 1 ? 16 : header === 2 ? 14 : header === 3 ? 12 : 11;
-
+          const headerBold = !!header;
           orderedListCounter = listType === 'ordered' ? orderedListCounter + 1 : 0;
           const isListItem = !!listType;
-          const prefix = listType === 'bullet' ? '• ' : listType === 'ordered' ? `${orderedListCounter}. ` : '';
+          const prefix = listType === 'bullet' ? '•  ' : listType === 'ordered' ? `${orderedListCounter}.  ` : '';
           const indentLevel = (lineAttrs && lineAttrs.indent) || 0;
-          const indent = isListItem ? 5 + indentLevel * 5 : 0;
-          const maxWidth = writer.pageW - writer.margin * 2 - indent;
+          const indent = (isListItem ? 6 : 0) + indentLevel * 6;
+          const leftX = writer.margin + indent;
+          const rightX = writer.pageW - writer.margin;
+          const maxWidth = rightX - leftX;
 
-          const anyBold = lineBuffer.some(r => r.bold) || !!header;
-          const anyItalic = lineBuffer.some(r => r.italic);
-          const fontStyle = anyBold && anyItalic ? 'bolditalic' : anyBold ? 'bold' : anyItalic ? 'italic' : 'normal';
-          const text = prefix + lineBuffer.map(r => r.text).join('');
+          // 1) Monta "palavras" (arrays de segmentos estilizados). A quebra de linha só
+          //    ocorre entre palavras; segmentos de estilos diferentes podem coexistir numa
+          //    mesma palavra (ex.: "art." normal + "93" negrito, sem espaço no meio).
+          const words = [];
+          let cur = null;
+          if (prefix) { cur = [{ text: prefix, bold: headerBold, italic: false }]; words.push(cur); cur = null; }
+          lineBuffer.forEach(run => {
+              run.text.split(/(\s+)/).forEach(part => {
+                  if (part === '') return;
+                  if (/^\s+$/.test(part)) { cur = null; return; }
+                  if (!cur) { cur = []; words.push(cur); }
+                  cur.push({ text: part, bold: run.bold || headerBold, italic: run.italic });
+              });
+          });
+          const wordList = words.filter(w => w && w.length);
+          if (wordList.length === 0) { lineBuffer = []; return; }
 
-          // Mede a altura real (linhas quebradas por doc.splitTextToSize) ANTES de reservar
-          // espaço — senão um parágrafo longo perto do fim da página só reserva 1 linha e
-          // acaba escrito além da margem inferior em vez de quebrar pra próxima página.
-          doc.setFont('helvetica', fontStyle);
-          doc.setFontSize(fontSize);
-          const lines = doc.splitTextToSize(text, maxWidth);
-          const neededHeight = lines.length * (fontSize * 0.42) + (header ? 3 : 1.5);
-          writer.ensureSpace(neededHeight);
+          const wordWidth = (w) => w.reduce((s, seg) => s + measure(seg.text, styleOf(seg.bold, seg.italic), fontSize), 0);
+          const spaceW = measure(' ', 'normal', fontSize);
 
-          // ensureSpace pode ter desenhado uma página nova (o timbre mexe em font/size/cor) —
-          // reaplica o estilo desta linha antes de desenhar o texto de verdade.
-          doc.setFont('helvetica', fontStyle);
-          doc.setFontSize(fontSize);
-          doc.setTextColor(20, 20, 20);
-          const x = align === 'center' ? writer.pageW / 2 : align === 'right' ? writer.pageW - writer.margin - indent : writer.margin + indent;
-          doc.text(lines, x, writer.y + fontSize * 0.35, { align: align === 'justify' ? 'left' : align });
-          writer.y += neededHeight;
+          // 2) Quebra gulosa em linhas visuais.
+          const visualLines = [];
+          let line = [], lineW = 0;
+          wordList.forEach(w => {
+              const ww = wordWidth(w);
+              const add = line.length === 0 ? ww : spaceW + ww;
+              if (line.length > 0 && lineW + add > maxWidth) {
+                  visualLines.push({ words: line, width: lineW });
+                  line = [w]; lineW = ww;
+              } else {
+                  line.push(w); lineW += add;
+              }
+          });
+          if (line.length) visualLines.push({ words: line, width: lineW });
+
+          // 3) Desenha, aplicando justificação onde couber.
+          const lineHeight = fontSize * 0.52;
+          visualLines.forEach((vl, idx) => {
+              writer.ensureSpace(lineHeight);
+              const baseY = writer.y + fontSize * 0.35;
+              const isLast = idx === visualLines.length - 1;
+              const nWords = vl.words.length;
+
+              let gap = spaceW;
+              let x = leftX;
+              if (align === 'center') x = leftX + (maxWidth - vl.width) / 2;
+              else if (align === 'right') x = rightX - vl.width;
+              else if (align === 'justify' && !isLast && nWords > 1 && !header) gap = spaceW + (maxWidth - vl.width) / (nWords - 1);
+
+              vl.words.forEach((w, wi) => {
+                  w.forEach(seg => {
+                      doc.setFont('helvetica', styleOf(seg.bold, seg.italic));
+                      doc.setFontSize(fontSize);
+                      doc.setTextColor(20, 20, 20);
+                      doc.text(seg.text, x, baseY);
+                      x += measure(seg.text, styleOf(seg.bold, seg.italic), fontSize);
+                  });
+                  if (wi < nWords - 1) x += gap;
+              });
+              writer.y += lineHeight;
+          });
+
+          writer.y += header ? 2.5 : 1.8; // espaço depois do parágrafo
           lineBuffer = [];
       }
 
