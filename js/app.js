@@ -927,7 +927,11 @@ document.addEventListener('DOMContentLoaded', () => {
           const primeiroErro = settled.find(s => s.status === 'rejected');
           throw primeiroErro ? primeiroErro.reason : new Error('Nenhum resultado.');
       }
-      return ok.flatMap(s => s.value);
+      // Como juntamos vários tribunais (sem ranking global), ordenamos por data de
+      // julgamento/publicação, mais recentes primeiro (datas ISO ordenam lexicograficamente);
+      // resultados sem data vão para o fim.
+      return ok.flatMap(s => s.value)
+          .sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
   }
 
   function mensagemErroJuris(e) {
@@ -950,6 +954,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   }
 
+  // Bloco de ementa com expansão: mostra truncada (CSS .clamp) e um botão "ver mais"
+  // quando o texto é longo — o inteiro teor já vem no resultado, sem precisar abrir a fonte.
+  const LIMITE_EMENTA = 240;
+  function jurisEmentaHtml(ementa) {
+      const txt = String(ementa || '').trim();
+      if (!txt) return '';
+      const longa = txt.length > LIMITE_EMENTA;
+      return `<div class="juris-res-ementa${longa ? ' clamp' : ''}">${sanitizeHTML(txt)}</div>` +
+          (longa ? '<button type="button" class="juris-ementa-toggle" data-juris-toggle>ver mais ▾</button>' : '');
+  }
+
+  function jurisContagemHtml(n) {
+      return `<div class="juris-res-count">${n} ${n === 1 ? 'resultado' : 'resultados'} · mais recentes primeiro</div>`;
+  }
+
   function renderJurisResultados(resultados) {
       const alvo = $('#jurisResultados'); if (!alvo) return;
       JURIS_ULTIMOS = resultados;
@@ -957,15 +976,14 @@ document.addEventListener('DOMContentLoaded', () => {
           alvo.innerHTML = '<div class="list-msg">Nenhum resultado encontrado. Refine o tema ou use os botões dos portais abaixo.</div>';
           return;
       }
-      alvo.innerHTML = '';
+      alvo.innerHTML = jurisContagemHtml(resultados.length);
       resultados.forEach((r, i) => {
           const item = document.createElement('div');
           item.className = 'juris-res-item';
-          const ementaCurta = r.ementa ? String(r.ementa).slice(0, 220) + (String(r.ementa).length > 220 ? '…' : '') : '';
           item.innerHTML = `
               <div class="juris-res-titulo">${sanitizeHTML(r.titulo || '')}</div>
               <div class="juris-res-meta">${sanitizeHTML([r.tribunal, r.orgao, r.relator, r.data].filter(Boolean).join(' · '))}</div>
-              ${ementaCurta ? `<div class="juris-res-ementa">${sanitizeHTML(ementaCurta)}</div>` : ''}
+              ${jurisEmentaHtml(r.ementa)}
               <div class="juris-res-acoes">
                   <button type="button" class="btn secondary" data-juris-usar="${i}">Usar dados na citação</button>
                   ${r.url ? `<a class="btn secondary" href="${sanitizeHTML(r.url)}" target="_blank" rel="noopener">Abrir fonte ↗</a>` : ''}
@@ -1002,15 +1020,14 @@ document.addEventListener('DOMContentLoaded', () => {
           alvo.innerHTML = '<div class="list-msg">Nenhum resultado encontrado. Refine o tema ou use os portais oficiais acima.</div>';
           return;
       }
-      alvo.innerHTML = '';
+      alvo.innerHTML = jurisContagemHtml(resultados.length);
       resultados.forEach((r, i) => {
           const item = document.createElement('div');
           item.className = 'juris-res-item';
-          const ementaCurta = r.ementa ? String(r.ementa).slice(0, 320) + (String(r.ementa).length > 320 ? '…' : '') : '';
           item.innerHTML = `
               <div class="juris-res-titulo">${sanitizeHTML(r.titulo || '')}</div>
               <div class="juris-res-meta">${sanitizeHTML([r.tribunal, r.orgao, r.relator, r.data].filter(Boolean).join(' · '))}</div>
-              ${ementaCurta ? `<div class="juris-res-ementa">${sanitizeHTML(ementaCurta)}</div>` : ''}
+              ${jurisEmentaHtml(r.ementa)}
               <div class="juris-res-acoes">
                   <button type="button" class="btn secondary" data-juris-copiar="${i}">Copiar citação</button>
                   ${r.url ? `<a class="btn secondary" href="${sanitizeHTML(r.url)}" target="_blank" rel="noopener">Abrir fonte ↗</a>` : ''}
@@ -1072,9 +1089,19 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const alvo = $('#jurisAbaResultados');
       if (alvo) alvo.onclick = (e) => {
+          const toggle = e.target.closest('[data-juris-toggle]');
+          if (toggle) { alternarEmentaJuris(toggle); return; }
           const copiar = e.target.closest('[data-juris-copiar]');
           if (copiar) copiarCitacaoJuris(Number(copiar.dataset.jurisCopiar));
       };
+  }
+
+  // Expande/recolhe a ementa de um resultado (botão "ver mais/menos").
+  function alternarEmentaJuris(btn) {
+      const ementa = btn.previousElementSibling;
+      if (!ementa || !ementa.classList.contains('juris-res-ementa')) return;
+      const clamped = ementa.classList.toggle('clamp');
+      btn.textContent = clamped ? 'ver mais ▾' : 'ver menos ▴';
   }
 
   function openParecerModal(processo) {
@@ -1296,6 +1323,8 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btnBuscarJurisSite').onclick = buscarJurisNoSite;
   $('#jr_tema').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarJurisNoSite(); } };
   $('#jurisResultados').onclick = (e) => {
+      const toggle = e.target.closest('[data-juris-toggle]');
+      if (toggle) { alternarEmentaJuris(toggle); return; }
       const usar = e.target.closest('[data-juris-usar]');
       if (usar) usarResultadoJuris(Number(usar.dataset.jurisUsar));
   };

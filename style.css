@@ -1158,7 +1158,11 @@
         .juris-res-item { border: 1px solid var(--border-color); border-radius: 9px; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; background: var(--card-bg); }
         .juris-res-titulo { font-weight: 600; font-size: 0.9rem; }
         .juris-res-meta { color: var(--text-secondary); font-size: 0.78rem; margin: 2px 0; }
-        .juris-res-ementa { font-size: 0.82rem; color: var(--text-primary); margin: 4px 0; }
+        .juris-res-ementa { font-size: 0.82rem; color: var(--text-primary); margin: 4px 0; white-space: pre-line; }
+        .juris-res-ementa.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .juris-ementa-toggle { background: none; border: none; color: var(--brand-600); font-size: 0.76rem; font-weight: 600; cursor: pointer; padding: 0; margin: 0 0 4px; }
+        body[data-theme="dark"] .juris-ementa-toggle { color: var(--brand-300); }
+        .juris-res-count { font-size: 0.78rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.5rem; }
         .juris-res-acoes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
         .juris-res-acoes .btn { padding: 4px 10px; font-size: 0.78rem; }
         .doc-list .doc-item {
