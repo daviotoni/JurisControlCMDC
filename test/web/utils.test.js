@@ -3,7 +3,7 @@
 // `module.exports` guardado para ambientes de teste (ver o fim do arquivo).
 import utils from '../../js/utils.js';
 
-const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, normalizarConsultaJuris, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
+const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, normalizarConsultaJuris, expandirConsultaJuris, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
 
 describe('datas (UTC-safe)', () => {
   describe('parse', () => {
@@ -189,5 +189,44 @@ describe('normalizarConsultaJuris', () => {
     expect(normalizarConsultaJuris('')).toBe('');
     expect(normalizarConsultaJuris(null)).toBe('');
     expect(normalizarConsultaJuris(undefined)).toBe('');
+  });
+});
+
+describe('expandirConsultaJuris', () => {
+  it('expande conceitos reconhecidos em grupos OR de sinônimos técnicos', () => {
+    const r = expandirConsultaJuris('gravações em escritório ou ambiente de trabalho');
+    expect(r).toBe('("gravação ambiental" OR "gravação clandestina" OR "prova ilícita") ("ambiente de trabalho" OR "local de trabalho" OR "relação de emprego")');
+  });
+
+  it('não deixa operadores (ou) soltos no fim da consulta', () => {
+    expect(expandirConsultaJuris('gravações ou câmeras'))
+      .not.toMatch(/\bou\s*$/);
+  });
+
+  it('preserva palavras específicas do usuário fora dos conceitos (ex.: local)', () => {
+    const r = expandirConsultaJuris('licitação prefeitura são paulo');
+    expect(r).toContain('"licitação"');
+    expect(r).toContain('prefeitura');
+    expect(r).toContain('são');
+    expect(r).toContain('paulo');
+  });
+
+  it('não repete, soltas, palavras já cobertas pelos grupos', () => {
+    const r = expandirConsultaJuris('prescrição pensão por morte');
+    // "morte" já está dentro de "pensão por morte" — não deve sobrar solto
+    expect(r).toBe('("pensão por morte") ("prescrição" OR "decadência")');
+  });
+
+  it('cai no comportamento seguro (normalização) quando nada é reconhecido', () => {
+    expect(expandirConsultaJuris('assunto genérico qualquer')).toBe('assunto genérico qualquer');
+  });
+
+  it('ignora acentos e caixa ao reconhecer conceitos', () => {
+    expect(expandirConsultaJuris('IMPROBIDADE')).toBe('("improbidade administrativa")');
+  });
+
+  it('entrada vazia/nula devolve string vazia', () => {
+    expect(expandirConsultaJuris('')).toBe('');
+    expect(expandirConsultaJuris(null)).toBe('');
   });
 });

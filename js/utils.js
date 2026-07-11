@@ -191,6 +191,83 @@ function normalizarConsultaJuris(texto) {
   return mantidos.length < 2 ? original : mantidos.join(' ');
 }
 
+function jurisSemAcento(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// Dicionário cotidiano → jurídico para expandir a busca. Cada conceito tem
+// `gatilhos` (palavras do dia a dia que o ativam, sem acento) e `termos` (frases
+// técnicas equivalentes, combinadas com OR). Curado para os temas recorrentes de
+// uma câmara/procuradoria municipal. Amplie à vontade — é só dado.
+const JURIS_CONCEITOS = [
+  { gatilhos: ['gravacao', 'gravacoes', 'gravar', 'gravado', 'filmagem', 'audio', 'escuta'],
+    termos: ['gravação ambiental', 'gravação clandestina', 'prova ilícita'] },
+  { gatilhos: ['camera', 'cameras', 'cftv', 'vigilancia', 'monitoramento', 'monitorar'],
+    termos: ['monitoramento por câmeras', 'videomonitoramento', 'circuito interno de televisão'] },
+  { gatilhos: ['escritorio', 'trabalho', 'emprego', 'empregado'],
+    termos: ['ambiente de trabalho', 'local de trabalho', 'relação de emprego'] },
+  { gatilhos: ['demissao', 'demitido', 'demitir', 'justa causa'],
+    termos: ['dispensa por justa causa', 'rescisão do contrato de trabalho'] },
+  { gatilhos: ['assedio'],
+    termos: ['assédio moral', 'assédio'] },
+  { gatilhos: ['licitacao', 'licitar', 'pregao', 'concorrencia publica'],
+    termos: ['licitação', 'processo licitatório', 'pregão'] },
+  { gatilhos: ['contrato administrativo', 'contratacao publica'],
+    termos: ['contrato administrativo'] },
+  { gatilhos: ['servidor', 'concursado', 'funcionario publico'],
+    termos: ['servidor público', 'agente público'] },
+  { gatilhos: ['aposentadoria', 'aposentar', 'aposentado'],
+    termos: ['aposentadoria'] },
+  { gatilhos: ['pensao', 'pensionista'],
+    termos: ['pensão por morte'] },
+  { gatilhos: ['prescricao', 'prescrito', 'decadencia'],
+    termos: ['prescrição', 'decadência'] },
+  { gatilhos: ['improbidade'],
+    termos: ['improbidade administrativa'] },
+  { gatilhos: ['nepotismo'],
+    termos: ['nepotismo'] },
+  { gatilhos: ['emenda', 'emendas'],
+    termos: ['emenda parlamentar', 'processo legislativo'] },
+  { gatilhos: ['veto', 'vetado'],
+    termos: ['veto', 'processo legislativo'] },
+  { gatilhos: ['horas extras', 'hora extra', 'sobreaviso'],
+    termos: ['horas extras', 'jornada de trabalho'] },
+  { gatilhos: ['lgpd', 'dados pessoais', 'privacidade'],
+    termos: ['proteção de dados', 'dados pessoais'] },
+];
+
+// Expande a consulta com sinônimos jurídicos: para cada conceito reconhecido no
+// texto, injeta um grupo ("termo1" OR "termo2" …); palavras do usuário que não
+// caíram em nenhum conceito são mantidas (preserva especificidade). Se NADA for
+// reconhecido, cai no comportamento seguro de normalizarConsultaJuris. Isso mapeia
+// linguagem cotidiana para o jargão das ementas e reduz falsos negativos/positivos.
+function expandirConsultaJuris(texto) {
+  const base = normalizarConsultaJuris(texto);
+  if (!base) return '';
+  const alvo = jurisSemAcento(base.toLowerCase());
+  const grupos = [];
+  const consumidos = new Set();
+  for (const c of JURIS_CONCEITOS) {
+    if (!c.gatilhos.some((g) => alvo.includes(jurisSemAcento(g)))) continue;
+    grupos.push('(' + c.termos.map((t) => `"${t}"`).join(' OR ') + ')');
+    // Marca como consumidas as palavras dos gatilhos que casaram E dos próprios
+    // termos técnicos — assim não repetimos, soltas, palavras já cobertas pelos grupos.
+    c.gatilhos.forEach((g) => {
+      const gn = jurisSemAcento(g);
+      if (alvo.includes(gn)) gn.split(' ').forEach((w) => consumidos.add(w));
+    });
+    c.termos.forEach((t) => jurisSemAcento(t.toLowerCase()).split(' ').forEach((w) => consumidos.add(w)));
+  }
+  if (grupos.length === 0) return base;
+  // Operadores nunca podem sobrar soltos (um "ou" pendurado quebraria a consulta).
+  const OPERADORES = new Set(['e', 'ou', 'nao', 'and', 'or', 'not']);
+  const soltas = base.split(' ').filter((w) => {
+    const wn = jurisSemAcento(w.toLowerCase());
+    return wn && !consumidos.has(wn) && !OPERADORES.has(wn);
+  });
+  return [...grupos, ...soltas].join(' ');
+}
+
 // Exporta para ambientes de teste (Node/Vitest). No navegador `module` não
 // existe, então este bloco é ignorado e NÃO afeta o carregamento via <script>.
 if (typeof module !== 'undefined' && module.exports) {
@@ -198,7 +275,7 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
     base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
-    normalizarConsultaJuris,
+    normalizarConsultaJuris, expandirConsultaJuris,
     VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,
   };
 }

@@ -920,7 +920,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // indexados, em paralelo, e juntamos os resultados. Falhas isoladas de um tribunal
   // são ignoradas; só propaga erro se TODOS falharem (ex.: token ausente/limite).
   async function fetchJurisTodasMaterias(q) {
-      const consulta = normalizarConsultaJuris(q);
+      const consulta = expandirConsultaJuris(q);
       const cortes = JURIS_TRIBUNAIS.jurisai.map(([id]) => id);
       const settled = await Promise.allSettled(cortes.map(c => fetchJurisResultados('jurisai', consulta, c)));
       const ok = settled.filter(s => s.status === 'fulfilled');
