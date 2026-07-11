@@ -1186,13 +1186,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Chama a Cloud Function `assistente` (proxy do Gemini). Degrada com mensagem
   // amigável se a função não estiver publicada ou a chave não estiver configurada.
   const IA_FUNCTION_URL = 'https://us-central1-juriscontrolcmdc.cloudfunctions.net/assistente';
-  const IA_MODELOS = {
-      estruturar: 'Redija o texto de um parecer jurídico sobre o tema abaixo, com as seções Relatório, Fundamentação e Conclusão e os fundamentos legais aplicáveis, em prosa pronta para uso. Não invente fatos, partes, números de processo nem jurisprudência; use "[...]" só onde um dado for indispensável. Devolva apenas o texto do parecer, sem comentários nem preâmbulo.\n\nTema: ',
-      fundamentos: 'Explique os fundamentos legais (leis, artigos, princípios) aplicáveis à situação abaixo, sem inventar jurisprudência ou súmulas. Devolva apenas o texto, sem preâmbulo nem comentários.\n\nSituação: ',
-      revisar: 'Reescreva o texto abaixo com melhor redação e técnica jurídica formal, mantendo o sentido e sem acrescentar fatos. Devolva SOMENTE o texto reescrito, sem comentários e sem frases como "segue a redação" ou "sugestão".\n\n',
-      ementa: 'Escreva uma ementa em CAIXA ALTA (padrão jurídico brasileiro, temas separados por ponto) para o texto abaixo. Devolva apenas a ementa.\n\n',
-  };
-  let iaUltimoTexto = '';
 
   // Posição no editor onde o conteúdo dos painéis auxiliares (IA, jurisprudência)
   // será inserido — capturada AO ABRIR o painel (última posição do cursor no
@@ -1244,69 +1237,166 @@ document.addEventListener('DOMContentLoaded', () => {
       return html;
   }
 
-  async function chamarAssistenteIA(prompt) {
-      const usuarioFb = window.auth?.currentUser;
-      if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
-      const token = await usuarioFb.getIdToken();
-      const resp = await fetch(IA_FUNCTION_URL, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
+  // ----- Copiloto lateral: conversa + edições estruturadas no documento -----
+  // O painel envia o texto atual do parecer como contexto; a função devolve
+  // { mensagem, edicoes[], fontes[] } e as edições são aplicadas na seção certa
+  // (desfazíveis com Ctrl+Z, via histórico do Quill).
+  let historicoIA = [];
+
+  function toggleIaPanel(forcar) {
+      const panel = $('#iaPanel'); if (!panel) return;
+      const abrir = forcar != null ? forcar : panel.style.display === 'none';
+      panel.style.display = abrir ? '' : 'none';
+      const dialog = $('#m_parecer .parecer-dialog');
+      if (dialog) dialog.classList.toggle('com-ia', abrir);
+      if (abrir) $('#ia_prompt')?.focus();
+  }
+
+  function limparIaPanel() {
+      historicoIA = [];
+      const chat = $('#iaChat');
+      if (chat) chat.innerHTML = '<div class="ia-msg ia"><div>Olá! Eu enxergo o parecer aberto e posso redigir, revisar e inserir conteúdo direto nas seções — e buscar jurisprudência real no Jurisprudências.ai. O que precisa?</div></div>';
+  }
+
+  function renderIaMsg(papel, html) {
+      const chat = $('#iaChat'); if (!chat) return null;
+      const div = document.createElement('div');
+      div.className = `ia-msg ${papel}`;
+      div.innerHTML = `<div>${html}</div>`;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      return div;
+  }
+
+  // Varre o editor e devolve as seções (linhas tipo "I. RELATÓRIO", "II.1. ...")
+  // com a posição da linha no documento.
+  const SECAO_RE = /^[IVX]+(\.\d+)?[.)]\s*\S/;
+  function listarSecoesDoParecer() {
+      if (!parecerQuill) return [];
+      const texto = parecerQuill.getText();
+      const secoes = [];
+      let pos = 0;
+      texto.split('\n').forEach(linha => {
+          const t = linha.trim();
+          if (SECAO_RE.test(t)) secoes.push({ titulo: t, inicio: pos, fimLinha: pos + linha.length });
+          pos += linha.length + 1;
       });
-      if (!resp.ok) {
-          const corpo = await resp.json().catch(() => ({}));
-          throw new Error(corpo.erro || `HTTP_${resp.status}`);
+      return secoes;
+  }
+
+  const normalizarTituloSecao = (x) => String(x).toLowerCase().replace(/\s+/g, ' ').replace(/[.:]+$/, '').trim();
+
+  // Intervalo do CONTEÚDO de uma seção: da linha seguinte ao título até o
+  // início do próximo título (ou o fim do documento).
+  function encontrarSecaoIntervalo(nome) {
+      const secoes = listarSecoesDoParecer();
+      const alvo = normalizarTituloSecao(nome);
+      if (!alvo) return null;
+      const i = secoes.findIndex(sec => {
+          const n = normalizarTituloSecao(sec.titulo);
+          return n === alvo || n.startsWith(alvo) || alvo.startsWith(n);
+      });
+      if (i < 0) return null;
+      const inicio = secoes[i].fimLinha + 1; // depois do \n do título
+      const fim = i + 1 < secoes.length ? secoes[i + 1].inicio : Math.max(inicio, parecerQuill.getLength() - 1);
+      return { inicio, fim };
+  }
+
+  // Aplica UMA edição vinda do copiloto. Devolve a descrição do que fez (para o
+  // chat) ou null quando não conseguiu aplicar.
+  function aplicarEdicaoIA(ed) {
+      const quill = ensureParecerQuill();
+      if (ed.acao === 'definir_ementa') {
+          const el = $('#pz_ementa');
+          if (!el || el.disabled) return null;
+          el.value = String(ed.conteudo).toUpperCase().trim();
+          return 'Ementa preenchida';
       }
-      const dados = await resp.json();
-      return dados.texto || '';
+      if (!quill.isEnabled()) return null;
+      const html = markdownParaHtml(ed.conteudo);
+      if (ed.acao === 'substituir_secao' || ed.acao === 'inserir_na_secao') {
+          const alvo = encontrarSecaoIntervalo(ed.secao || '');
+          if (!alvo) return null;
+          // O fecho ("É o parecer, s.m.j." + assinatura) fica dentro da última
+          // seção — nunca é sobrescrito: o intervalo é limitado à linha anterior.
+          const trecho = quill.getText().slice(alvo.inicio, alvo.fim);
+          const idxFechoSec = trecho.indexOf('É o parecer');
+          if (idxFechoSec >= 0) alvo.fim = alvo.inicio + (trecho.lastIndexOf('\n', idxFechoSec) + 1);
+          if (ed.acao === 'substituir_secao') {
+              quill.deleteText(alvo.inicio, Math.max(0, alvo.fim - alvo.inicio), 'user');
+              quill.clipboard.dangerouslyPasteHTML(alvo.inicio, html, 'user');
+              return `Seção “${ed.secao}” reescrita`;
+          }
+          quill.clipboard.dangerouslyPasteHTML(alvo.fim, html, 'user');
+          return `Conteúdo acrescentado em “${ed.secao}”`;
+      }
+      // inserir_final: antes do fecho ("É o parecer"), se existir; senão no fim.
+      const texto = quill.getText();
+      const idxFecho = texto.indexOf('É o parecer');
+      const pos = idxFecho > 0 ? texto.lastIndexOf('\n', idxFecho) + 1 : Math.max(0, quill.getLength() - 1);
+      quill.clipboard.dangerouslyPasteHTML(pos, html, 'user');
+      return 'Conteúdo inserido no documento';
   }
 
-  function openIaModal() {
-      const el = $('#ia_resultado');
-      if (el) el.textContent = 'A resposta aparecerá aqui…';
-      iaUltimoTexto = '';
-      capturarPosicaoParecer();
-      $('#m_ia').style.display = 'flex';
-      $('#ia_prompt')?.focus();
-  }
-
-  async function gerarIA() {
-      const prompt = $('#ia_prompt')?.value.trim();
-      if (!prompt) { showToast('Escreva seu pedido para a IA.', 'danger'); $('#ia_prompt')?.focus(); return; }
-      const alvo = $('#ia_resultado'); if (!alvo) return;
+  async function enviarIA() {
+      const ta = $('#ia_prompt');
+      const prompt = ta?.value.trim();
+      if (!prompt) { ta?.focus(); return; }
       const btn = $('#btnGerarIA');
-      alvo.textContent = 'Gerando…'; iaUltimoTexto = '';
+      renderIaMsg('user', sanitizeHTML(prompt));
+      ta.value = '';
       if (btn) btn.disabled = true;
+      const aguarde = renderIaMsg('ia', '<em>Pensando…</em>');
       try {
-          const texto = await chamarAssistenteIA(prompt);
-          alvo.textContent = texto;
-          iaUltimoTexto = texto;
+          const usuarioFb = window.auth?.currentUser;
+          if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
+          const token = await usuarioFb.getIdToken();
+          const contexto = {
+              processoNum: currentParecerProcesso?.num || currentParecerRecord?.processoNum || '',
+              ementa: $('#pz_ementa')?.value || '',
+              secoes: listarSecoesDoParecer().map(sec => sec.titulo),
+              texto: parecerQuill ? parecerQuill.getText().slice(0, 15000) : '',
+          };
+          const resp = await fetch(IA_FUNCTION_URL, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt, contexto, historico: historicoIA.slice(-8) }),
+          });
+          if (!resp.ok) {
+              const corpo = await resp.json().catch(() => ({}));
+              throw new Error(corpo.erro || `HTTP_${resp.status}`);
+          }
+          const dados = await resp.json();
+          historicoIA.push({ papel: 'usuario', texto: prompt }, { papel: 'ia', texto: dados.mensagem || '' });
+
+          const feitos = [];
+          (dados.edicoes || []).forEach(ed => {
+              try {
+                  const d = aplicarEdicaoIA(ed);
+                  feitos.push(d || `⚠️ Não apliquei (“${ed.secao || ed.acao}”: seção não encontrada ou editor bloqueado)`);
+              } catch (e) {
+                  console.warn('Edição da IA falhou:', e);
+                  feitos.push(`⚠️ Falha ao aplicar em “${ed.secao || ed.acao}”`);
+              }
+          });
+
+          let html = sanitizeHTML(dados.mensagem || '').replace(/\n/g, '<br>');
+          if (feitos.length) html += `<div class="ia-feitos">${feitos.map(f => `<div>✏️ ${sanitizeHTML(f)}</div>`).join('')}<div class="ia-undo">Ctrl+Z no editor desfaz</div></div>`;
+          if (dados.fontes && dados.fontes.length) {
+              html += `<div class="ia-fontes">${dados.fontes.slice(0, 5).map(f =>
+                  `<div>📚 ${sanitizeHTML([f.tribunal, f.numero || f.titulo, f.data].filter(Boolean).join(' · '))}${f.url ? ` <a href="${sanitizeHTML(f.url)}" target="_blank" rel="noopener">abrir ↗</a>` : ''}</div>`).join('')}</div>`;
+          }
+          aguarde.querySelector('div').innerHTML = html || 'Feito.';
       } catch (e) {
-          console.warn('Assistente IA indisponível:', e);
+          console.warn('Copiloto indisponível:', e);
           const rede = !e.message || /failed to fetch|networkerror|load failed|HTTP_404/i.test(e.message);
-          alvo.textContent = rede
+          aguarde.querySelector('div').innerHTML = sanitizeHTML(rede
               ? 'O Assistente IA ainda não está ativo (a função não foi publicada no Firebase ou a chave do Gemini não foi configurada). Um administrador precisa ativá-lo em Configurações.'
-              : e.message;
+              : e.message);
       } finally {
           if (btn) btn.disabled = false;
+          const chat = $('#iaChat'); if (chat) chat.scrollTop = chat.scrollHeight;
       }
-  }
-
-  function inserirIaNoParecer() {
-      if (!iaUltimoTexto) { showToast('Gere uma resposta antes de inserir.', 'info'); return; }
-      const quill = ensureParecerQuill();
-      if (!quill.isEnabled()) { showToast('O parecer está bloqueado — reabra para edição antes de inserir.', 'danger'); return; }
-      const index = (parecerInsercaoIndex != null) ? parecerInsercaoIndex : Math.max(0, quill.getLength() - 1);
-      // Converte o Markdown da IA em formatação real e insere no ponto capturado.
-      quill.clipboard.dangerouslyPasteHTML(index, markdownParaHtml(iaUltimoTexto), 'user');
-      $('#m_ia').style.display = 'none';
-      showToast('Texto inserido no parecer.');
-  }
-
-  async function copiarIa() {
-      if (!iaUltimoTexto) { showToast('Gere uma resposta antes de copiar.', 'info'); return; }
-      try { await navigator.clipboard.writeText(iaUltimoTexto); showToast('Resposta copiada.'); }
-      catch (e) { console.warn('Clipboard indisponível:', e); showToast('Não foi possível copiar automaticamente.', 'danger'); }
   }
 
   // Atualiza o cabeçalho fixo do documento na tela (título, nº do parecer e
@@ -1362,6 +1452,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (materiaSelect) materiaSelect.value = materiaAtual;
       renderParecerChecklist(materiaAtual);
       atualizarParecerDocHeader();
+      limparIaPanel();
+      toggleIaPanel(false);
       $('#m_parecer_t').textContent = `Parecer Jurídico — Processo ${sanitizeHTML(processo.num || '')}`;
       mParecer.style.display = 'flex';
   }
@@ -1536,18 +1628,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Painel de jurisprudência
   $('#btnJurisprudencia').onclick = openJurisModal;
   $('#btnInserirCitacao').onclick = inserirCitacaoNoParecer;
-  // Assistente de IA
-  $('#btnAssistenteIA').onclick = openIaModal;
-  $('#btnGerarIA').onclick = gerarIA;
-  $('#btnInserirIA').onclick = inserirIaNoParecer;
-  $('#btnCopiarIA').onclick = copiarIa;
-  $$('[data-close-ia]').forEach(x => x.onclick = () => { $('#m_ia').style.display = 'none'; });
-  const mIa = $('#m_ia');
-  if (mIa) mIa.onclick = (e) => { if (e.target === mIa) mIa.style.display = 'none'; };
-  $$('[data-ia-modelo]').forEach(b => b.onclick = () => {
-      const t = IA_MODELOS[b.dataset.iaModelo] || '';
+  // Copiloto IA (painel lateral)
+  $('#btnAssistenteIA').onclick = () => toggleIaPanel();
+  const btnFecharIa = $('#btnFecharIaPanel');
+  if (btnFecharIa) btnFecharIa.onclick = () => toggleIaPanel(false);
+  $('#btnGerarIA').onclick = enviarIA;
+  const iaPromptEl = $('#ia_prompt');
+  if (iaPromptEl) iaPromptEl.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarIA(); } };
+  $$('[data-ia-chip]').forEach(b => b.onclick = () => {
       const ta = $('#ia_prompt');
-      if (ta) { ta.value = t; ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+      if (ta) ta.value = b.dataset.iaChip;
+      enviarIA();
   });
   $$('[data-juris-portal]').forEach(b => b.onclick = () => {
       const q = $('#jr_tema')?.value.trim();

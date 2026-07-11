@@ -1184,7 +1184,43 @@
         .juris-aba-resultados { max-height: none; overflow-y: visible; }
         .ia-aviso { border-left: 4px solid var(--warning); background: var(--warning-bg); padding: 0.6rem 0.9rem; border-radius: 6px; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
         .ia-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-        .ia-resultado { white-space: pre-wrap; border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; min-height: 120px; max-height: 340px; overflow-y: auto; font-size: 0.9rem; line-height: 1.5; background: var(--card-bg); color: var(--text-primary); }
+        /* ===== Copiloto IA — painel lateral do editor de parecer ===== */
+        .parecer-main { display: flex; align-items: stretch; min-height: 0; flex: 1; }
+        .parecer-main .parecer-body { flex: 1 1 auto; min-width: 0; }
+        .parecer-dialog.com-ia { max-width: 1380px !important; }
+        .ia-panel {
+            width: 380px; flex: 0 0 380px; border-left: 1px solid var(--border-color);
+            display: flex; flex-direction: column; gap: 0.6rem; padding: 1rem;
+            background: var(--bg-color-only);
+            position: sticky; top: 1rem; align-self: flex-start;
+            max-height: calc(100vh - 4rem); min-height: 460px;
+        }
+        .ia-panel-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--text-primary); }
+        .ia-aviso-panel { font-size: 0.72rem; margin-bottom: 0; padding: 0.45rem 0.6rem; }
+        .ia-chat { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; min-height: 180px; }
+        .ia-msg { display: flex; }
+        .ia-msg.user { justify-content: flex-end; }
+        .ia-msg > div { max-width: 94%; padding: 0.5rem 0.7rem; border-radius: 10px; font-size: 0.87rem; line-height: 1.45; word-break: break-word; }
+        .ia-msg.user > div { background: var(--primary); color: #fff; border-bottom-right-radius: 3px; }
+        .ia-msg.ia > div { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-bottom-left-radius: 3px; }
+        .ia-feitos { margin-top: 0.5rem; font-size: 0.78rem; color: var(--success); }
+        .ia-undo { color: var(--text-muted); font-size: 0.7rem; margin-top: 0.15rem; }
+        .ia-fontes { margin-top: 0.45rem; font-size: 0.76rem; color: var(--text-secondary); }
+        .ia-fontes a { color: var(--primary); }
+        .ia-panel .ia-chips { margin-bottom: 0; }
+        .ia-panel .ia-chips .btn { font-size: 0.72rem; padding: 0.3rem 0.55rem; }
+        .ia-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
+        .ia-input-row textarea {
+            flex: 1; resize: none; border: 1px solid var(--border-color); border-radius: 8px;
+            padding: 0.5rem 0.6rem; font-size: 0.88rem; font-family: inherit;
+            background: var(--card-bg); color: var(--text-primary);
+        }
+        .ia-input-row textarea:focus { outline: none; border-color: var(--primary); }
+        .ia-input-row .btn { padding: 0.5rem 0.8rem; }
+        @media (max-width: 1100px) {
+            .parecer-main { flex-direction: column; }
+            .ia-panel { width: auto; flex: none; border-left: none; border-top: 1px solid var(--border-color); position: static; max-height: 440px; min-height: 320px; }
+        }
         .juris-res-item { border: 1px solid var(--border-color); border-radius: 9px; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; background: var(--card-bg); }
         .juris-res-titulo { font-weight: 600; font-size: 0.9rem; }
         .juris-res-meta { color: var(--text-secondary); font-size: 0.78rem; margin: 2px 0; }
