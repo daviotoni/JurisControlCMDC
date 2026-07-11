@@ -1068,6 +1068,33 @@
         .parecer-body .ql-toolbar { border-color: var(--border-color); background-color: var(--bg-color-only); border-top-left-radius: 10px; border-top-right-radius: 10px; }
         .parecer-body .ql-container { border-color: var(--border-color); background-color: var(--card-bg); color: var(--text-primary); min-height: 320px; font-size: 1rem; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
         .parecer-body .ql-editor.ql-blank::before { color: var(--text-muted); }
+        /* Tipografia do documento no editor — espelha o modelo oficial da
+           Procuradoria (Garamond, justificado, recuo de 1ª linha). */
+        .parecer-body .ql-editor {
+            font-family: 'EB Garamond', Garamond, 'Times New Roman', serif;
+            font-size: 1.12rem; line-height: 1.35; text-align: justify;
+        }
+        .parecer-body .ql-editor p { text-align: justify; text-indent: 3.4em; }
+        .parecer-body .ql-editor p.ql-align-center, .parecer-body .ql-editor p.ql-align-right { text-indent: 0; }
+        .parecer-body .ql-editor li { text-indent: 0; }
+        .parecer-body .ql-editor p[class*="ql-indent-"] { text-indent: 0; font-size: 0.95em; }
+        /* Cabeçalho fixo do documento (título, nº do parecer e nº do processo). */
+        #parecerDocHeader { font-family: 'EB Garamond', Garamond, 'Times New Roman', serif; color: var(--text-primary); margin: 0.25rem 0 0.75rem; }
+        .parecer-doc-titulo { text-align: center; font-weight: 700; font-size: 1.45rem; letter-spacing: 0.01em; margin-bottom: 0.9rem; }
+        .parecer-doc-num { text-align: right; font-weight: 700; font-size: 1.05rem; }
+        /* Ementa "dentro do papel": bloco recuado à direita, caixa alta, negrito,
+           como no documento final. Continua sendo um campo editável. */
+        .parecer-ementa-doc {
+            display: block; width: 62%; margin: 0.25rem 0 1rem auto;
+            font-family: 'EB Garamond', Garamond, 'Times New Roman', serif;
+            font-weight: 600; font-size: 0.95rem; line-height: 1.35;
+            text-transform: uppercase; text-align: justify;
+            color: var(--text-primary); background: transparent;
+            border: 1px dashed var(--border-color); border-radius: 6px; padding: 0.5rem 0.6rem;
+            resize: vertical;
+        }
+        .parecer-ementa-doc:focus { outline: none; border-color: var(--primary); }
+        .parecer-ementa-doc::placeholder { color: var(--text-muted); text-transform: none; font-weight: 400; }
         body[data-theme="dark"] .parecer-body .ql-picker-label { color: var(--text-primary); }
         body[data-theme="dark"] .parecer-body .ql-stroke { stroke: var(--text-primary); }
         body[data-theme="dark"] .parecer-body .ql-fill { fill: var(--text-primary); }

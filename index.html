@@ -17,10 +17,11 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=7db29751f0">
+        <link rel="stylesheet" href="style.css?v=f5ce9369ad">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
@@ -588,15 +589,6 @@
                 <span id="m_parecer_status" class="status"></span>
             </div>
             <div class="dialog-body parecer-body">
-                <div class="parecer-timbre-topo">
-                    <strong>ESTADO DO RIO DE JANEIRO</strong>
-                    <strong>CÂMARA MUNICIPAL DE DUQUE DE CAXIAS</strong>
-                    <strong>PROCURADORIA-GERAL</strong>
-                </div>
-                <div class="form-group">
-                    <label for="pz_ementa">Ementa</label>
-                    <textarea id="pz_ementa" class="input" rows="2" placeholder="Resumo do parecer em caixa alta (ex: CONTRATO ADMINISTRATIVO. PRORROGAÇÃO DE PRAZO...)"></textarea>
-                </div>
                 <div id="parecerRevisorObs" class="parecer-revisor-obs" style="display:none;"></div>
                 <div class="form-group parecer-materia-picker" id="parecerMateriaPicker">
                     <label for="pz_materia_select">Modelo por matéria</label>
@@ -614,6 +606,17 @@
                         <button type="button" class="btn secondary" id="btnCarregarModelo">Carregar</button>
                     </div>
                 </div>
+                <div class="parecer-timbre-topo">
+                    <strong>ESTADO DO RIO DE JANEIRO</strong>
+                    <strong>CÂMARA MUNICIPAL DE DUQUE DE CAXIAS</strong>
+                    <strong>PROCURADORIA-GERAL</strong>
+                </div>
+                <div id="parecerDocHeader">
+                    <div class="parecer-doc-titulo">PARECER JURÍDICO</div>
+                    <div class="parecer-doc-num" id="parecerDocNumero" style="display:none;"></div>
+                    <div class="parecer-doc-num" id="parecerDocProcesso"></div>
+                </div>
+                <textarea id="pz_ementa" class="parecer-ementa-doc" rows="3" title="Ementa do parecer (aparece neste lugar no documento oficial)" placeholder="EMENTA — RESUMO DO PARECER EM CAIXA ALTA (EX.: CONTRATO ADMINISTRATIVO. PRORROGAÇÃO DE PRAZO. ART. 107 DA LEI Nº 14.133/21. POSSIBILIDADE.)"></textarea>
                 <div id="parecerEditor" class="parecer-editor"></div>
                 <div id="parecerChecklist" class="parecer-checklist"></div>
                 <div class="parecer-timbre-rodape">Página 1</div>
@@ -759,7 +762,8 @@
 
     <script src="js/utils.js?v=7d58b23e0d"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
-    <script src="js/app.js?v=6280b67a46"></script>
+    <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
+    <script src="js/app.js?v=0302ef4ba4"></script>
 
 </body>
 </html>

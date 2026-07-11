@@ -104,6 +104,8 @@ module.exports = [
         VALID_PARECER_STATUS: 'readonly',
         // Definido em js/assets.js
         BRASAO_DUQUE_DE_CAXIAS_B64: 'readonly',
+        // Definido em js/fonts-garamond.js
+        EBGARAMOND_B64: 'readonly',
       },
     },
   },
