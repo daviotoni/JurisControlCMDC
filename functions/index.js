@@ -175,7 +175,7 @@ exports.juris = onRequest(
 // crie a chave num projeto SEM cobrança em aistudio.google.com — nesse tier o
 // Google pode usar o conteúdo para treinar, então o app avisa para NÃO enviar
 // dados sigilosos/pessoais de processos.
-const GEMINI_MODELO = 'gemini-2.5-flash';
+const GEMINI_MODELO = 'gemini-3.5-flash';
 const IA_MAX_ENTRADA = 20000;      // trava de tamanho da entrada (caracteres)
 const IA_MAX_SAIDA_TOKENS = 2048;  // limita a resposta (custo/latência sob controle)
 const IA_SISTEMA_PADRAO =
@@ -210,13 +210,19 @@ async function chamarGemini(sistema, prompt) {
     body: JSON.stringify(corpo),
     signal: AbortSignal.timeout(45000),
   });
-  if (resp.status === 400 || resp.status === 403) {
-    throw erroCliente(424, 'Chave da API do Gemini inválida ou sem permissão. Gere uma nova em aistudio.google.com e atualize em Configurações.');
+  if (!resp.ok) {
+    // Surface o erro REAL do Google (ex.: modelo descontinuado, chave inválida,
+    // API desabilitada) em vez de uma mensagem genérica — facilita o diagnóstico.
+    const errJson = await resp.json().catch(() => ({}));
+    const detalhe = (errJson.error && errJson.error.message) || `HTTP ${resp.status}`;
+    if (resp.status === 429) {
+      throw erroCliente(429, 'Limite de uso gratuito do Gemini atingido por ora. Tente novamente em alguns minutos.');
+    }
+    if (resp.status === 400 || resp.status === 403) {
+      throw erroCliente(424, `O Gemini recusou a requisição: ${detalhe}`);
+    }
+    throw erroCliente(502, `O Gemini respondeu ${resp.status}: ${detalhe}`);
   }
-  if (resp.status === 429) {
-    throw erroCliente(429, 'Limite de uso gratuito do Gemini atingido por ora. Tente novamente em alguns minutos.');
-  }
-  if (!resp.ok) throw new Error(`Gemini respondeu ${resp.status}`);
   const dados = await resp.json();
   const cand = dados.candidates && dados.candidates[0];
   if (!cand || cand.finishReason === 'SAFETY' || cand.finishReason === 'BLOCKLIST') {
