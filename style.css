@@ -1093,7 +1093,7 @@
             border: 1px dashed var(--border-color); border-radius: 6px; padding: 0.5rem 0.6rem;
             resize: vertical;
         }
-        .parecer-ementa-doc:focus { outline: none; border-color: var(--primary); }
+        .parecer-ementa-doc:focus { outline: none; border-color: var(--brand-600); }
         .parecer-ementa-doc::placeholder { color: var(--text-muted); text-transform: none; font-weight: 400; }
         body[data-theme="dark"] .parecer-body .ql-picker-label { color: var(--text-primary); }
         body[data-theme="dark"] .parecer-body .ql-stroke { stroke: var(--text-primary); }
@@ -1201,12 +1201,12 @@
         .ia-msg { display: flex; }
         .ia-msg.user { justify-content: flex-end; }
         .ia-msg > div { max-width: 94%; padding: 0.5rem 0.7rem; border-radius: 10px; font-size: 0.87rem; line-height: 1.45; word-break: break-word; }
-        .ia-msg.user > div { background: var(--primary); color: #fff; border-bottom-right-radius: 3px; }
+        .ia-msg.user > div { background: var(--brand-600); color: #fff; border-bottom-right-radius: 3px; }
         .ia-msg.ia > div { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-bottom-left-radius: 3px; }
         .ia-feitos { margin-top: 0.5rem; font-size: 0.78rem; color: var(--success); }
         .ia-undo { color: var(--text-muted); font-size: 0.7rem; margin-top: 0.15rem; }
         .ia-fontes { margin-top: 0.45rem; font-size: 0.76rem; color: var(--text-secondary); }
-        .ia-fontes a { color: var(--primary); }
+        .ia-fontes a { color: var(--brand-600); }
         .ia-panel .ia-chips { margin-bottom: 0; }
         .ia-panel .ia-chips .btn { font-size: 0.72rem; padding: 0.3rem 0.55rem; }
         .ia-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
@@ -1215,7 +1215,7 @@
             padding: 0.5rem 0.6rem; font-size: 0.88rem; font-family: inherit;
             background: var(--card-bg); color: var(--text-primary);
         }
-        .ia-input-row textarea:focus { outline: none; border-color: var(--primary); }
+        .ia-input-row textarea:focus { outline: none; border-color: var(--brand-600); }
         .ia-input-row .btn { padding: 0.5rem 0.8rem; }
         @media (max-width: 1100px) {
             .parecer-main { flex-direction: column; }
