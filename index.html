@@ -445,10 +445,10 @@
                     </div>
                     <div class="card admin-only">
                         <h3>Assistente de IA (Gemini)</h3>
-                        <p class="cfg-note">Cole a chave da API do Gemini (<code>AIza...</code>). Crie uma <strong>gratuita</strong> em <code>aistudio.google.com</code>, escolhendo um <strong>projeto sem cobrança</strong> (para não gerar custo). Ela fica guardada no banco (visível só para administradores) e habilita o botão <strong>✨ Assistente IA</strong> no editor de parecer.</p>
+                        <p class="cfg-note">Cole a chave da API do Gemini (<code>AQ....</code> ou <code>AIza...</code>). Crie uma <strong>gratuita</strong> em <code>aistudio.google.com/apikey</code>, escolhendo um <strong>projeto sem cobrança</strong> (para não gerar custo). Ela fica guardada no banco (visível só para administradores) e habilita o botão <strong>✨ Assistente IA</strong> no editor de parecer.</p>
                         <p class="cfg-note" style="border-left:4px solid var(--warning); background:var(--warning-bg); padding:0.5rem 0.75rem; border-radius:6px;"><strong>⚠️ Modo gratuito:</strong> o Google pode usar o conteúdo enviado para treinar seus modelos. <strong>Não envie dados sigilosos ou pessoais de processos</strong> (nomes, CPF, endereços). Use para temas, redação e revisão de texto.</p>
                         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                            <input id="geminiToken" type="password" class="input" placeholder="AIza..." autocomplete="off" style="flex:1; min-width:200px;">
+                            <input id="geminiToken" type="password" class="input" placeholder="AQ.... ou AIza..." autocomplete="off" style="flex:1; min-width:200px;">
                             <button id="btnSalvarGeminiToken" class="btn primary">Salvar chave</button>
                         </div>
                         <p id="geminiTokenStatus" class="cfg-note" style="margin-top:0.5rem;"></p>
@@ -759,7 +759,7 @@
 
     <script src="js/utils.js?v=7d58b23e0d"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
-    <script src="js/app.js?v=a5a39c0058"></script>
+    <script src="js/app.js?v=8b74f51a24"></script>
 
 </body>
 </html>
