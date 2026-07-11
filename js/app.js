@@ -857,8 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!ementa && !referencia) { showToast('Preencha ao menos um campo da citação.', 'danger'); return; }
       const quill = ensureParecerQuill();
       if (!quill.isEnabled()) { showToast('O parecer está emitido — reabra para edição antes de inserir a citação.', 'danger'); return; }
-      const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
-      let pos = range.index;
+      let pos = (parecerInsercaoIndex != null) ? parecerInsercaoIndex : quill.getLength();
       quill.insertText(pos, '\n'); pos += 1;
       if (ementa) {
           const trecho = `“${ementa}”`;
@@ -881,6 +880,7 @@ document.addEventListener('DOMContentLoaded', () => {
           tema.value = ($('#pz_ementa')?.value || currentParecerProcesso?.obj || '').slice(0, 120).trim();
       }
       atualizarPreviewJuris();
+      capturarPosicaoParecer();
       $('#m_juris').style.display = 'flex';
       tema?.focus();
   }
@@ -1158,6 +1158,56 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   let iaUltimoTexto = '';
 
+  // Posição no editor onde o conteúdo dos painéis auxiliares (IA, jurisprudência)
+  // será inserido — capturada AO ABRIR o painel (última posição do cursor no
+  // editor; se não houver, o fim do documento). Evita que o texto caia no topo,
+  // antes do título "PARECER JURÍDICO".
+  let parecerInsercaoIndex = null;
+  function capturarPosicaoParecer() {
+      const sel = parecerQuill && parecerQuill.getSelection();
+      parecerInsercaoIndex = sel ? sel.index
+          : (parecerQuill ? Math.max(0, parecerQuill.getLength() - 1) : 0);
+  }
+
+  // Converte o Markdown que a IA costuma devolver (**negrito**, ### título,
+  // - listas, > citação) em HTML simples, para inserir como FORMATAÇÃO real no
+  // editor (não como caracteres crus). O texto é escapado antes — as únicas tags
+  // geradas são as da formatação, então não há injeção de HTML vinda da resposta.
+  function markdownParaHtml(md) {
+      const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const inline = (t) => esc(t)
+          .replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/__([^_\n]+?)__/g, '<strong>$1</strong>')
+          .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
+          .replace(/`([^`\n]+?)`/g, '$1');
+      let html = '', lista = null;
+      const fecharLista = () => { if (lista) { html += `</${lista}>`; lista = null; } };
+      String(md).replace(/\r\n/g, '\n').split('\n').forEach((bruta) => {
+          const l = bruta.trim();
+          let m;
+          if (!l) { fecharLista(); return; }
+          if ((m = l.match(/^(#{1,6})\s+(.*)$/))) {
+              fecharLista();
+              const h = m[1].length <= 1 ? 2 : 3;
+              html += `<h${h}>${inline(m[2])}</h${h}>`;
+          } else if ((m = l.match(/^[-*+]\s+(.*)$/))) {
+              if (lista !== 'ul') { fecharLista(); html += '<ul>'; lista = 'ul'; }
+              html += `<li>${inline(m[1])}</li>`;
+          } else if ((m = l.match(/^\d+[.)]\s+(.*)$/))) {
+              if (lista !== 'ol') { fecharLista(); html += '<ol>'; lista = 'ol'; }
+              html += `<li>${inline(m[1])}</li>`;
+          } else if ((m = l.match(/^>\s?(.*)$/))) {
+              fecharLista();
+              html += `<p><em>${inline(m[1])}</em></p>`;
+          } else {
+              fecharLista();
+              html += `<p>${inline(l)}</p>`;
+          }
+      });
+      fecharLista();
+      return html;
+  }
+
   async function chamarAssistenteIA(prompt) {
       const usuarioFb = window.auth?.currentUser;
       if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
@@ -1179,6 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const el = $('#ia_resultado');
       if (el) el.textContent = 'A resposta aparecerá aqui…';
       iaUltimoTexto = '';
+      capturarPosicaoParecer();
       $('#m_ia').style.display = 'flex';
       $('#ia_prompt')?.focus();
   }
@@ -1209,9 +1260,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!iaUltimoTexto) { showToast('Gere uma resposta antes de inserir.', 'info'); return; }
       const quill = ensureParecerQuill();
       if (!quill.isEnabled()) { showToast('O parecer está bloqueado — reabra para edição antes de inserir.', 'danger'); return; }
-      const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
-      quill.insertText(range.index, iaUltimoTexto + '\n', { bold: false, italic: false });
-      quill.setSelection(range.index + iaUltimoTexto.length + 1, 0);
+      const index = (parecerInsercaoIndex != null) ? parecerInsercaoIndex : Math.max(0, quill.getLength() - 1);
+      // Converte o Markdown da IA em formatação real e insere no ponto capturado.
+      quill.clipboard.dangerouslyPasteHTML(index, markdownParaHtml(iaUltimoTexto), 'user');
       $('#m_ia').style.display = 'none';
       showToast('Texto inserido no parecer.');
   }
@@ -1275,6 +1326,10 @@ document.addEventListener('DOMContentLoaded', () => {
       await logHistorico(currentParecerProcesso.id, currentParecerProcesso.num, isNew ? 'parecer-criado' : 'parecer-editado', []);
       currentParecerIsNew = false;
       if (!silent) showToast('Rascunho salvo com sucesso!');
+      // Atualiza o painel "Parecer Vinculado" no detalhe do processo, se estiver
+      // aberto atrás do editor — sem isso ele só refletia após reabrir a tela.
+      const detalhe = $('#m_proc_view');
+      if (detalhe && detalhe.style.display === 'flex') openProcDetails(currentParecerProcesso.id);
       return pz;
   }
 
