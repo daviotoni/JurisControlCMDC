@@ -1151,10 +1151,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // amigável se a função não estiver publicada ou a chave não estiver configurada.
   const IA_FUNCTION_URL = 'https://us-central1-juriscontrolcmdc.cloudfunctions.net/assistente';
   const IA_MODELOS = {
-      estruturar: 'Estruture um parecer jurídico sobre o tema abaixo, com as seções (Relatório, Fundamentação e Conclusão) e os fundamentos legais aplicáveis. Não invente fatos, números de processo nem jurisprudência.\n\nTema: ',
-      fundamentos: 'Liste e explique os fundamentos legais (leis, artigos, princípios) aplicáveis à situação abaixo, sem inventar jurisprudência ou súmulas:\n\nSituação: ',
-      revisar: 'Revise e melhore a redação do texto abaixo, deixando-o mais claro e com boa técnica jurídica formal, mantendo o sentido e sem acrescentar fatos:\n\n',
-      ementa: 'Sugira uma ementa em CAIXA ALTA (padrão jurídico brasileiro, temas separados por ponto) para o texto abaixo:\n\n',
+      estruturar: 'Redija o texto de um parecer jurídico sobre o tema abaixo, com as seções Relatório, Fundamentação e Conclusão e os fundamentos legais aplicáveis, em prosa pronta para uso. Não invente fatos, partes, números de processo nem jurisprudência; use "[...]" só onde um dado for indispensável. Devolva apenas o texto do parecer, sem comentários nem preâmbulo.\n\nTema: ',
+      fundamentos: 'Explique os fundamentos legais (leis, artigos, princípios) aplicáveis à situação abaixo, sem inventar jurisprudência ou súmulas. Devolva apenas o texto, sem preâmbulo nem comentários.\n\nSituação: ',
+      revisar: 'Reescreva o texto abaixo com melhor redação e técnica jurídica formal, mantendo o sentido e sem acrescentar fatos. Devolva SOMENTE o texto reescrito, sem comentários e sem frases como "segue a redação" ou "sugestão".\n\n',
+      ementa: 'Escreva uma ementa em CAIXA ALTA (padrão jurídico brasileiro, temas separados por ponto) para o texto abaixo. Devolva apenas a ementa.\n\n',
   };
   let iaUltimoTexto = '';
 
