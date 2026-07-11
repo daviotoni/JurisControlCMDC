@@ -3,7 +3,7 @@
 // `module.exports` guardado para ambientes de teste (ver o fim do arquivo).
 import utils from '../../js/utils.js';
 
-const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
+const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, normalizarConsultaJuris, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
 
 describe('datas (UTC-safe)', () => {
   describe('parse', () => {
@@ -153,5 +153,41 @@ describe('getChanges (diff do histórico de processos)', () => {
   it('ignora campos fora da lista rastreada (ex.: id, anotacoes)', () => {
     const changes = getChanges({ ...base, id: 1 }, { ...base, id: 999 });
     expect(changes).toEqual([]);
+  });
+});
+
+describe('normalizarConsultaJuris', () => {
+  it('remove conectivos (preposições/artigos), mantendo as palavras de conteúdo', () => {
+    expect(normalizarConsultaJuris('dispensa de licitação em câmara municipal'))
+      .toBe('dispensa licitação câmara municipal');
+  });
+
+  it('colapsa espaços e apara as bordas', () => {
+    expect(normalizarConsultaJuris('  prescrição   da   pensão  por morte '))
+      .toBe('prescrição pensão morte');
+  });
+
+  it('preserva operadores (e/ou/não) — não são conectivos removíveis', () => {
+    expect(normalizarConsultaJuris('gravação ambiental ou clandestina'))
+      .toBe('gravação ambiental ou clandestina');
+  });
+
+  it('não esvazia a busca: query de 1 palavra fica intacta', () => {
+    expect(normalizarConsultaJuris('licitação')).toBe('licitação');
+  });
+
+  it('se sobrariam menos de 2 palavras, devolve o texto original', () => {
+    expect(normalizarConsultaJuris('em no da')).toBe('em no da');
+  });
+
+  it('preserva número de processo (não são conectivos)', () => {
+    expect(normalizarConsultaJuris('0002934-98.2018.8.19.0064'))
+      .toBe('0002934-98.2018.8.19.0064');
+  });
+
+  it('lida com entrada vazia/nula sem quebrar', () => {
+    expect(normalizarConsultaJuris('')).toBe('');
+    expect(normalizarConsultaJuris(null)).toBe('');
+    expect(normalizarConsultaJuris(undefined)).toBe('');
   });
 });

@@ -168,6 +168,29 @@ function inferirParecerInfo(processo, pareceres = [], docs = []) {
   return null;
 }
 
+// Conectivos (artigos/preposições/contrações) que só adicionam ruído à busca
+// lexical de jurisprudência (que faz "E" implícito entre as palavras). Removê-los
+// relaxa a consulta sem alterar o sentido. NÃO inclui operadores (e/ou/não).
+const JURIS_STOPWORDS = new Set([
+  'a', 'o', 'as', 'os', 'um', 'uma', 'uns', 'umas',
+  'de', 'do', 'da', 'dos', 'das', 'em', 'no', 'na', 'nos', 'nas',
+  'ao', 'aos', 'à', 'às', 'pelo', 'pela', 'pelos', 'pelas',
+  'por', 'para', 'pra', 'pro', 'com', 'sem', 'sob', 'sobre', 'entre', 'até', 'após',
+  'num', 'numa', 'dum', 'duma',
+]);
+
+// Normaliza a consulta de jurisprudência antes de mandar para a API: colapsa
+// espaços e remove conectivos, deixando só as palavras de conteúdo (a API já
+// faz "E" implícito, então menos conectivos = menos restrição espúria). É uma
+// etapa leve/segura; a expansão semântica de sinônimos é um passo à parte.
+// Nunca esvazia a busca: se sobrariam menos de 2 palavras, devolve o texto original.
+function normalizarConsultaJuris(texto) {
+  const original = String(texto || '').trim().replace(/\s+/g, ' ');
+  if (!original) return '';
+  const mantidos = original.split(' ').filter((t) => !JURIS_STOPWORDS.has(t.toLowerCase()));
+  return mantidos.length < 2 ? original : mantidos.join(' ');
+}
+
 // Exporta para ambientes de teste (Node/Vitest). No navegador `module` não
 // existe, então este bloco é ignorado e NÃO afeta o carregamento via <script>.
 if (typeof module !== 'undefined' && module.exports) {
@@ -175,6 +198,7 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
     base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
+    normalizarConsultaJuris,
     VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,
   };
 }
