@@ -185,11 +185,22 @@ document.addEventListener('DOMContentLoaded', () => {
           await ref.set(novo);
           return novo;
       } catch (e) {
-          // Modo de compatibilidade: regras antigas em produção ainda não conhecem
-          // a coleção `perfis` (deploy das rules é manual). Mantém o comportamento
-          // atual (todo autenticado tem acesso total) até as regras novas subirem.
-          console.warn('Perfil indisponível (regras antigas em produção?). Usando modo de compatibilidade.', e);
-          return { uid: firebaseUser.uid, email, name: email.split('@')[0], role: 'admin', aprovado: true, legado: true };
+          // Modo de compatibilidade restrito: regras antigas em produção podem ainda
+          // não conhecer a coleção `perfis` (deploy das rules é manual). Para evitar
+          // concessão indevida de privilégios, somente o bootstrap anti-lockout entra
+          // como admin; demais usuários ficam bloqueados até a configuração ser corrigida.
+          console.warn('Perfil indisponível (regras antigas em produção?). Bloqueando acesso não-bootstrap.', e);
+          if (isBootstrap) {
+              return { uid: firebaseUser.uid, email, name: email.split('@')[0], role: 'admin', aprovado: true, legado: true };
+          }
+          return {
+              uid: firebaseUser.uid,
+              email,
+              name: email.split('@')[0],
+              role: 'user',
+              aprovado: false,
+              perfilIndisponivel: true
+          };
       }
   }
 
@@ -557,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
           const u = JSON.parse(sessionStorage.getItem('loggedInUser'));
           return u?.name || u?.login || 'Sistema';
-      } catch (e) { return 'Sistema'; }
+      } catch { return 'Sistema'; }
   }
 
   // ===== Modelos de parecer por matéria (Frente 1) =====
@@ -4085,7 +4096,7 @@ ${corpo}
               'Excluído': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6m4-6v6"/></svg>`
           };
           const iconClass = (a) => a === 'Criado' ? 'criado' : a === 'Excluído' ? 'excluido' : 'editado';
-          const fmtTS = (ts) => { try { return new Date(ts).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); } catch(e) { return ''; } };
+          const fmtTS = (ts) => { try { return new Date(ts).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); } catch { return ''; } };
           container.innerHTML = recent.map(e => `
               <div class="atividade-item">
                   <div class="atividade-icon ${iconClass(e.acao)}">${acaoIconMap[e.acao] || acaoIconMap['Editado']}</div>
@@ -4500,7 +4511,9 @@ ${corpo}
                       if (!perfil.aprovado) {
                           sessionStorage.removeItem('loggedInUser');
                           msgLoginPersistente = {
-                              msg: 'Sua conta foi registrada e aguarda aprovação de um administrador. Tente novamente mais tarde.',
+                              msg: perfil.perfilIndisponivel
+                                  ? 'Não foi possível validar seu perfil. Procure um administrador para revisar as regras de acesso.'
+                                  : 'Sua conta foi registrada e aguarda aprovação de um administrador. Tente novamente mais tarde.',
                               tipo: 'info'
                           };
                           try { await logoutFirebase(); } catch { showLogin(); }
