@@ -401,6 +401,156 @@ async function chamarCopiloto(contexto, historico, prompt) {
   return { mensagem: texto, edicoes: [], fontes };
 }
 
+// ===== Provedor de RESERVA: Groq (Llama 3.3) — API gratuita ==================
+// Quando o Gemini fica indisponível (cota diária/por minuto esgotada, chave
+// ausente ou serviço fora do ar), o assistente tenta o Groq automaticamente,
+// para o procurador não ficar sem apoio. A chave fica em segredos/groq
+// (admin-only nas rules); o admin a cola em Configurações → Assistente (reserva).
+// A API do Groq é compatível com o formato OpenAI (chat/completions + tools).
+const GROQ_MODELO = 'llama-3.3-70b-versatile';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+// Ferramentas no formato OpenAI (reaproveita o schema já definido p/ o Gemini).
+const GROQ_FERRAMENTAS = [{
+  type: 'function',
+  function: IA_FERRAMENTAS[0].functionDeclarations[0],
+}];
+
+async function lerChaveGroq() {
+  const doc = await getFirestore().collection('segredos').doc('groq').get();
+  return doc.exists ? String((doc.data().token || doc.data().chave || '')).trim() : '';
+}
+
+async function groqChat(chave, corpo) {
+  const resp = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${chave}` },
+    body: JSON.stringify(corpo),
+    signal: AbortSignal.timeout(50000),
+  });
+  if (!resp.ok) {
+    const errJson = await resp.json().catch(() => ({}));
+    const detalhe = (errJson.error && errJson.error.message) || `HTTP ${resp.status}`;
+    if (resp.status === 429) throw erroCliente(429, `Limite do Groq atingido por ora — aguarde um pouco. [detalhe: ${detalhe.slice(0, 160)}]`);
+    if (resp.status === 401 || resp.status === 403) throw erroCliente(424, `O Groq recusou a chave: ${detalhe}`);
+    throw erroCliente(502, `O Groq respondeu ${resp.status}: ${detalhe}`);
+  }
+  const dados = await resp.json();
+  const msg = (((dados.choices || [])[0]) || {}).message;
+  if (!msg) throw erroCliente(422, 'O Groq retornou resposta vazia. Reformule o pedido.');
+  return msg;
+}
+
+async function chamarGroqSimples(sistema, prompt) {
+  const chave = await lerChaveGroq();
+  if (!chave) throw erroCliente(424, 'Reserva (Groq) não configurada.');
+  const msg = await groqChat(chave, {
+    model: GROQ_MODELO,
+    messages: [
+      { role: 'system', content: sistema },
+      { role: 'user', content: prompt },
+    ],
+    max_tokens: IA_MAX_SAIDA_TOKENS,
+    temperature: 0.3,
+  });
+  const texto = String(msg.content || '').trim();
+  if (!texto) throw erroCliente(422, 'A reserva (Groq) retornou resposta vazia. Reformule o pedido.');
+  return texto;
+}
+
+async function chamarGroqCopiloto(contexto, historico, prompt) {
+  const chave = await lerChaveGroq();
+  if (!chave) throw erroCliente(424, 'Reserva (Groq) não configurada.');
+  const fontes = [];
+
+  const secoes = (contexto.secoes || []).map(s => `- ${s}`).join('\n') || '(nenhuma seção identificada)';
+  const contextoTxt =
+    `CONTEXTO DO DOCUMENTO\n` +
+    `Processo: ${contexto.processoNum || '(sem número)'}\n` +
+    `Ementa atual: ${contexto.ementa || '(vazia)'}\n` +
+    `Seções do parecer:\n${secoes}\n\n` +
+    `TEXTO ATUAL DO PARECER:\n"""\n${String(contexto.texto || '').slice(0, IA_MAX_DOC)}\n"""`;
+
+  const messages = [{ role: 'system', content: IA_SISTEMA_COPILOTO }];
+  (historico || []).slice(-8).forEach(m => {
+    const papel = m.papel === 'ia' ? 'assistant' : 'user';
+    const texto = String(m.texto || '').slice(0, 4000);
+    if (texto) messages.push({ role: papel, content: texto });
+  });
+  messages.push({ role: 'user', content: `${contextoTxt}\n\nPEDIDO DO PROCURADOR:\n${prompt}` });
+
+  let msg = null;
+  for (let rodada = 0; rodada < 3; rodada++) {
+    msg = await groqChat(chave, {
+      model: GROQ_MODELO,
+      messages,
+      tools: GROQ_FERRAMENTAS,
+      max_tokens: IA_MAX_SAIDA_TOKENS,
+      temperature: 0.3,
+    });
+    const chamadas = msg.tool_calls || [];
+    if (!chamadas.length || rodada === 2) break;
+    messages.push(msg); // eco da mensagem do assistente (com tool_calls)
+    for (const tc of chamadas) {
+      let args = {};
+      try { args = JSON.parse((tc.function && tc.function.arguments) || '{}'); } catch (e) { /* args vazio */ }
+      const resultado = await executarFerramentaIA(tc.function && tc.function.name, args, fontes);
+      messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(resultado) });
+    }
+  }
+
+  const texto = String((msg && msg.content) || '').trim();
+  const json = extrairJsonDaResposta(texto);
+  if (json && typeof json.mensagem === 'string') {
+    const edicoes = Array.isArray(json.edicoes) ? json.edicoes.filter(e =>
+      e && typeof e.conteudo === 'string' && e.conteudo.trim() &&
+      ['substituir_secao', 'inserir_na_secao', 'definir_ementa', 'inserir_final'].includes(e.acao)
+    ).slice(0, 8) : [];
+    return { mensagem: json.mensagem, edicoes, fontes };
+  }
+  if (!texto) throw erroCliente(422, 'A reserva (Groq) retornou resposta vazia. Reformule o pedido.');
+  return { mensagem: texto, edicoes: [], fontes };
+}
+
+// ----- Fila de reserva: tenta o Gemini e, se ele falhar por indisponibilidade,
+// cai para o Groq. Só troca de provedor em erros de cota/serviço/chave (429, 502,
+// 424) — não em bloqueio de segurança (422) nem pedido inválido, onde repetir
+// noutro provedor não ajudaria. Se a reserva não estiver configurada, devolve o
+// erro original do Gemini (mais informativo sobre a cota).
+function ehIndisponibilidade(e) {
+  return e && (e.statusCliente === 429 || e.statusCliente === 502 || e.statusCliente === 424);
+}
+
+async function responderSimples(sistema, prompt) {
+  try {
+    return await chamarGemini(sistema, prompt);
+  } catch (e) {
+    if (!ehIndisponibilidade(e) || !(await lerChaveGroq())) throw e;
+    console.warn('Gemini indisponível, usando reserva Groq:', e.message);
+    try {
+      return await chamarGroqSimples(sistema, prompt);
+    } catch (e2) {
+      throw erroCliente(e.statusCliente === 429 && e2.statusCliente === 429 ? 429 : 502,
+        `As IAs gratuitas estão indisponíveis agora. Gemini: ${e.message.slice(0, 90)} — Reserva: ${e2.message.slice(0, 90)}`);
+    }
+  }
+}
+
+async function responderCopiloto(contexto, historico, prompt) {
+  try {
+    return await chamarCopiloto(contexto, historico, prompt);
+  } catch (e) {
+    if (!ehIndisponibilidade(e) || !(await lerChaveGroq())) throw e;
+    console.warn('Copiloto Gemini indisponível, usando reserva Groq:', e.message);
+    try {
+      return await chamarGroqCopiloto(contexto, historico, prompt);
+    } catch (e2) {
+      throw erroCliente(e.statusCliente === 429 && e2.statusCliente === 429 ? 429 : 502,
+        `As IAs gratuitas estão indisponíveis agora. Gemini: ${e.message.slice(0, 90)} — Reserva: ${e2.message.slice(0, 90)}`);
+    }
+  }
+}
+
 exports.assistente = onRequest(
   { region: 'us-central1', maxInstances: 2, timeoutSeconds: 120, memory: '256MiB' },
   async (req, res) => {
@@ -430,12 +580,12 @@ exports.assistente = onRequest(
       // { mensagem, edicoes[], fontes[] }. Sem contexto, mantém o modo simples
       // (retrocompatível): { texto }.
       if (corpo.contexto && typeof corpo.contexto === 'object') {
-        const resposta = await chamarCopiloto(corpo.contexto, corpo.historico, prompt);
+        const resposta = await responderCopiloto(corpo.contexto, corpo.historico, prompt);
         res.status(200).json(resposta);
         return;
       }
       const sistema = String(corpo.sistema || '').trim() || IA_SISTEMA_PADRAO;
-      const texto = await chamarGemini(sistema, prompt);
+      const texto = await responderSimples(sistema, prompt);
       res.status(200).json({ texto });
     } catch (e) {
       console.error('Erro na IA:', e);
