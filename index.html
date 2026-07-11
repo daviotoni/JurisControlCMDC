@@ -17,7 +17,7 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=4367be6341">
+        <link rel="stylesheet" href="style.css?v=300a5bf157">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -444,6 +444,16 @@
                         <p id="jurisaiTokenStatus" class="cfg-note" style="margin-top:0.5rem;"></p>
                     </div>
                     <div class="card admin-only">
+                        <h3>Assistente de IA (Gemini)</h3>
+                        <p class="cfg-note">Cole a chave da API do Gemini (<code>AIza...</code>). Crie uma <strong>gratuita</strong> em <code>aistudio.google.com</code>, escolhendo um <strong>projeto sem cobrança</strong> (para não gerar custo). Ela fica guardada no banco (visível só para administradores) e habilita o botão <strong>✨ Assistente IA</strong> no editor de parecer.</p>
+                        <p class="cfg-note" style="border-left:4px solid var(--warning); background:var(--warning-bg); padding:0.5rem 0.75rem; border-radius:6px;"><strong>⚠️ Modo gratuito:</strong> o Google pode usar o conteúdo enviado para treinar seus modelos. <strong>Não envie dados sigilosos ou pessoais de processos</strong> (nomes, CPF, endereços). Use para temas, redação e revisão de texto.</p>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                            <input id="geminiToken" type="password" class="input" placeholder="AIza..." autocomplete="off" style="flex:1; min-width:200px;">
+                            <button id="btnSalvarGeminiToken" class="btn primary">Salvar chave</button>
+                        </div>
+                        <p id="geminiTokenStatus" class="cfg-note" style="margin-top:0.5rem;"></p>
+                    </div>
+                    <div class="card admin-only">
                         <h3>Log de Auditoria</h3>
                         <p class="cfg-note">Registro de quem fez o quê no sistema (últimos 200 eventos).</p>
                         <div class="aud-toolbar">
@@ -611,6 +621,7 @@
             <div class="dialog-footer">
                 <div style="margin-right:auto; display:flex; gap:0.5rem; flex-wrap:wrap;">
                     <button type="button" class="btn secondary" id="btnJurisprudencia">⚖ Jurisprudência</button>
+                    <button type="button" class="btn secondary" id="btnAssistenteIA">✨ Assistente IA</button>
                     <button type="button" class="btn danger" id="btnDevolverRevisao" style="display:none;">Devolver para ajustes</button>
                     <button type="button" class="btn danger" id="btnReabrirParecer" style="display:none;">Reabrir para edição</button>
                 </div>
@@ -667,6 +678,34 @@
             </div>
         </div>
     </div>
+    <div id="m_ia" class="modal">
+        <div class="dialog" style="max-width: 680px;">
+            <div class="dialog-header"><h3>✨ Assistente de IA</h3></div>
+            <div class="dialog-body">
+                <div class="ia-aviso">⚠️ <strong>Não cole dados sigilosos ou pessoais de processos</strong> (nomes, CPF, endereços). Este assistente usa o modo gratuito do Gemini — use-o para temas, redação e revisão de texto. A resposta é uma sugestão; a responsabilidade é sua.</div>
+                <div class="ia-chips">
+                    <button type="button" class="btn secondary" data-ia-modelo="estruturar">Estruturar parecer sobre…</button>
+                    <button type="button" class="btn secondary" data-ia-modelo="fundamentos">Fundamentos legais de…</button>
+                    <button type="button" class="btn secondary" data-ia-modelo="revisar">Melhorar redação</button>
+                    <button type="button" class="btn secondary" data-ia-modelo="ementa">Sugerir ementa</button>
+                </div>
+                <div class="form-group">
+                    <label for="ia_prompt">Seu pedido</label>
+                    <textarea id="ia_prompt" class="input" rows="4" placeholder="Ex.: Estruture um parecer sobre prorrogação de contrato de serviço contínuo."></textarea>
+                </div>
+                <button type="button" class="btn primary" id="btnGerarIA">Gerar</button>
+                <div class="form-group" style="margin-top:0.75rem;">
+                    <label>Resposta da IA</label>
+                    <div id="ia_resultado" class="ia-resultado">A resposta aparecerá aqui…</div>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="btn secondary" data-close-ia>Fechar</button>
+                <button type="button" class="btn secondary" id="btnCopiarIA">Copiar</button>
+                <button type="button" class="btn primary" id="btnInserirIA">Inserir no parecer</button>
+            </div>
+        </div>
+    </div>
     <div id="m_emissor" class="modal">
         <div class="dialog" style="max-width: 500px;">
             <div class="dialog-header"><h3 id="m_emissor_t"></h3></div>
@@ -720,7 +759,7 @@
 
     <script src="js/utils.js?v=7d58b23e0d"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
-    <script src="js/app.js?v=435d81d9fc"></script>
+    <script src="js/app.js?v=d7defec779"></script>
 
 </body>
 </html>

@@ -57,7 +57,7 @@ function aplicarCors(req, res) {
   if (ORIGENS_PERMITIDAS.includes(origem)) {
     res.set('Access-Control-Allow-Origin', origem);
     res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.set('Access-Control-Max-Age', '3600');
   }
 }
@@ -165,6 +165,100 @@ exports.juris = onRequest(
       console.error(`Erro na busca (${fonte}):`, e);
       if (e.statusCliente) { res.status(e.statusCliente).json({ erro: e.message }); return; }
       res.status(502).json({ erro: 'A fonte externa não respondeu. Tente novamente em instantes.' });
+    }
+  }
+);
+
+// ===== Assistente de IA (Gemini) — apoio à redação de pareceres ===============
+// Proxy para a API do Gemini (Google). A chave fica em segredos/gemini (coleção
+// admin-only nas rules); o Admin SDK a lê direto. MODO GRATUITO recomendado:
+// crie a chave num projeto SEM cobrança em aistudio.google.com — nesse tier o
+// Google pode usar o conteúdo para treinar, então o app avisa para NÃO enviar
+// dados sigilosos/pessoais de processos.
+const GEMINI_MODELO = 'gemini-2.5-flash';
+const IA_MAX_ENTRADA = 20000;      // trava de tamanho da entrada (caracteres)
+const IA_MAX_SAIDA_TOKENS = 2048;  // limita a resposta (custo/latência sob controle)
+const IA_SISTEMA_PADRAO =
+  'Você é um assistente jurídico da Procuradoria-Geral da Câmara Municipal de ' +
+  'Duque de Caxias (RJ). Escreva em português formal, com boa técnica jurídica, ' +
+  'e cite a legislação aplicável quando pertinente (com atenção à Lei 14.133/2021, ' +
+  'à LC 101/2000 e à Lei Orgânica municipal quando cabível). Seja objetivo. NÃO ' +
+  'invente jurisprudência, súmulas, números de processo ou fatos que não foram ' +
+  'fornecidos; se faltar informação, diga o que seria necessário. Este é um apoio ' +
+  'à redação — a responsabilidade final é do procurador.';
+
+async function lerChaveGemini() {
+  const doc = await getFirestore().collection('segredos').doc('gemini').get();
+  const chave = doc.exists ? String((doc.data().token || doc.data().chave || '')).trim() : '';
+  if (!chave) {
+    throw erroCliente(424, 'Chave da API do Gemini não configurada. Um administrador precisa colá-la em Configurações → Assistente de IA (Gemini).');
+  }
+  return chave;
+}
+
+async function chamarGemini(sistema, prompt) {
+  const chave = await lerChaveGemini();
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODELO}:generateContent?key=${encodeURIComponent(chave)}`;
+  const corpo = {
+    systemInstruction: { parts: [{ text: sistema }] },
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: IA_MAX_SAIDA_TOKENS, temperature: 0.3 },
+  };
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo),
+    signal: AbortSignal.timeout(45000),
+  });
+  if (resp.status === 400 || resp.status === 403) {
+    throw erroCliente(424, 'Chave da API do Gemini inválida ou sem permissão. Gere uma nova em aistudio.google.com e atualize em Configurações.');
+  }
+  if (resp.status === 429) {
+    throw erroCliente(429, 'Limite de uso gratuito do Gemini atingido por ora. Tente novamente em alguns minutos.');
+  }
+  if (!resp.ok) throw new Error(`Gemini respondeu ${resp.status}`);
+  const dados = await resp.json();
+  const cand = dados.candidates && dados.candidates[0];
+  if (!cand || cand.finishReason === 'SAFETY' || cand.finishReason === 'BLOCKLIST') {
+    throw erroCliente(422, 'A resposta foi bloqueada pelos filtros de segurança do Gemini. Reformule o pedido.');
+  }
+  const texto = ((cand.content && cand.content.parts) || []).map(p => p.text || '').join('').trim();
+  if (!texto) throw erroCliente(422, 'A IA retornou resposta vazia. Reformule o pedido e tente de novo.');
+  return texto;
+}
+
+exports.assistente = onRequest(
+  { region: 'us-central1', maxInstances: 2, timeoutSeconds: 60, memory: '256MiB' },
+  async (req, res) => {
+    aplicarCors(req, res);
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    if (req.method !== 'POST') { res.status(405).json({ erro: 'Use POST.' }); return; }
+
+    try {
+      const usuario = await usuarioAprovado(req);
+      if (!usuario) { res.status(403).json({ erro: 'Acesso restrito a usuários aprovados do JurisControl.' }); return; }
+    } catch (e) {
+      console.warn('Token inválido:', e.message);
+      res.status(401).json({ erro: 'Sessão inválida — entre novamente no sistema.' });
+      return;
+    }
+
+    const corpo = req.body || {};
+    const prompt = String(corpo.prompt || '').trim();
+    const sistema = String(corpo.sistema || '').trim() || IA_SISTEMA_PADRAO;
+    if (!prompt) { res.status(400).json({ erro: 'Informe o parâmetro prompt (o pedido para a IA).' }); return; }
+    if (prompt.length > IA_MAX_ENTRADA) {
+      res.status(413).json({ erro: `Pedido muito longo (máx. ${IA_MAX_ENTRADA} caracteres). Resuma o texto e tente de novo.` });
+      return;
+    }
+
+    try {
+      const texto = await chamarGemini(sistema, prompt);
+      res.status(200).json({ texto });
+    } catch (e) {
+      console.error('Erro na IA:', e);
+      if (e.statusCliente) { res.status(e.statusCliente).json({ erro: e.message }); return; }
+      res.status(502).json({ erro: 'A IA não respondeu. Tente novamente em instantes.' });
     }
   }
 );
