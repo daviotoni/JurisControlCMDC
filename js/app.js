@@ -1146,6 +1146,82 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.textContent = clamped ? 'ver mais ▾' : 'ver menos ▴';
   }
 
+  // ===== Assistente de IA (Gemini) — apoio à redação =====
+  // Chama a Cloud Function `assistente` (proxy do Gemini). Degrada com mensagem
+  // amigável se a função não estiver publicada ou a chave não estiver configurada.
+  const IA_FUNCTION_URL = 'https://us-central1-juriscontrolcmdc.cloudfunctions.net/assistente';
+  const IA_MODELOS = {
+      estruturar: 'Estruture um parecer jurídico sobre o tema abaixo, com as seções (Relatório, Fundamentação e Conclusão) e os fundamentos legais aplicáveis. Não invente fatos, números de processo nem jurisprudência.\n\nTema: ',
+      fundamentos: 'Liste e explique os fundamentos legais (leis, artigos, princípios) aplicáveis à situação abaixo, sem inventar jurisprudência ou súmulas:\n\nSituação: ',
+      revisar: 'Revise e melhore a redação do texto abaixo, deixando-o mais claro e com boa técnica jurídica formal, mantendo o sentido e sem acrescentar fatos:\n\n',
+      ementa: 'Sugira uma ementa em CAIXA ALTA (padrão jurídico brasileiro, temas separados por ponto) para o texto abaixo:\n\n',
+  };
+  let iaUltimoTexto = '';
+
+  async function chamarAssistenteIA(prompt) {
+      const usuarioFb = window.auth?.currentUser;
+      if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
+      const token = await usuarioFb.getIdToken();
+      const resp = await fetch(IA_FUNCTION_URL, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+      });
+      if (!resp.ok) {
+          const corpo = await resp.json().catch(() => ({}));
+          throw new Error(corpo.erro || `HTTP_${resp.status}`);
+      }
+      const dados = await resp.json();
+      return dados.texto || '';
+  }
+
+  function openIaModal() {
+      const el = $('#ia_resultado');
+      if (el) el.textContent = 'A resposta aparecerá aqui…';
+      iaUltimoTexto = '';
+      $('#m_ia').style.display = 'flex';
+      $('#ia_prompt')?.focus();
+  }
+
+  async function gerarIA() {
+      const prompt = $('#ia_prompt')?.value.trim();
+      if (!prompt) { showToast('Escreva seu pedido para a IA.', 'danger'); $('#ia_prompt')?.focus(); return; }
+      const alvo = $('#ia_resultado'); if (!alvo) return;
+      const btn = $('#btnGerarIA');
+      alvo.textContent = 'Gerando…'; iaUltimoTexto = '';
+      if (btn) btn.disabled = true;
+      try {
+          const texto = await chamarAssistenteIA(prompt);
+          alvo.textContent = texto;
+          iaUltimoTexto = texto;
+      } catch (e) {
+          console.warn('Assistente IA indisponível:', e);
+          const rede = !e.message || /failed to fetch|networkerror|load failed|HTTP_404/i.test(e.message);
+          alvo.textContent = rede
+              ? 'O Assistente IA ainda não está ativo (a função não foi publicada no Firebase ou a chave do Gemini não foi configurada). Um administrador precisa ativá-lo em Configurações.'
+              : e.message;
+      } finally {
+          if (btn) btn.disabled = false;
+      }
+  }
+
+  function inserirIaNoParecer() {
+      if (!iaUltimoTexto) { showToast('Gere uma resposta antes de inserir.', 'info'); return; }
+      const quill = ensureParecerQuill();
+      if (!quill.isEnabled()) { showToast('O parecer está bloqueado — reabra para edição antes de inserir.', 'danger'); return; }
+      const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
+      quill.insertText(range.index, iaUltimoTexto + '\n', { bold: false, italic: false });
+      quill.setSelection(range.index + iaUltimoTexto.length + 1, 0);
+      $('#m_ia').style.display = 'none';
+      showToast('Texto inserido no parecer.');
+  }
+
+  async function copiarIa() {
+      if (!iaUltimoTexto) { showToast('Gere uma resposta antes de copiar.', 'info'); return; }
+      try { await navigator.clipboard.writeText(iaUltimoTexto); showToast('Resposta copiada.'); }
+      catch (e) { console.warn('Clipboard indisponível:', e); showToast('Não foi possível copiar automaticamente.', 'danger'); }
+  }
+
   function openParecerModal(processo) {
       currentParecerProcesso = processo;
       const quill = ensureParecerQuill();
@@ -1351,6 +1427,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Painel de jurisprudência
   $('#btnJurisprudencia').onclick = openJurisModal;
   $('#btnInserirCitacao').onclick = inserirCitacaoNoParecer;
+  // Assistente de IA
+  $('#btnAssistenteIA').onclick = openIaModal;
+  $('#btnGerarIA').onclick = gerarIA;
+  $('#btnInserirIA').onclick = inserirIaNoParecer;
+  $('#btnCopiarIA').onclick = copiarIa;
+  $$('[data-close-ia]').forEach(x => x.onclick = () => { $('#m_ia').style.display = 'none'; });
+  const mIa = $('#m_ia');
+  if (mIa) mIa.onclick = (e) => { if (e.target === mIa) mIa.style.display = 'none'; };
+  $$('[data-ia-modelo]').forEach(b => b.onclick = () => {
+      const t = IA_MODELOS[b.dataset.iaModelo] || '';
+      const ta = $('#ia_prompt');
+      if (ta) { ta.value = t; ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  });
   $$('[data-juris-portal]').forEach(b => b.onclick = () => {
       const q = $('#jr_tema')?.value.trim();
       if (!q) { showToast('Digite o tema da pesquisa.', 'danger'); $('#jr_tema')?.focus(); return; }
@@ -1474,7 +1563,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(key==='leis') renderLeis();
     if(key==='juris') { initJurisAba(); $('#jr_tema_aba')?.focus(); }
-    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); }
+    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); }
   }
 
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
@@ -3257,6 +3346,45 @@ ${corpo}
       showToast('Token salvo! A busca pelo Jurisprudências.ai já pode ser usada.');
   }
 
+  // ===== Cartão da chave do Gemini (Configurações, admin) =====
+  // A chave fica em segredos/gemini (admin-only nas rules); a Cloud Function
+  // `assistente` a lê via Admin SDK para chamar a API do Gemini.
+  async function renderGeminiTokenCard() {
+      const statusEl = $('#geminiTokenStatus'); if (!statusEl) return;
+      if (!isAdminSession()) return;
+      try {
+          const doc = await dbHelper.get('segredos', 'gemini');
+          const chave = doc && doc.token ? String(doc.token) : '';
+          statusEl.textContent = chave
+              ? `✅ Chave configurada (termina em …${chave.slice(-4)}). Cole uma nova para substituir.`
+              : 'Nenhuma chave configurada ainda — o Assistente IA fica indisponível até colar uma.';
+      } catch (e) {
+          console.warn('Sem acesso à chave do Gemini:', e);
+          statusEl.textContent = 'Não foi possível verificar a chave (recurso de administrador).';
+      }
+  }
+
+  async function salvarGeminiToken() {
+      const input = $('#geminiToken'); if (!input) return;
+      const chave = input.value.trim();
+      if (!chave.startsWith('AIza') || chave.length < 30) {
+          showToast('Chave inválida — a chave do Gemini começa com "AIza". Copie-a de aistudio.google.com.', 'danger');
+          input.focus();
+          return;
+      }
+      try {
+          await dbHelper.put('segredos', { id: 'gemini', token: chave, atualizadoEm: new Date().toISOString() });
+      } catch (e) {
+          console.error('Erro ao salvar chave do Gemini:', e);
+          showToast('Sem permissão para salvar a chave (recurso de administrador).', 'danger');
+          return;
+      }
+      input.value = '';
+      await logAuditoria('integracoes', 'editado', 'Chave da API do Gemini');
+      renderGeminiTokenCard();
+      showToast('Chave salva! O Assistente IA já pode ser usado (após o deploy da função).');
+  }
+
   async function renderAuditoria() {
       const listEl = $('#audList'); if (!listEl) return;
       if (!isAdminSession()) return; // o cartão fica oculto para não-admins
@@ -3876,6 +4004,8 @@ ${corpo}
     if (audCsvEl) audCsvEl.onclick = exportAuditoriaCSV;
     const btnJurisaiTk = $('#btnSalvarJurisaiToken');
     if (btnJurisaiTk) btnJurisaiTk.onclick = salvarJurisaiToken;
+    const btnGeminiTk = $('#btnSalvarGeminiToken');
+    if (btnGeminiTk) btnGeminiTk.onclick = salvarGeminiToken;
 
     setupEnhancedNav();
 
