@@ -245,7 +245,7 @@ async function chamarGemini(sistema, prompt) {
 // o Gemini pode chamar a ferramenta buscar_jurisprudencia (Jurisprudências.ai,
 // com o token já configurado) e responde num JSON com { mensagem, edicoes[] }.
 // As edições são aplicadas pelo front na seção certa do documento.
-const IA_MAX_DOC = 15000; // trava do tamanho do documento enviado como contexto
+const IA_MAX_DOC = 10000; // trava do tamanho do documento enviado como contexto
 
 const IA_SISTEMA_COPILOTO =
   'Você é o copiloto de redação da Procuradoria-Geral da Câmara Municipal de ' +
@@ -326,7 +326,18 @@ async function geminiGenerate(chave, corpo) {
   if (!resp.ok) {
     const errJson = await resp.json().catch(() => ({}));
     const detalhe = (errJson.error && errJson.error.message) || `HTTP ${resp.status}`;
-    if (resp.status === 429) throw erroCliente(429, 'Limite de uso gratuito do Gemini atingido por ora. Tente novamente em alguns minutos.');
+    if (resp.status === 429) {
+      // O Google diz QUAL cota estourou (por minuto, por dia, tokens) e quanto
+      // esperar — repassa isso em vez de uma mensagem genérica.
+      const detalhes429 = JSON.stringify(errJson.error && errJson.error.details || []);
+      const porDia = /PerDay|per day|daily/i.test(detalhes429 + detalhe);
+      const espera = (detalhes429.match(/"retryDelay"\s*:\s*"(\d+)s"/) || [])[1];
+      throw erroCliente(429,
+        (porDia
+          ? 'Cota DIÁRIA gratuita do Gemini esgotada — volta por volta das 4h da manhã (horário de Brasília).'
+          : `Limite do Gemini atingido por ora${espera ? ` — aguarde ~${Math.ceil(espera / 60)} min` : ' — aguarde 1-2 minutos'}.`)
+        + ` [detalhe: ${detalhe.slice(0, 200)}]`);
+    }
     if (resp.status === 400 || resp.status === 403) throw erroCliente(424, `O Gemini recusou a requisição: ${detalhe}`);
     throw erroCliente(502, `O Gemini respondeu ${resp.status}: ${detalhe}`);
   }
@@ -361,7 +372,7 @@ async function chamarCopiloto(contexto, historico, prompt) {
   contents.push({ role: 'user', parts: [{ text: `${contextoTxt}\n\nPEDIDO DO PROCURADOR:\n${prompt}` }] });
 
   let cand = null;
-  for (let rodada = 0; rodada < 4; rodada++) {
+  for (let rodada = 0; rodada < 3; rodada++) {
     cand = await geminiGenerate(chave, {
       systemInstruction: { parts: [{ text: IA_SISTEMA_COPILOTO }] },
       contents,
@@ -370,7 +381,7 @@ async function chamarCopiloto(contexto, historico, prompt) {
     });
     const parts = (cand.content && cand.content.parts) || [];
     const chamada = parts.find(p => p.functionCall);
-    if (!chamada || rodada === 3) break;
+    if (!chamada || rodada === 2) break;
     contents.push({ role: 'model', parts });
     const resultado = await executarFerramentaIA(chamada.functionCall.name, chamada.functionCall.args, fontes);
     contents.push({ role: 'user', parts: [{ functionResponse: { name: chamada.functionCall.name, response: resultado } }] });
