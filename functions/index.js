@@ -177,15 +177,22 @@ exports.juris = onRequest(
 // dados sigilosos/pessoais de processos.
 const GEMINI_MODELO = 'gemini-3.5-flash';
 const IA_MAX_ENTRADA = 20000;      // trava de tamanho da entrada (caracteres)
-const IA_MAX_SAIDA_TOKENS = 2048;  // limita a resposta (custo/latência sob controle)
+const IA_MAX_SAIDA_TOKENS = 8192;  // resposta longa o bastante p/ não cortar frase
 const IA_SISTEMA_PADRAO =
-  'Você é um assistente jurídico da Procuradoria-Geral da Câmara Municipal de ' +
-  'Duque de Caxias (RJ). Escreva em português formal, com boa técnica jurídica, ' +
-  'e cite a legislação aplicável quando pertinente (com atenção à Lei 14.133/2021, ' +
-  'à LC 101/2000 e à Lei Orgânica municipal quando cabível). Seja objetivo. NÃO ' +
-  'invente jurisprudência, súmulas, números de processo ou fatos que não foram ' +
-  'fornecidos; se faltar informação, diga o que seria necessário. Este é um apoio ' +
-  'à redação — a responsabilidade final é do procurador.';
+  'Você é um assistente de redação jurídica da Procuradoria-Geral da Câmara ' +
+  'Municipal de Duque de Caxias (RJ). A sua saída é COLADA DIRETAMENTE no corpo de ' +
+  'um parecer — portanto escreva APENAS o texto final, em prosa jurídica formal e ' +
+  'contínua, pronto para uso. NÃO inclua preâmbulos, saudações nem meta-comentários ' +
+  '(ex.: "apresento a proposta", "segue a redação", "sugestão de redação revisada", ' +
+  '"na qualidade de assistente", "subsídio ao procurador"). NÃO rotule o texto como ' +
+  '"modelo" ou "estrutura". Cite a legislação aplicável quando pertinente (com ' +
+  'atenção à Lei 14.133/2021, à LC 101/2000 e à Lei Orgânica municipal quando ' +
+  'cabível). NÃO invente jurisprudência, súmulas, números de processo, partes, ' +
+  'valores ou datas; quando um dado indispensável não tiver sido fornecido, use um ' +
+  'marcador curto como "[...]" — evite encher o texto de campos a preencher. Conclua ' +
+  'todas as frases (não termine no meio). Use formatação simples (no máximo negrito ' +
+  'em títulos de seção); evite tabelas. Este é um apoio à redação — a decisão e a ' +
+  'responsabilidade final são do procurador.';
 
 async function lerChaveGemini() {
   const doc = await getFirestore().collection('segredos').doc('gemini').get();
