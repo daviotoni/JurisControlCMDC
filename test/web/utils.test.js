@@ -3,7 +3,7 @@
 // `module.exports` guardado para ambientes de teste (ver o fim do arquivo).
 import utils from '../../js/utils.js';
 
-const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, normalizarConsultaJuris, expandirConsultaJuris, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
+const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, normalizarConsultaJuris, expandirConsultaJuris, filtrarOrdenarResultadosJuris, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
 
 describe('datas (UTC-safe)', () => {
   describe('parse', () => {
@@ -228,5 +228,50 @@ describe('expandirConsultaJuris', () => {
   it('entrada vazia/nula devolve string vazia', () => {
     expect(expandirConsultaJuris('')).toBe('');
     expect(expandirConsultaJuris(null)).toBe('');
+  });
+});
+
+describe('filtrarOrdenarResultadosJuris', () => {
+  const lista = [
+    { tribunal: 'TJRJ', orgao: 'Câmara Cível', data: '2024-01-10', titulo: 'A' },
+    { tribunal: 'STJ', orgao: 'Primeira Turma', data: '2026-05-01', titulo: 'B' },
+    { tribunal: 'TJRJ', orgao: 'Câmara Cível', data: '2025-03-20', titulo: 'C' },
+    { tribunal: 'STF', orgao: '', data: '', titulo: 'D' },
+  ];
+
+  it('ordena por mais recentes por padrão (sem data vai para o fim)', () => {
+    const r = filtrarOrdenarResultadosJuris(lista);
+    expect(r.map((x) => x.titulo)).toEqual(['B', 'C', 'A', 'D']);
+  });
+
+  it('ordena por mais antigos', () => {
+    const r = filtrarOrdenarResultadosJuris(lista, { ordem: 'antigos' });
+    expect(r.map((x) => x.titulo)).toEqual(['D', 'A', 'C', 'B']);
+  });
+
+  it('filtra por tribunal', () => {
+    const r = filtrarOrdenarResultadosJuris(lista, { tribunal: 'TJRJ' });
+    expect(r.map((x) => x.titulo)).toEqual(['C', 'A']);
+  });
+
+  it('filtra por órgão julgador', () => {
+    const r = filtrarOrdenarResultadosJuris(lista, { orgao: 'Primeira Turma' });
+    expect(r.map((x) => x.titulo)).toEqual(['B']);
+  });
+
+  it('combina filtro de tribunal com ordenação por antigos', () => {
+    const r = filtrarOrdenarResultadosJuris(lista, { tribunal: 'TJRJ', ordem: 'antigos' });
+    expect(r.map((x) => x.titulo)).toEqual(['A', 'C']);
+  });
+
+  it('não muta a lista original', () => {
+    const copia = lista.slice();
+    filtrarOrdenarResultadosJuris(lista, { ordem: 'antigos' });
+    expect(lista).toEqual(copia);
+  });
+
+  it('entrada não-array devolve lista vazia', () => {
+    expect(filtrarOrdenarResultadosJuris(null)).toEqual([]);
+    expect(filtrarOrdenarResultadosJuris(undefined)).toEqual([]);
   });
 });

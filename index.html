@@ -361,6 +361,21 @@
                     <button type="button" class="btn secondary" data-juris-portal-aba="lexml">LexML</button>
                     <button type="button" class="btn secondary" data-juris-portal-aba="jusbrasil">Jusbrasil</button>
                   </div>
+                  <div id="jurisAbaFiltros" class="juris-filtros" style="display:none;">
+                    <label class="juris-filtro">Tribunal
+                      <select id="jrf_tribunal" class="select"><option value="">Todos</option></select>
+                    </label>
+                    <label class="juris-filtro">Órgão julgador
+                      <select id="jrf_orgao" class="select"><option value="">Todos</option></select>
+                    </label>
+                    <label class="juris-filtro">Ordenar
+                      <select id="jrf_ordem" class="select">
+                        <option value="recentes" selected>Mais recentes</option>
+                        <option value="antigos">Mais antigos</option>
+                        <option value="tribunal">Tribunal (A–Z)</option>
+                      </select>
+                    </label>
+                  </div>
                   <div id="jurisAbaResultados" class="juris-resultados juris-aba-resultados"></div>
                 </section>
 

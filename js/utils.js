@@ -268,6 +268,21 @@ function expandirConsultaJuris(texto) {
   return [...grupos, ...soltas].join(' ');
 }
 
+// Filtra e ordena a lista de resultados de jurisprudência já buscada (client-side,
+// sobre o que veio da API). Filtros por tribunal e órgão julgador; ordenação por
+// data (recentes/antigos) ou por tribunal. Pura e testável.
+function filtrarOrdenarResultadosJuris(lista, opcoes = {}) {
+  const { tribunal = '', orgao = '', ordem = 'recentes' } = opcoes;
+  let out = Array.isArray(lista) ? lista.slice() : [];
+  if (tribunal) out = out.filter((r) => (r.tribunal || '') === tribunal);
+  if (orgao) out = out.filter((r) => (r.orgao || '') === orgao);
+  const porData = (a, b, sinal) => sinal * String(a.data || '').localeCompare(String(b.data || ''));
+  if (ordem === 'antigos') out.sort((a, b) => porData(a, b, 1));
+  else if (ordem === 'tribunal') out.sort((a, b) => String(a.tribunal || '').localeCompare(String(b.tribunal || '')) || porData(a, b, -1));
+  else out.sort((a, b) => porData(a, b, -1)); // recentes (padrão)
+  return out;
+}
+
 // Exporta para ambientes de teste (Node/Vitest). No navegador `module` não
 // existe, então este bloco é ignorado e NÃO afeta o carregamento via <script>.
 if (typeof module !== 'undefined' && module.exports) {
@@ -275,7 +290,7 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
     base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
-    normalizarConsultaJuris, expandirConsultaJuris,
+    normalizarConsultaJuris, expandirConsultaJuris, filtrarOrdenarResultadosJuris,
     VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,
   };
 }

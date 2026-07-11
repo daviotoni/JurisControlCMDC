@@ -1011,30 +1011,64 @@ document.addEventListener('DOMContentLoaded', () => {
   // Mesma busca do painel do parecer, porém em tela cheia (não fica escondida no
   // editor). Aqui os resultados podem ser abertos na fonte ou ter a citação
   // copiada; a inserção direta no parecer continua no botão do editor.
-  let JURIS_ABA_ULTIMOS = [];
+  const JURIS_ABA_PAGINA = 15;
+  let JURIS_ABA_ULTIMOS = [];   // lista completa da última busca
+  let JURIS_ABA_VISTA = [];     // lista após filtro/ordenação (a que está na tela)
+  let jurisAbaVisiveis = JURIS_ABA_PAGINA; // paginação incremental ("carregar mais")
   let jurisAbaInit = false;
+
+  // Preenche um <select> de filtro com os valores distintos presentes nos resultados.
+  function preencherFiltroJuris(sel, valores) {
+      if (!sel) return;
+      const distintos = [...new Set(valores.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      const atual = sel.value;
+      sel.innerHTML = '<option value="">Todos</option>' + distintos.map((v) => `<option value="${sanitizeHTML(v)}">${sanitizeHTML(v)}</option>`).join('');
+      sel.value = distintos.includes(atual) ? atual : '';
+  }
 
   function renderJurisAbaResultados(resultados) {
       const alvo = $('#jurisAbaResultados'); if (!alvo) return;
-      JURIS_ABA_ULTIMOS = resultados;
-      if (!resultados.length) {
+      JURIS_ABA_ULTIMOS = resultados || [];
+      jurisAbaVisiveis = JURIS_ABA_PAGINA;
+      const filtros = $('#jurisAbaFiltros');
+      if (!JURIS_ABA_ULTIMOS.length) {
+          if (filtros) filtros.style.display = 'none';
           alvo.innerHTML = '<div class="list-msg">Nenhum resultado encontrado. Refine o tema ou use os portais oficiais acima.</div>';
           return;
       }
-      alvo.innerHTML = jurisContagemHtml(resultados.length);
-      resultados.forEach((r, i) => {
-          const item = document.createElement('div');
-          item.className = 'juris-res-item';
-          item.innerHTML = `
+      preencherFiltroJuris($('#jrf_tribunal'), JURIS_ABA_ULTIMOS.map((r) => r.tribunal));
+      preencherFiltroJuris($('#jrf_orgao'), JURIS_ABA_ULTIMOS.map((r) => r.orgao));
+      if (filtros) filtros.style.display = '';
+      pintarAbaResultados();
+  }
+
+  // Aplica filtros/ordenação + paginação incremental e desenha a lista.
+  function pintarAbaResultados() {
+      const alvo = $('#jurisAbaResultados'); if (!alvo) return;
+      JURIS_ABA_VISTA = filtrarOrdenarResultadosJuris(JURIS_ABA_ULTIMOS, {
+          tribunal: $('#jrf_tribunal')?.value || '',
+          orgao: $('#jrf_orgao')?.value || '',
+          ordem: $('#jrf_ordem')?.value || 'recentes',
+      });
+      const total = JURIS_ABA_VISTA.length;
+      if (!total) { alvo.innerHTML = '<div class="list-msg">Nenhum resultado com esses filtros.</div>'; return; }
+      const cabecalho = total === JURIS_ABA_ULTIMOS.length
+          ? jurisContagemHtml(total)
+          : `<div class="juris-res-count">${total} de ${JURIS_ABA_ULTIMOS.length} resultados (filtrado)</div>`;
+      const itens = JURIS_ABA_VISTA.slice(0, jurisAbaVisiveis).map((r, i) => `
+          <div class="juris-res-item">
               <div class="juris-res-titulo">${sanitizeHTML(r.titulo || '')}</div>
               <div class="juris-res-meta">${sanitizeHTML([r.tribunal, r.orgao, r.relator, r.data].filter(Boolean).join(' · '))}</div>
               ${jurisEmentaHtml(r.ementa)}
               <div class="juris-res-acoes">
                   <button type="button" class="btn secondary" data-juris-copiar="${i}">Copiar citação</button>
                   ${r.url ? `<a class="btn secondary" href="${sanitizeHTML(r.url)}" target="_blank" rel="noopener">Abrir fonte ↗</a>` : ''}
-              </div>`;
-          alvo.appendChild(item);
-      });
+              </div>
+          </div>`).join('');
+      const mais = total > jurisAbaVisiveis
+          ? `<button type="button" class="btn secondary juris-carregar-mais" data-juris-mais>Carregar mais (${total - jurisAbaVisiveis} restantes)</button>`
+          : '';
+      alvo.innerHTML = cabecalho + itens + mais;
   }
 
   async function buscarJurisNaAba() {
@@ -1065,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function copiarCitacaoJuris(i) {
-      const r = JURIS_ABA_ULTIMOS[i]; if (!r) return;
+      const r = JURIS_ABA_VISTA[i]; if (!r) return;
       const texto = formatarCitacaoDeResultado(r);
       if (!texto) { showToast('Sem dados suficientes para montar a citação.', 'info'); return; }
       try {
@@ -1088,10 +1122,17 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!q) { showToast('Digite o tema da pesquisa.', 'danger'); $('#jr_tema_aba')?.focus(); return; }
           window.open(JURIS_PORTAIS[b.dataset.jurisPortalAba](q), '_blank', 'noopener');
       });
+      // Filtros e ordenação: mudar reinicia a paginação e redesenha.
+      ['#jrf_tribunal', '#jrf_orgao', '#jrf_ordem'].forEach((sel) => {
+          const el = $(sel);
+          if (el) el.onchange = () => { jurisAbaVisiveis = JURIS_ABA_PAGINA; pintarAbaResultados(); };
+      });
       const alvo = $('#jurisAbaResultados');
       if (alvo) alvo.onclick = (e) => {
           const toggle = e.target.closest('[data-juris-toggle]');
           if (toggle) { alternarEmentaJuris(toggle); return; }
+          const mais = e.target.closest('[data-juris-mais]');
+          if (mais) { jurisAbaVisiveis += JURIS_ABA_PAGINA; pintarAbaResultados(); return; }
           const copiar = e.target.closest('[data-juris-copiar]');
           if (copiar) copiarCitacaoJuris(Number(copiar.dataset.jurisCopiar));
       };
