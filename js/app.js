@@ -1780,7 +1780,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(key==='leis') renderLeis();
     if(key==='juris') { initJurisAba(); $('#jr_tema_aba')?.focus(); }
-    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); }
+    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); renderGroqTokenCard(); }
   }
 
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
@@ -3686,6 +3686,47 @@ ${corpo}
       showToast('Chave salva! O Assistente IA já pode ser usado (após o deploy da função).');
   }
 
+  // ===== Cartão da chave do Groq — IA de reserva (Configurações, admin) =====
+  // A chave fica em segredos/groq (admin-only nas rules); a Cloud Function
+  // `assistente` a lê via Admin SDK e usa o Groq quando o Gemini fica sem cota.
+  async function renderGroqTokenCard() {
+      const statusEl = $('#groqTokenStatus'); if (!statusEl) return;
+      if (!isAdminSession()) return;
+      try {
+          const doc = await dbHelper.get('segredos', 'groq');
+          const chave = doc && doc.token ? String(doc.token) : '';
+          statusEl.textContent = chave
+              ? `✅ Reserva configurada (termina em …${chave.slice(-4)}). Quando o Gemini atingir o limite, o assistente usa o Groq automaticamente. Cole uma nova para substituir.`
+              : 'Nenhuma reserva configurada — quando o Gemini atingir o limite, o assistente fica indisponível até a cota voltar.';
+      } catch (e) {
+          console.warn('Sem acesso à chave do Groq:', e);
+          statusEl.textContent = 'Não foi possível verificar a chave (recurso de administrador).';
+      }
+  }
+
+  async function salvarGroqToken() {
+      const input = $('#groqToken'); if (!input) return;
+      const chave = input.value.trim();
+      // A chave do Groq começa com "gsk_". Só barra colagens obviamente
+      // incompletas; a validação real é feita pela função ao chamar a API.
+      if (!chave.startsWith('gsk_') || chave.length < 20) {
+          showToast('Chave inválida — a chave do Groq começa com "gsk_". Copie-a de console.groq.com/keys.', 'danger');
+          input.focus();
+          return;
+      }
+      try {
+          await dbHelper.put('segredos', { id: 'groq', token: chave, atualizadoEm: new Date().toISOString() });
+      } catch (e) {
+          console.error('Erro ao salvar chave do Groq:', e);
+          showToast('Sem permissão para salvar a chave (recurso de administrador).', 'danger');
+          return;
+      }
+      input.value = '';
+      await logAuditoria('integracoes', 'editado', 'Chave da API do Groq (reserva)');
+      renderGroqTokenCard();
+      showToast('Reserva salva! Quando o Gemini atingir o limite, o assistente usa o Groq automaticamente (após o deploy da função).');
+  }
+
   async function renderAuditoria() {
       const listEl = $('#audList'); if (!listEl) return;
       if (!isAdminSession()) return; // o cartão fica oculto para não-admins
@@ -4307,6 +4348,8 @@ ${corpo}
     if (btnJurisaiTk) btnJurisaiTk.onclick = salvarJurisaiToken;
     const btnGeminiTk = $('#btnSalvarGeminiToken');
     if (btnGeminiTk) btnGeminiTk.onclick = salvarGeminiToken;
+    const btnGroqTk = $('#btnSalvarGroqToken');
+    if (btnGroqTk) btnGroqTk.onclick = salvarGroqToken;
 
     setupEnhancedNav();
 
