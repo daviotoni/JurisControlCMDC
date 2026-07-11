@@ -240,8 +240,158 @@ async function chamarGemini(sistema, prompt) {
   return texto;
 }
 
+// ----- Modo COPILOTO: o assistente enxerga o parecer e devolve EDIÇÕES -------
+// O front envia o texto atual do parecer (contexto) e o histórico da conversa;
+// o Gemini pode chamar a ferramenta buscar_jurisprudencia (Jurisprudências.ai,
+// com o token já configurado) e responde num JSON com { mensagem, edicoes[] }.
+// As edições são aplicadas pelo front na seção certa do documento.
+const IA_MAX_DOC = 15000; // trava do tamanho do documento enviado como contexto
+
+const IA_SISTEMA_COPILOTO =
+  'Você é o copiloto de redação da Procuradoria-Geral da Câmara Municipal de ' +
+  'Duque de Caxias (RJ), acoplado ao editor de pareceres jurídicos. Você recebe ' +
+  'o texto ATUAL do parecer (com os títulos das seções) e o pedido do procurador, ' +
+  'e responde SEMPRE com um único JSON válido, sem cercas de código, no formato:\n' +
+  '{"mensagem": "resposta curta ao procurador",\n' +
+  ' "edicoes": [{"acao": "substituir_secao"|"inserir_na_secao"|"definir_ementa"|"inserir_final",\n' +
+  '              "secao": "título EXATO da seção alvo (quando aplicável)",\n' +
+  '              "conteudo": "texto a inserir"}]}\n' +
+  'REGRAS: (1) "secao" deve copiar exatamente um dos títulos listados no contexto. ' +
+  '(2) Use "substituir_secao" para reescrever o corpo de uma seção; "inserir_na_secao" ' +
+  'para acrescentar ao final dela; "definir_ementa" (sem "secao") para propor a ementa ' +
+  'em CAIXA ALTA; "inserir_final" para texto sem seção certa. (3) Se o pedido for só ' +
+  'uma pergunta, devolva "edicoes": [] e responda em "mensagem". (4) O "conteudo" é ' +
+  'prosa jurídica formal pronta para o documento — sem meta-comentários, sem se ' +
+  'rotular como modelo, sem placeholders além de "[...]" quando faltar dado essencial. ' +
+  'Pode usar **negrito** e listas simples. (5) NUNCA invente jurisprudência, súmulas ou ' +
+  'números de processo: quando precisar de julgados reais, chame a ferramenta ' +
+  'buscar_jurisprudencia e cite apenas o que ela retornar (tribunal, número, relator, ' +
+  'data). Se a busca falhar ou nada for encontrado, diga isso em "mensagem" e NÃO cite ' +
+  'julgados. (6) Não altere o que o procurador não pediu. A decisão final é dele.';
+
+const IA_FERRAMENTAS = [{
+  functionDeclarations: [{
+    name: 'buscar_jurisprudencia',
+    description: 'Busca decisões judiciais reais no acervo do Jurisprudências.ai. Use SEMPRE que precisar citar jurisprudência. Retorna título, tribunal, número, relator, órgão, data e ementa de cada decisão.',
+    parameters: {
+      type: 'object',
+      properties: {
+        termos: { type: 'string', description: 'Termos de busca (ex.: "prorrogação contrato serviço contínuo art. 107")' },
+        tribunal: { type: 'string', description: 'Sigla do tribunal em minúsculas: tjrj (padrão), stj, stf, tjsp, tjmg, tjrs, tjpr, tjsc, tjce, tjgo, tjma, tjmt, trf3, trf4, tst ou carf' },
+      },
+      required: ['termos'],
+    },
+  }],
+}];
+
+// Extrai o primeiro objeto JSON de um texto (tolerante a cercas ```json ... ```).
+function extrairJsonDaResposta(texto) {
+  const limpo = String(texto).replace(/```json/gi, '```').replace(/```/g, '').trim();
+  try { return JSON.parse(limpo); } catch (e) { /* tenta pelo recorte abaixo */ }
+  const ini = limpo.indexOf('{'), fim = limpo.lastIndexOf('}');
+  if (ini >= 0 && fim > ini) {
+    try { return JSON.parse(limpo.slice(ini, fim + 1)); } catch (e) { /* cai no fallback */ }
+  }
+  return null;
+}
+
+// Executa a ferramenta pedida pelo modelo. Nunca lança: devolve { erro } para o
+// modelo poder se explicar ao usuário (ex.: token não configurado, cota do dia).
+async function executarFerramentaIA(nome, args, fontes) {
+  if (nome !== 'buscar_jurisprudencia') return { erro: `Ferramenta desconhecida: ${nome}` };
+  const termos = String((args && args.termos) || '').slice(0, 200);
+  let tribunal = String((args && args.tribunal) || 'tjrj').toLowerCase();
+  if (!TRIBUNAIS_JURISAI.has(tribunal)) tribunal = 'tjrj';
+  if (!termos) return { erro: 'Informe os termos da busca.' };
+  try {
+    const resultados = (await buscarJurisai(termos, tribunal)).slice(0, 5);
+    resultados.forEach(r => fontes.push(r));
+    if (!resultados.length) return { resultados: [], aviso: 'Nenhuma decisão encontrada para esses termos.' };
+    return { resultados };
+  } catch (e) {
+    console.warn('buscar_jurisprudencia falhou:', e.message);
+    return { erro: `A busca de jurisprudência falhou: ${e.message}` };
+  }
+}
+
+// Chamada bruta ao generateContent (reaproveitada pelo modo simples e pelo copiloto).
+async function geminiGenerate(chave, corpo) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODELO}:generateContent?key=${encodeURIComponent(chave)}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo),
+    signal: AbortSignal.timeout(50000),
+  });
+  if (!resp.ok) {
+    const errJson = await resp.json().catch(() => ({}));
+    const detalhe = (errJson.error && errJson.error.message) || `HTTP ${resp.status}`;
+    if (resp.status === 429) throw erroCliente(429, 'Limite de uso gratuito do Gemini atingido por ora. Tente novamente em alguns minutos.');
+    if (resp.status === 400 || resp.status === 403) throw erroCliente(424, `O Gemini recusou a requisição: ${detalhe}`);
+    throw erroCliente(502, `O Gemini respondeu ${resp.status}: ${detalhe}`);
+  }
+  const dados = await resp.json();
+  const cand = dados.candidates && dados.candidates[0];
+  if (!cand || cand.finishReason === 'SAFETY' || cand.finishReason === 'BLOCKLIST') {
+    throw erroCliente(422, 'A resposta foi bloqueada pelos filtros de segurança do Gemini. Reformule o pedido.');
+  }
+  return cand;
+}
+
+// Loop do copiloto: envia contexto + conversa; se o modelo pedir a ferramenta,
+// executa e devolve o resultado; no máximo 3 rodadas de ferramenta.
+async function chamarCopiloto(contexto, historico, prompt) {
+  const chave = await lerChaveGemini();
+  const fontes = [];
+
+  const secoes = (contexto.secoes || []).map(s => `- ${s}`).join('\n') || '(nenhuma seção identificada)';
+  const contextoTxt =
+    `CONTEXTO DO DOCUMENTO\n` +
+    `Processo: ${contexto.processoNum || '(sem número)'}\n` +
+    `Ementa atual: ${contexto.ementa || '(vazia)'}\n` +
+    `Seções do parecer:\n${secoes}\n\n` +
+    `TEXTO ATUAL DO PARECER:\n"""\n${String(contexto.texto || '').slice(0, IA_MAX_DOC)}\n"""`;
+
+  const contents = [];
+  (historico || []).slice(-8).forEach(m => {
+    const papel = m.papel === 'ia' ? 'model' : 'user';
+    const texto = String(m.texto || '').slice(0, 4000);
+    if (texto) contents.push({ role: papel, parts: [{ text: texto }] });
+  });
+  contents.push({ role: 'user', parts: [{ text: `${contextoTxt}\n\nPEDIDO DO PROCURADOR:\n${prompt}` }] });
+
+  let cand = null;
+  for (let rodada = 0; rodada < 4; rodada++) {
+    cand = await geminiGenerate(chave, {
+      systemInstruction: { parts: [{ text: IA_SISTEMA_COPILOTO }] },
+      contents,
+      tools: IA_FERRAMENTAS,
+      generationConfig: { maxOutputTokens: IA_MAX_SAIDA_TOKENS, temperature: 0.3 },
+    });
+    const parts = (cand.content && cand.content.parts) || [];
+    const chamada = parts.find(p => p.functionCall);
+    if (!chamada || rodada === 3) break;
+    contents.push({ role: 'model', parts });
+    const resultado = await executarFerramentaIA(chamada.functionCall.name, chamada.functionCall.args, fontes);
+    contents.push({ role: 'user', parts: [{ functionResponse: { name: chamada.functionCall.name, response: resultado } }] });
+  }
+
+  const texto = ((cand.content && cand.content.parts) || []).map(p => p.text || '').join('').trim();
+  const json = extrairJsonDaResposta(texto);
+  if (json && typeof json.mensagem === 'string') {
+    const edicoes = Array.isArray(json.edicoes) ? json.edicoes.filter(e =>
+      e && typeof e.conteudo === 'string' && e.conteudo.trim() &&
+      ['substituir_secao', 'inserir_na_secao', 'definir_ementa', 'inserir_final'].includes(e.acao)
+    ).slice(0, 8) : [];
+    return { mensagem: json.mensagem, edicoes, fontes };
+  }
+  // Fallback: o modelo não devolveu o JSON esperado — trata tudo como resposta.
+  if (!texto) throw erroCliente(422, 'A IA retornou resposta vazia. Reformule o pedido e tente de novo.');
+  return { mensagem: texto, edicoes: [], fontes };
+}
+
 exports.assistente = onRequest(
-  { region: 'us-central1', maxInstances: 2, timeoutSeconds: 60, memory: '256MiB' },
+  { region: 'us-central1', maxInstances: 2, timeoutSeconds: 120, memory: '256MiB' },
   async (req, res) => {
     aplicarCors(req, res);
     if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
@@ -258,7 +408,6 @@ exports.assistente = onRequest(
 
     const corpo = req.body || {};
     const prompt = String(corpo.prompt || '').trim();
-    const sistema = String(corpo.sistema || '').trim() || IA_SISTEMA_PADRAO;
     if (!prompt) { res.status(400).json({ erro: 'Informe o parâmetro prompt (o pedido para a IA).' }); return; }
     if (prompt.length > IA_MAX_ENTRADA) {
       res.status(413).json({ erro: `Pedido muito longo (máx. ${IA_MAX_ENTRADA} caracteres). Resuma o texto e tente de novo.` });
@@ -266,6 +415,15 @@ exports.assistente = onRequest(
     }
 
     try {
+      // Modo copiloto (novo): o front envia o contexto do documento e recebe
+      // { mensagem, edicoes[], fontes[] }. Sem contexto, mantém o modo simples
+      // (retrocompatível): { texto }.
+      if (corpo.contexto && typeof corpo.contexto === 'object') {
+        const resposta = await chamarCopiloto(corpo.contexto, corpo.historico, prompt);
+        res.status(200).json(resposta);
+        return;
+      }
+      const sistema = String(corpo.sistema || '').trim() || IA_SISTEMA_PADRAO;
       const texto = await chamarGemini(sistema, prompt);
       res.status(200).json({ texto });
     } catch (e) {

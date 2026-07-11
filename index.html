@@ -17,7 +17,7 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=636ed58a85">
+        <link rel="stylesheet" href="style.css?v=c7ab7e7173">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -588,6 +588,7 @@
                 <h3 id="m_parecer_t">Parecer Jurídico</h3>
                 <span id="m_parecer_status" class="status"></span>
             </div>
+            <div class="parecer-main">
             <div class="dialog-body parecer-body">
                 <div id="parecerRevisorObs" class="parecer-revisor-obs" style="display:none;"></div>
                 <div class="form-group parecer-materia-picker" id="parecerMateriaPicker">
@@ -620,6 +621,25 @@
                 <div id="parecerEditor" class="parecer-editor"></div>
                 <div id="parecerChecklist" class="parecer-checklist"></div>
                 <div class="parecer-timbre-rodape">Página 1</div>
+            </div>
+            <aside id="iaPanel" class="ia-panel" style="display:none;">
+                <div class="ia-panel-header">
+                    <span>✨ Assistente IA</span>
+                    <button type="button" class="icon-btn" id="btnFecharIaPanel" title="Fechar painel" aria-label="Fechar painel">✕</button>
+                </div>
+                <div class="ia-aviso ia-aviso-panel">⚠️ O texto do parecer é enviado ao Gemini (modo gratuito — o Google pode usar o conteúdo para treinar). <strong>Evite dados sigilosos/pessoais.</strong> As alterações da IA podem ser desfeitas com Ctrl+Z.</div>
+                <div id="iaChat" class="ia-chat"></div>
+                <div class="ia-chips">
+                    <button type="button" class="btn secondary" data-ia-chip="Redija a seção II. DA ANÁLISE JURÍDICA com os fundamentos aplicáveis ao caso.">Redigir análise</button>
+                    <button type="button" class="btn secondary" data-ia-chip="Sugira a ementa deste parecer.">Sugerir ementa</button>
+                    <button type="button" class="btn secondary" data-ia-chip="Busque jurisprudência aplicável ao tema deste parecer e insira as citações na seção adequada.">Buscar jurisprudência</button>
+                    <button type="button" class="btn secondary" data-ia-chip="Revise a redação do parecer inteiro, melhorando clareza e técnica jurídica, sem mudar o sentido.">Revisar redação</button>
+                </div>
+                <div class="ia-input-row">
+                    <textarea id="ia_prompt" rows="2" placeholder="Peça algo… (ex.: complete a conclusão opinando pela viabilidade)"></textarea>
+                    <button type="button" class="btn primary" id="btnGerarIA" title="Enviar">➤</button>
+                </div>
+            </aside>
             </div>
             <div class="dialog-footer">
                 <div style="margin-right:auto; display:flex; gap:0.5rem; flex-wrap:wrap;">
@@ -681,34 +701,6 @@
             </div>
         </div>
     </div>
-    <div id="m_ia" class="modal">
-        <div class="dialog" style="max-width: 680px;">
-            <div class="dialog-header"><h3>✨ Assistente de IA</h3></div>
-            <div class="dialog-body">
-                <div class="ia-aviso">⚠️ <strong>Não cole dados sigilosos ou pessoais de processos</strong> (nomes, CPF, endereços). Este assistente usa o modo gratuito do Gemini — use-o para temas, redação e revisão de texto. A resposta é uma sugestão; a responsabilidade é sua.</div>
-                <div class="ia-chips">
-                    <button type="button" class="btn secondary" data-ia-modelo="estruturar">Estruturar parecer sobre…</button>
-                    <button type="button" class="btn secondary" data-ia-modelo="fundamentos">Fundamentos legais de…</button>
-                    <button type="button" class="btn secondary" data-ia-modelo="revisar">Melhorar redação</button>
-                    <button type="button" class="btn secondary" data-ia-modelo="ementa">Sugerir ementa</button>
-                </div>
-                <div class="form-group">
-                    <label for="ia_prompt">Seu pedido</label>
-                    <textarea id="ia_prompt" class="input" rows="4" placeholder="Ex.: Estruture um parecer sobre prorrogação de contrato de serviço contínuo."></textarea>
-                </div>
-                <button type="button" class="btn primary" id="btnGerarIA">Gerar</button>
-                <div class="form-group" style="margin-top:0.75rem;">
-                    <label>Resposta da IA</label>
-                    <div id="ia_resultado" class="ia-resultado">A resposta aparecerá aqui…</div>
-                </div>
-            </div>
-            <div class="dialog-footer">
-                <button type="button" class="btn secondary" data-close-ia>Fechar</button>
-                <button type="button" class="btn secondary" id="btnCopiarIA">Copiar</button>
-                <button type="button" class="btn primary" id="btnInserirIA">Inserir no parecer</button>
-            </div>
-        </div>
-    </div>
     <div id="m_emissor" class="modal">
         <div class="dialog" style="max-width: 500px;">
             <div class="dialog-header"><h3 id="m_emissor_t"></h3></div>
@@ -763,7 +755,7 @@
     <script src="js/utils.js?v=7d58b23e0d"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
     <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
-    <script src="js/app.js?v=e35bd4e004"></script>
+    <script src="js/app.js?v=e238ea4c10"></script>
 
 </body>
 </html>
