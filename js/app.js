@@ -565,22 +565,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // matéria costuma exigir, e um checklist de pontos a verificar exibido ao
   // lado do editor. São modelos INTERNOS (definidos em código), independentes
   // dos .docx enviados pelo usuário — não têm custo e padronizam a redação.
-  function parecerHeaderOps(processo) {
-      const numTxt = (processo && processo.num) ? processo.num : '';
-      return [
-          { insert: 'PARECER JURÍDICO' },
-          { insert: '\n', attributes: { header: 2, align: 'center' } },
-          { insert: `Processo n. ${numTxt}` },
-          { insert: '\n', attributes: { align: 'center' } },
-          { insert: '\n' },
-      ];
-  }
   // Monta as seções (títulos em negrito) a partir de uma lista de rótulos, com
-  // uma linha em branco entre elas — mesmo formato do modelo genérico original.
+  // uma linha em branco entre elas. O título "PARECER JURÍDICO", o número e o
+  // "Processo n." NÃO fazem parte do conteúdo: são o cabeçalho fixo do documento
+  // (renderizado pelo modal e pelas exportações), no padrão do modelo oficial
+  // da Procuradoria.
   function parecerSecoesOps(titulos) {
       const ops = [];
       titulos.forEach(t => { ops.push({ insert: t, attributes: { bold: true } }, { insert: '\n' }, { insert: '\n' }); });
       return ops;
+  }
+
+  // Fecho padrão do parecer (segue o modelo oficial): "É o parecer, s.m.j.",
+  // local/data e bloco de assinatura centralizado.
+  function parecerFechoOps() {
+      return [
+          { insert: 'É o parecer, s.m.j.' }, { insert: '\n' }, { insert: '\n' },
+          { insert: 'Duque de Caxias, [dia] de [mês] de [ano].' }, { insert: '\n' }, { insert: '\n' }, { insert: '\n' },
+          { insert: '[Nome do(a) Procurador(a)]' }, { insert: '\n', attributes: { align: 'center' } },
+          { insert: '[Cargo]' }, { insert: '\n', attributes: { align: 'center' } },
+          { insert: 'Matr. [matrícula]' }, { insert: '\n', attributes: { align: 'center' } },
+      ];
   }
 
   const PARECER_TEMPLATES = [
@@ -588,6 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
           id: 'generico', nome: 'Parecer genérico',
           descricao: 'Estrutura padrão: Relatório, Análise Jurídica e Conclusão.',
           secoes: ['I. RELATÓRIO', 'II. DA ANÁLISE JURÍDICA', 'III. CONCLUSÃO'],
+          fecho: true,
           checklist: [
               'Delimitar com clareza o objeto do processo/consulta',
               'Indicar a legislação e os atos normativos aplicáveis',
@@ -598,7 +604,8 @@ document.addEventListener('DOMContentLoaded', () => {
       {
           id: 'licitacao', nome: 'Licitação e contratação (Lei 14.133/2021)',
           descricao: 'Análise da fase interna/edital ou da contratação direta.',
-          secoes: ['I. RELATÓRIO', 'II. DA LEGISLAÇÃO APLICÁVEL', 'III. DA ANÁLISE JURÍDICA', 'IV. CONCLUSÃO'],
+          secoes: ['I. RELATÓRIO', 'II. DA ANÁLISE JURÍDICA', 'II.1. Regime jurídico aplicável e natureza do objeto', 'II.2. Fundamento legal e requisitos da contratação', 'II.3. Instrução do processo e aderência aos requisitos legais', 'II.4. Dotação orçamentária e compatibilidade financeira', 'III. CONCLUSÃO'],
+          fecho: true,
           checklist: [
               'Modalidade/procedimento e fundamento legal (Lei 14.133/2021)',
               'Existência de estudo técnico preliminar, termo de referência e pesquisa de preços',
@@ -611,7 +618,8 @@ document.addEventListener('DOMContentLoaded', () => {
       {
           id: 'aditivo', nome: 'Aditivo / prorrogação contratual',
           descricao: 'Alteração, prorrogação ou reajuste de contrato administrativo.',
-          secoes: ['I. RELATÓRIO', 'II. DA POSSIBILIDADE JURÍDICA DA ALTERAÇÃO', 'III. DA ANÁLISE', 'IV. CONCLUSÃO'],
+          secoes: ['I. RELATÓRIO', 'II. DA ANÁLISE JURÍDICA', 'II.1. Regime jurídico aplicável e natureza do objeto', 'II.2. Fundamento legal da prorrogação e requisitos do art. 107 da Lei nº 14.133/2021', 'II.3. Instrução do processo e aderência aos requisitos legais no caso concreto', 'II.4. Dotação orçamentária e compatibilidade financeira', 'III. CONCLUSÃO'],
+          fecho: true,
           checklist: [
               'Vigência atual do contrato e tempestividade do pedido',
               'Fundamento da alteração (arts. 124 a 136 da Lei 14.133/2021)',
@@ -624,7 +632,8 @@ document.addEventListener('DOMContentLoaded', () => {
       {
           id: 'pessoal', nome: 'Pessoal e servidores',
           descricao: 'Nomeação, cessão, licença, vantagens e regime dos servidores.',
-          secoes: ['I. RELATÓRIO', 'II. DO ENQUADRAMENTO LEGAL', 'III. DA ANÁLISE JURÍDICA', 'IV. CONCLUSÃO'],
+          secoes: ['I. RELATÓRIO', 'II. DA ANÁLISE JURÍDICA', 'II.1. Do enquadramento legal', 'II.2. Da análise do caso concreto', 'III. CONCLUSÃO'],
+          fecho: true,
           checklist: [
               'Fundamento no Estatuto dos Servidores e/ou na Lei Orgânica do Município',
               'Existência de cargo/vaga e previsão na lei de criação',
@@ -636,7 +645,8 @@ document.addEventListener('DOMContentLoaded', () => {
       {
           id: 'legislativo', nome: 'Projeto de lei / processo legislativo',
           descricao: 'Análise de constitucionalidade, competência e técnica legislativa.',
-          secoes: ['I. RELATÓRIO', 'II. DA CONSTITUCIONALIDADE E DA COMPETÊNCIA', 'III. DA TÉCNICA LEGISLATIVA', 'IV. CONCLUSÃO'],
+          secoes: ['I. RELATÓRIO', 'II. DA ANÁLISE JURÍDICA', 'II.1. Da constitucionalidade e da competência', 'II.2. Da técnica legislativa', 'III. CONCLUSÃO'],
+          fecho: true,
           checklist: [
               'Competência legislativa do Município (art. 30 da CF)',
               'Iniciativa correta da proposição (reserva de iniciativa)',
@@ -648,7 +658,8 @@ document.addEventListener('DOMContentLoaded', () => {
       {
           id: 'consulta', nome: 'Consulta jurídica',
           descricao: 'Resposta a consulta abstrata formulada por órgão ou autoridade.',
-          secoes: ['I. DA CONSULTA', 'II. DA ANÁLISE JURÍDICA', 'III. CONCLUSÃO'],
+          secoes: ['I. RELATÓRIO', 'II. DA ANÁLISE JURÍDICA', 'III. CONCLUSÃO'],
+          fecho: true,
           checklist: [
               'Delimitar objetivamente a dúvida jurídica formulada',
               'Identificar as normas e a jurisprudência aplicáveis',
@@ -660,20 +671,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const getParecerTemplate = (id) => PARECER_TEMPLATES.find(t => t.id === id) || PARECER_TEMPLATES[0];
 
-  function buildParecerDelta(templateId, processo) {
+  function buildParecerDelta(templateId) {
       const t = getParecerTemplate(templateId);
-      return { ops: [...parecerHeaderOps(processo), ...parecerSecoesOps(t.secoes)] };
+      return { ops: [...parecerSecoesOps(t.secoes), ...(t.fecho ? parecerFechoOps() : [])] };
   }
 
   // Mantido para compatibilidade: um parecer novo nasce com o modelo genérico.
-  function buildParecerSeedDelta(processo) { return buildParecerDelta('generico', processo); }
+  function buildParecerSeedDelta() { return buildParecerDelta('generico'); }
 
-  // Para exportação (PDF/Word): se o parecer já tem número, insere uma linha
-  // "Parecer nº NNN/AAAA" alinhada à direita no topo, sem alterar o Delta salvo.
-  function deltaParecerParaExport(pz) {
-      if (!pz || !pz.numero) return pz && pz.delta;
-      const ops = (pz.delta && pz.delta.ops) || [];
-      return { ops: [{ insert: `Parecer nº ${pz.numero}` }, { insert: '\n', attributes: { align: 'right' } }, ...ops] };
+  // Pareceres antigos guardam "PARECER JURÍDICO" e "Processo n. ..." dentro do
+  // próprio conteúdo (o formato novo renderiza isso como cabeçalho fixo). Este
+  // helper detecta e REMOVE essas duas linhas do Delta, para as exportações não
+  // duplicarem o cabeçalho. Se o padrão não bater, devolve o Delta intacto.
+  function separarTituloEmbutido(delta) {
+      const ops = (delta && delta.ops) || [];
+      const primeiro = ops[0] && typeof ops[0].insert === 'string' ? ops[0].insert.trim() : '';
+      if (!primeiro.startsWith('PARECER JURÍDICO')) return { delta, tinhaTitulo: false };
+      // Consome ops até fechar 2 linhas (título e "Processo n."), mais as linhas
+      // em branco imediatamente seguintes.
+      let linhas = 0, i = 0;
+      for (; i < ops.length && linhas < 2; i++) {
+          const ins = ops[i].insert;
+          if (typeof ins !== 'string') break;
+          linhas += (ins.match(/\n/g) || []).length;
+      }
+      // Se as 2 linhas não fecharem exatamente na fronteira de um op (conteúdo
+      // fora do padrão), não arrisca cortar texto: mantém o Delta como está.
+      if (linhas !== 2) return { delta, tinhaTitulo: false };
+      while (i < ops.length && typeof ops[i].insert === 'string' && ops[i].insert.replace(/\n/g, '') === '') i++;
+      return { delta: { ops: ops.slice(i) }, tinhaTitulo: true };
+  }
+
+  // O conteúdo do editor ainda pode ter o título embutido (pareceres antigos ou
+  // modelos .docx que o trazem) — decide se o cabeçalho fixo aparece na tela.
+  function editorTemTituloEmbutido() {
+      if (!parecerQuill) return false;
+      return parecerQuill.getText().trimStart().startsWith('PARECER JURÍDICO');
   }
 
   // Frases-lixo que o Word/Gemini injeta ao copiar de documentos com campos de
@@ -755,6 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const materiaPicker = $('#parecerMateriaPicker');
       if (materiaPicker) materiaPicker.style.display = editavel ? '' : 'none';
       if (parecerQuill) parecerQuill.enable(editavel);
+      atualizarParecerDocHeader();
   }
 
   // Popula o <select> de modelos disponíveis para carregar como base do parecer em edição.
@@ -777,6 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
           const delta = parecerQuill.clipboard.convert(result.value);
           parecerQuill.setContents(delta);
+          atualizarParecerDocHeader();
           showToast('Modelo carregado no editor.', 'success');
       } catch (e) {
           console.error('Erro ao carregar modelo no editor:', e);
@@ -814,9 +849,10 @@ document.addEventListener('DOMContentLoaded', () => {
           { title: 'Carregar modelo por matéria', confirmLabel: 'Carregar e substituir' }
       );
       if (!ok) return;
-      quill.setContents(buildParecerDelta(materiaId, currentParecerProcesso));
+      quill.setContents(buildParecerDelta(materiaId));
       if (currentParecerRecord) currentParecerRecord.materia = materiaId;
       renderParecerChecklist(materiaId);
+      atualizarParecerDocHeader();
       showToast('Modelo carregado no editor.', 'success');
   }
 
@@ -1273,6 +1309,23 @@ document.addEventListener('DOMContentLoaded', () => {
       catch (e) { console.warn('Clipboard indisponível:', e); showToast('Não foi possível copiar automaticamente.', 'danger'); }
   }
 
+  // Atualiza o cabeçalho fixo do documento na tela (título, nº do parecer e
+  // "Processo n."). Se o conteúdo do editor já traz o título embutido (pareceres
+  // antigos ou modelos .docx com cabeçalho próprio), o bloco fixo é ocultado
+  // para não duplicar.
+  function atualizarParecerDocHeader() {
+      const header = $('#parecerDocHeader');
+      if (!header) return;
+      const pz = currentParecerRecord, processo = currentParecerProcesso;
+      const numeroEl = $('#parecerDocNumero'), processoEl = $('#parecerDocProcesso');
+      if (numeroEl) {
+          numeroEl.textContent = pz && pz.numero ? `Parecer n. ${pz.numero}` : '';
+          numeroEl.style.display = pz && pz.numero ? '' : 'none';
+      }
+      if (processoEl) processoEl.textContent = `Processo n. ${(processo && processo.num) || (pz && pz.processoNum) || ''}`;
+      header.style.display = editorTemTituloEmbutido() ? 'none' : '';
+  }
+
   function openParecerModal(processo) {
       currentParecerProcesso = processo;
       const quill = ensureParecerQuill();
@@ -1286,7 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
               status: 'rascunho',
               materia: 'generico',
               ementa: '',
-              delta: buildParecerSeedDelta(processo),
+              delta: buildParecerSeedDelta(),
               textoBusca: '',
               numero: null, numeroSeq: null, numeroAno: null,
               criadoEm: new Date().toISOString(),
@@ -1308,6 +1361,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const materiaSelect = $('#pz_materia_select');
       if (materiaSelect) materiaSelect.value = materiaAtual;
       renderParecerChecklist(materiaAtual);
+      atualizarParecerDocHeader();
       $('#m_parecer_t').textContent = `Parecer Jurídico — Processo ${sanitizeHTML(processo.num || '')}`;
       mParecer.style.display = 'flex';
   }
@@ -2642,110 +2696,144 @@ document.addEventListener('DOMContentLoaded', () => {
   // número da página no rodapé. Chamada uma vez na criação do doc e de novo a cada doc.addPage() —
   // diferente de generateProcessPDF, aqui o cabeçalho repete em TODA página (pedido explícito).
   // Retorna o Y inicial de conteúdo útil abaixo do timbre.
-  function drawParecerTimbre(doc, pageNum) {
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const margin = 15;
-      let y = 12;
+  // ===== PDF oficial do parecer — layout do modelo da Procuradoria =====
+  // Medidas extraídas do modelo oficial (Garamond): margens esq. 30mm / dir.
+  // 27,5mm; corpo 14pt justificado com recuo de 1ª linha de 25mm; ementa em
+  // bloco recuado 30mm (negrito, 12pt); citações recuadas em 12pt; entrelinha
+  // 1,15; rodapé "N | Página" à direita.
+  const PDF_PARECER = {
+      left: 30, right: 27.5, topo: 14, fundo: 22,
+      corpo: 14, ementa: 12, citacao: 12, titulo: 18, timbre: 15,
+      recuoPrimeiraLinha: 25, entrelinha: 0.42,
+  };
 
-      const imgY = y - 4, imgH = 20;
-      doc.addImage(BRASAO_DUQUE_DE_CAXIAS_B64, 'PNG', margin, imgY, 16, imgH);
+  // Registra a EB Garamond (embutida em js/fonts-garamond.js, subset pt-BR) no
+  // documento; se o arquivo de fontes não carregou, cai para a serifada nativa.
+  function registrarFonteParecer(doc) {
+      if (typeof EBGARAMOND_B64 === 'undefined') return 'times';
+      try {
+          ['normal', 'bold', 'italic', 'bolditalic'].forEach(estilo => {
+              doc.addFileToVFS(`EBGaramond-${estilo}.ttf`, EBGARAMOND_B64[estilo]);
+              doc.addFont(`EBGaramond-${estilo}.ttf`, 'EBGaramond', estilo);
+          });
+          return 'EBGaramond';
+      } catch (e) {
+          console.warn('Fonte Garamond indisponível — usando Times:', e);
+          return 'times';
+      }
+  }
 
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 30, 30);
-      doc.text('ESTADO DO RIO DE JANEIRO', pageW / 2, y, { align: 'center' }); y += 5;
-      doc.text('CÂMARA MUNICIPAL DE DUQUE DE CAXIAS', pageW / 2, y, { align: 'center' }); y += 5;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-      doc.text('PROCURADORIA-GERAL', pageW / 2, y, { align: 'center' }); y += 3;
-
-      // A linha precisa ficar abaixo do brasão inteiro, não só do bloco de texto — o brasão
-      // (imgH=20mm) é mais alto que o texto do cabeçalho, então usar só "y" cortava a imagem.
-      const lineY = Math.max(y + 2, imgY + imgH + 2);
+  // Timbre do modelo: brasão à esquerda e texto ao lado (não centralizado).
+  function drawParecerTimbre(doc, fonte) {
+      const P = PDF_PARECER;
+      const y = P.topo;
+      const imgY = y - 2, imgH = 20, imgW = 16;
+      doc.addImage(BRASAO_DUQUE_DE_CAXIAS_B64, 'PNG', P.left, imgY, imgW, imgH);
+      const tx = P.left + imgW + 15;
+      doc.setTextColor(20, 20, 20);
+      doc.setFont(fonte, 'bold'); doc.setFontSize(P.timbre);
+      doc.text('ESTADO DO RIO DE JANEIRO', tx, y + 4);
+      doc.setFont(fonte, 'normal');
+      doc.text('CÂMARA MUNICIPAL DE DUQUE DE CAXIAS', tx, y + 10);
+      doc.text('PROCURADORIA-GERAL', tx, y + 16);
+      const lineY = imgY + imgH + 2;
       doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.4);
-      doc.line(margin, lineY, pageW - margin, lineY);
-
-      doc.setFontSize(8); doc.setTextColor(140, 140, 140);
-      doc.text(`Página ${pageNum}`, pageW - margin, pageH - 10, { align: 'right' });
-
+      doc.line(P.left, lineY, doc.internal.pageSize.getWidth() - P.right, lineY);
       return lineY + 8;
   }
 
-  // Cursor de escrita com quebra de página automática, chamando drawParecerTimbre() a cada
-  // nova página. Mesmo espírito do padrão `if (y > 250) { doc.addPage(); y = 20; }` já usado
-  // em generateProcessPDF, mas encapsulado e reaproveitável.
-  function createParecerPdfWriter(doc) {
-      const margin = 15;
+  function createParecerPdfWriter(doc, fonte) {
+      const P = PDF_PARECER;
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
-      const maxY = pageH - 20; // reserva espaço pro rodapé/numeração
-      let pageNum = 1;
-      let y = drawParecerTimbre(doc, pageNum);
+      const maxY = pageH - P.fundo;
+      let y = drawParecerTimbre(doc, fonte);
 
       return {
-          margin, pageW,
+          fonte,
+          leftX: P.left,
+          rightX: pageW - P.right,
+          pageW,
           get y() { return y; },
           set y(v) { y = v; },
           ensureSpace(neededHeight) {
               if (y + neededHeight > maxY) {
                   doc.addPage();
-                  pageNum++;
-                  y = drawParecerTimbre(doc, pageNum);
+                  y = drawParecerTimbre(doc, fonte);
+              }
+          },
+          // Carimba o rodapé "N | Página" em todas as páginas — chamado no fim,
+          // quando o total de páginas já é conhecido.
+          finalizar() {
+              const total = doc.getNumberOfPages();
+              for (let i = 1; i <= total; i++) {
+                  doc.setPage(i);
+                  doc.setFont(fonte, 'normal'); doc.setFontSize(10); doc.setTextColor(60, 60, 60);
+                  doc.text(`${i} | Página`, pageW - P.right, pageH - 12, { align: 'right' });
               }
           }
       };
   }
 
-  // Converte um Quill Delta ({ ops: [...] }) em texto desenhado no PDF, com qualidade
-  // de documento jurídico:
-  //  - JUSTIFICAÇÃO real (distribui os espaços para preencher a linha, como no Word),
-  //    exceto na última linha do parágrafo, em títulos e em linhas centradas/à direita;
-  //  - NEGRITO/ITÁLICO por trecho (rich-text de verdade — só a palavra formatada muda,
-  //    não a linha inteira);
-  //  - header(1-3), align (left/center/right/justify), list (bullet/ordered numerado que
-  //    reinicia quando a sequência quebra) e indent (recuo por nível);
-  //  - descarta parágrafos-lixo do Word ("Parte superior/inferior do formulário").
-  // Limitação aceita: 'underline' não é renderizado (jsPDF puro não sublinha texto);
-  // palavras isoladas mais largas que a coluna não são quebradas no meio (raro em texto).
-  function renderParecerDeltaToPdf(doc, writer, delta) {
+  // Converte um Quill Delta ({ ops: [...] }) em texto desenhado no PDF, com
+  // qualidade de documento jurídico e no layout do modelo oficial:
+  //  - JUSTIFICAÇÃO real (distribui os espaços para preencher a linha);
+  //  - RECUO DE PRIMEIRA LINHA de 25mm nos parágrafos comuns (inclusive nos
+  //    títulos de seção "I. RELATÓRIO" etc., como no modelo);
+  //  - NEGRITO/ITÁLICO por trecho; header(1-3), align, listas e indent;
+  //  - linhas recuadas (indent ≥ 1) viram CITAÇÃO em corpo menor (12pt);
+  //  - descarta parágrafos-lixo do Word.
+  // opts.baseSize troca o corpo (usado pela ementa); opts.semRecuo desliga o
+  // recuo de primeira linha.
+  // Limitação aceita: 'underline' não é renderizado (jsPDF puro não sublinha).
+  function renderParecerDeltaToPdf(doc, writer, delta, opts = {}) {
+      const P = PDF_PARECER;
+      const fonte = writer.fonte;
+      const baseSize = opts.baseSize || P.corpo;
       const ops = (delta && delta.ops) || [];
       let lineBuffer = [];
       let orderedListCounter = 0;
 
       const styleOf = (bold, italic) => (bold && italic) ? 'bolditalic' : bold ? 'bold' : italic ? 'italic' : 'normal';
-      const measure = (text, style, size) => { doc.setFont('helvetica', style); doc.setFontSize(size); return doc.getTextWidth(text); };
+      const measure = (text, style, size) => { doc.setFont(fonte, style); doc.setFontSize(size); return doc.getTextWidth(text); };
 
       function flushLine(lineAttrs) {
           const header = lineAttrs && lineAttrs.header;
-          const fontSize = header === 1 ? 15 : header === 2 ? 13 : header === 3 ? 12 : 11;
+          const listType = lineAttrs && lineAttrs.list;
+          const indentLevel = (lineAttrs && lineAttrs.indent) || 0;
+          const isListItem = !!listType;
+          const isCitacao = !isListItem && !header && indentLevel > 0;
+          const fontSize = header === 1 ? 18 : header === 2 ? 16 : header === 3 ? 14 : isCitacao ? P.citacao : baseSize;
+          const lineHeight = fontSize * P.entrelinha;
 
           // Parágrafo vazio (só \n): vira espaço vertical; no fim do delta, ignora.
           if (lineBuffer.length === 0) {
               if (!lineAttrs) return;
               orderedListCounter = 0;
-              writer.ensureSpace(fontSize * 0.5);
-              writer.y += fontSize * 0.5;
+              writer.ensureSpace(lineHeight * 0.6);
+              writer.y += lineHeight * 0.6;
               return;
           }
 
           const norm = lineBuffer.map(r => r.text).join('').replace(/\s+/g, ' ').trim();
           if (norm === '') { lineBuffer = []; return; }
-          // Descarta marcadores de formulário do Word que tenham sobrado no conteúdo salvo.
           if (WORD_ARTIFACT_RE.test(norm)) { lineBuffer = []; orderedListCounter = 0; return; }
 
-          const align = (lineAttrs && lineAttrs.align) || 'left';
-          const listType = lineAttrs && lineAttrs.list;
+          const align = (lineAttrs && lineAttrs.align) || 'justify';
           const headerBold = !!header;
           orderedListCounter = listType === 'ordered' ? orderedListCounter + 1 : 0;
-          const isListItem = !!listType;
           const prefix = listType === 'bullet' ? '•  ' : listType === 'ordered' ? `${orderedListCounter}.  ` : '';
-          const indentLevel = (lineAttrs && lineAttrs.indent) || 0;
-          const indent = (isListItem ? 6 : 0) + indentLevel * 6;
-          const leftX = writer.margin + indent;
-          const rightX = writer.pageW - writer.margin;
+          // Listas recuam 6mm/nível; citações (indent sem lista) recuam 25mm/nível,
+          // como no modelo oficial. opts.indentEsq desloca o bloco inteiro (ementa).
+          const indent = (opts.indentEsq || 0) + (isListItem ? 6 + indentLevel * 6 : indentLevel * 25);
+          const leftX = writer.leftX + indent;
+          const rightX = writer.rightX;
           const maxWidth = rightX - leftX;
+          // Recuo de primeira linha (padrão do modelo) só nos parágrafos comuns.
+          const recuo1 = (!opts.semRecuo && !isListItem && !header && indentLevel === 0 && align !== 'center' && align !== 'right')
+              ? P.recuoPrimeiraLinha : 0;
 
-          // 1) Monta "palavras" (arrays de segmentos estilizados). A quebra de linha só
-          //    ocorre entre palavras; segmentos de estilos diferentes podem coexistir numa
-          //    mesma palavra (ex.: "art." normal + "93" negrito, sem espaço no meio).
+          // 1) Monta "palavras" (arrays de segmentos estilizados).
           const words = [];
           let cur = null;
           if (prefix) { cur = [{ text: prefix, bold: headerBold, italic: false }]; words.push(cur); cur = null; }
@@ -2763,13 +2851,14 @@ document.addEventListener('DOMContentLoaded', () => {
           const wordWidth = (w) => w.reduce((s, seg) => s + measure(seg.text, styleOf(seg.bold, seg.italic), fontSize), 0);
           const spaceW = measure(' ', 'normal', fontSize);
 
-          // 2) Quebra gulosa em linhas visuais.
+          // 2) Quebra gulosa em linhas visuais (1ª linha desconta o recuo).
           const visualLines = [];
           let line = [], lineW = 0;
           wordList.forEach(w => {
+              const budget = maxWidth - (visualLines.length === 0 ? recuo1 : 0);
               const ww = wordWidth(w);
               const add = line.length === 0 ? ww : spaceW + ww;
-              if (line.length > 0 && lineW + add > maxWidth) {
+              if (line.length > 0 && lineW + add > budget) {
                   visualLines.push({ words: line, width: lineW });
                   line = [w]; lineW = ww;
               } else {
@@ -2779,22 +2868,23 @@ document.addEventListener('DOMContentLoaded', () => {
           if (line.length) visualLines.push({ words: line, width: lineW });
 
           // 3) Desenha, aplicando justificação onde couber.
-          const lineHeight = fontSize * 0.52;
           visualLines.forEach((vl, idx) => {
               writer.ensureSpace(lineHeight);
-              const baseY = writer.y + fontSize * 0.35;
+              const baseY = writer.y + fontSize * 0.30;
               const isLast = idx === visualLines.length - 1;
               const nWords = vl.words.length;
+              const recuoLinha = idx === 0 ? recuo1 : 0;
+              const larguraDisponivel = maxWidth - recuoLinha;
 
               let gap = spaceW;
-              let x = leftX;
+              let x = leftX + recuoLinha;
               if (align === 'center') x = leftX + (maxWidth - vl.width) / 2;
               else if (align === 'right') x = rightX - vl.width;
-              else if (align === 'justify' && !isLast && nWords > 1 && !header) gap = spaceW + (maxWidth - vl.width) / (nWords - 1);
+              else if (align === 'justify' && !isLast && nWords > 1 && !header) gap = spaceW + (larguraDisponivel - vl.width) / (nWords - 1);
 
               vl.words.forEach((w, wi) => {
                   w.forEach(seg => {
-                      doc.setFont('helvetica', styleOf(seg.bold, seg.italic));
+                      doc.setFont(fonte, styleOf(seg.bold, seg.italic));
                       doc.setFontSize(fontSize);
                       doc.setTextColor(20, 20, 20);
                       doc.text(seg.text, x, baseY);
@@ -2805,7 +2895,7 @@ document.addEventListener('DOMContentLoaded', () => {
               writer.y += lineHeight;
           });
 
-          writer.y += header ? 2.5 : 1.8; // espaço depois do parágrafo
+          writer.y += header ? 3.2 : 2.4; // respiro entre parágrafos
           lineBuffer = [];
       }
 
@@ -2820,8 +2910,35 @@ document.addEventListener('DOMContentLoaded', () => {
       flushLine(null);
   }
 
-  // Gera o PDF oficial do parecer jurídico (timbre repetido por página + conteúdo formatado).
-  // Só disponível para parecer estruturado já emitido.
+  // Cabeçalho fixo do documento: título centralizado (18pt), "Parecer n." e
+  // "Processo n." à direita (14pt, negrito) e ementa em bloco recuado 30mm
+  // (negrito, 12pt, justificada) — as posições do modelo oficial.
+  function renderParecerCabecalhoPdf(doc, writer, pz, processo) {
+      const P = PDF_PARECER;
+      writer.y += 8;
+      doc.setFont(writer.fonte, 'bold'); doc.setFontSize(P.titulo); doc.setTextColor(20, 20, 20);
+      doc.text('PARECER JURÍDICO', writer.leftX + (writer.rightX - writer.leftX) / 2, writer.y + 5, { align: 'center' });
+      writer.y += 17;
+      doc.setFontSize(P.corpo);
+      if (pz.numero) {
+          doc.text(`Parecer n. ${pz.numero}`, writer.rightX, writer.y, { align: 'right' });
+          writer.y += 6.5;
+      }
+      const numProc = (processo && processo.num) || pz.processoNum || '';
+      doc.text(`Processo n. ${numProc}`, writer.rightX, writer.y, { align: 'right' });
+      writer.y += 10;
+      const ementa = String(pz.ementa || '').trim();
+      if (ementa) {
+          renderParecerDeltaToPdf(doc, writer, { ops: [
+              { insert: ementa.toUpperCase(), attributes: { bold: true } },
+              { insert: '\n', attributes: { align: 'justify' } },
+          ] }, { baseSize: P.ementa, semRecuo: true, indentEsq: 30 });
+          writer.y += 5;
+      }
+  }
+
+  // Gera o PDF oficial do parecer jurídico (timbre por página + cabeçalho fixo +
+  // conteúdo formatado). Só disponível para parecer estruturado já emitido.
   function generateParecerPDF(processo) {
       const info = getParecerInfo(processo);
       if (!info || info.tipo !== 'estruturado' || !info.emitido) {
@@ -2831,8 +2948,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const pz = info.parecer;
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-      const writer = createParecerPdfWriter(doc);
-      renderParecerDeltaToPdf(doc, writer, deltaParecerParaExport(pz));
+      const fonte = registrarFonteParecer(doc);
+      const writer = createParecerPdfWriter(doc, fonte);
+      renderParecerCabecalhoPdf(doc, writer, pz, processo);
+      const { delta } = separarTituloEmbutido(pz.delta);
+      renderParecerDeltaToPdf(doc, writer, delta);
+      writer.finalizar();
       doc.save(`parecer_${String(processo.num || pz.processoNum || '').replace(/[^a-zA-Z0-9]/g, '-')}.pdf`);
       showToast('PDF do parecer gerado com sucesso!');
   }
@@ -2885,7 +3006,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const closeList = () => { if (openList) { html += `</${openList}>`; openList = null; } };
       blocks.forEach(b => {
           if (b.empty) { closeList(); return; }
-          const style = ` style="text-align:${b.align}${b.indent ? `;margin-left:${b.indent * 1.2}cm` : ''}"`;
+          // Linhas recuadas viram citação (12pt, sem recuo de 1ª linha); linhas
+          // centralizadas/à direita também não levam o recuo de 1ª linha padrão.
+          const extras = (b.indent ? `;margin-left:${b.indent * 2.5}cm;font-size:12.0pt;text-indent:0` : '')
+              + ((b.align === 'center' || b.align === 'right') ? ';text-indent:0' : '');
+          const style = ` style="text-align:${b.align}${extras}"`;
           if (b.list) {
               const tag = b.list === 'ordered' ? 'ol' : 'ul';
               if (openList && openList !== tag) closeList();
@@ -2911,21 +3036,31 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
       }
       const pz = info.parecer;
-      const corpo = parecerDeltaToHtml(deltaParecerParaExport(pz));
+      const { delta } = separarTituloEmbutido(pz.delta);
+      const corpo = parecerDeltaToHtml(delta);
       const numProc = sanitizeHTML(processo.num || pz.processoNum || '');
+      const ementaTxt = String(pz.ementa || '').trim();
       const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8"><title>Parecer ${numProc}</title>
 <style>
-@page { size: 21cm 29.7cm; margin: 2.5cm 2.5cm 2.5cm 3cm; }
-body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; text-align: justify; color: #000; }
-.cabecalho { text-align: center; font-weight: bold; margin-bottom: 20pt; }
+@page { size: 21cm 29.7cm; margin: 2.2cm 2.75cm 2.5cm 3cm; }
+body { font-family: 'Garamond', 'EB Garamond', 'Times New Roman', serif; font-size: 14.0pt; line-height: 1.15; text-align: justify; color: #000; }
+.cabecalho { text-align: center; font-weight: bold; font-size: 12.5pt; margin-bottom: 20pt; text-indent: 0; }
 .cabecalho .sub { font-weight: normal; }
-p { margin: 0 0 8pt 0; }
-h1 { font-size: 14pt; } h2 { font-size: 13pt; } h3 { font-size: 12pt; }
-h1, h2, h3 { margin: 12pt 0 6pt 0; }
+.doc-titulo { text-align: center; font-weight: bold; font-size: 18.0pt; text-indent: 0; margin: 16pt 0 14pt 0; }
+.doc-num { text-align: right; font-weight: bold; text-indent: 0; margin: 0 0 4pt 0; }
+.ementa { margin: 12pt 0 16pt 3cm; font-weight: bold; font-size: 12.0pt; text-transform: uppercase; text-align: justify; text-indent: 0; }
+p { margin: 0 0 9pt 0; text-indent: 2.5cm; }
+li { text-indent: 0; }
+h1 { font-size: 18pt; } h2 { font-size: 16pt; } h3 { font-size: 14pt; }
+h1, h2, h3 { margin: 12pt 0 6pt 0; text-indent: 0; }
 </style></head>
 <body>
 <div class="cabecalho">ESTADO DO RIO DE JANEIRO<br>CÂMARA MUNICIPAL DE DUQUE DE CAXIAS<br><span class="sub">PROCURADORIA-GERAL</span></div>
+<div class="doc-titulo">PARECER JURÍDICO</div>
+${pz.numero ? `<p class="doc-num">Parecer n. ${sanitizeHTML(pz.numero)}</p>` : ''}
+<p class="doc-num">Processo n. ${numProc}</p>
+${ementaTxt ? `<p class="ementa">${sanitizeHTML(ementaTxt.toUpperCase())}</p>` : ''}
 ${corpo}
 </body></html>`;
       const blob = new Blob(['﻿' + html], { type: 'application/msword' });
