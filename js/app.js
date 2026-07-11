@@ -865,7 +865,13 @@ document.addEventListener('DOMContentLoaded', () => {
       // O e-JURIS do TJRJ não aceita busca por URL — busca restrita ao domínio do tribunal.
       tjrj:      (q) => `https://www.google.com/search?q=${encodeURIComponent('site:tjrj.jus.br jurisprudência ' + q)}`,
       lexml:     (q) => `https://www.lexml.gov.br/busca/search?keyword=${encodeURIComponent(q)}`,
-      jusbrasil: (q) => `https://www.jusbrasil.com.br/jurisprudencia/busca?q=${encodeURIComponent(q)}`
+      jusbrasil: (q) => `https://www.jusbrasil.com.br/jurisprudencia/busca?q=${encodeURIComponent(q)}`,
+      // Tribunais de Contas — essenciais em licitações/contratos. A Pesquisa
+      // Integrada do TCU aceita o termo na URL; se o parâmetro mudar, a página
+      // de acórdãos abre mesmo assim, pronta para colar o termo.
+      tcu:       (q) => `https://pesquisa.apps.tcu.gov.br/pesquisa/acordao-completo?termoPesquisa=${encodeURIComponent(q)}`,
+      // O portal do TCE-RJ não aceita busca por URL — busca restrita ao domínio.
+      tcerj:     (q) => `https://www.google.com/search?q=${encodeURIComponent('site:tcerj.tc.br ' + q)}`
   };
 
   function montarCitacaoJuris() {
