@@ -3367,8 +3367,11 @@ ${corpo}
   async function salvarGeminiToken() {
       const input = $('#geminiToken'); if (!input) return;
       const chave = input.value.trim();
-      if (!chave.startsWith('AIza') || chave.length < 30) {
-          showToast('Chave inválida — a chave do Gemini começa com "AIza". Copie-a de aistudio.google.com.', 'danger');
+      // Aceita os dois formatos de chave do Gemini: o novo "AQ...." (padrão atual
+      // do Google AI Studio) e o antigo "AIza..." (em descontinuação). Só barra
+      // colagens obviamente incompletas; a validação real é feita pela função.
+      if (chave.length < 20) {
+          showToast('Chave inválida — cole a chave completa da API do Gemini (começa com "AQ." ou "AIza"), copiada de aistudio.google.com.', 'danger');
           input.focus();
           return;
       }
