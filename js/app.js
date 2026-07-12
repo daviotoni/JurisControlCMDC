@@ -872,11 +872,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // citação formatada para inserir no ponto do cursor no editor Quill.
   const JURIS_PORTAIS = {
       stf:       (q) => `https://jurisprudencia.stf.jus.br/pages/search?queryString=${encodeURIComponent(q)}`,
-      stj:       (q) => `https://scon.stj.jus.br/SCON/pesquisar.jsp?b=ACOR&livre=${encodeURIComponent(q)}`,
+      // O SCON/STJ é legado em ISO-8859-1: acentos percent-encodados em UTF-8
+      // chegam corrompidos ao SCON ("licitação" vira "licitaÃ§Ã£o" na caixa de
+      // busca). Como o SCON ignora acentos na pesquisa, removemos os diacríticos
+      // (jurisSemAcento, de utils.js) antes de montar a URL.
+      stj:       (q) => `https://scon.stj.jus.br/SCON/pesquisar.jsp?b=ACOR&livre=${encodeURIComponent(jurisSemAcento(q))}`,
       // O e-JURIS do TJRJ não aceita busca por URL — busca restrita ao domínio do tribunal.
       tjrj:      (q) => `https://www.google.com/search?q=${encodeURIComponent('site:tjrj.jus.br jurisprudência ' + q)}`,
       lexml:     (q) => `https://www.lexml.gov.br/busca/search?keyword=${encodeURIComponent(q)}`,
       jusbrasil: (q) => `https://www.jusbrasil.com.br/jurisprudencia/busca?q=${encodeURIComponent(q)}`,
+      // O Escavador só preenche a busca de jurisprudência via login (EscavAI);
+      // busca restrita ao domínio (Google) leva direto às decisões indexadas.
+      escavador: (q) => `https://www.google.com/search?q=${encodeURIComponent('site:escavador.com/jurisprudencia ' + q)}`,
       // Tribunais de Contas — essenciais em licitações/contratos. A Pesquisa
       // Integrada do TCU aceita o termo na URL; se o parâmetro mudar, a página
       // de acórdãos abre mesmo assim, pronta para colar o termo.
