@@ -3654,8 +3654,8 @@ ${corpo}
           const doc = await dbHelper.get('segredos', 'gemini');
           const chave = doc && doc.token ? String(doc.token) : '';
           statusEl.textContent = chave
-              ? `✅ Chave configurada (termina em …${chave.slice(-4)}). Cole uma nova para substituir.`
-              : 'Nenhuma chave configurada ainda — o Assistente IA fica indisponível até colar uma.';
+              ? `✅ Chave configurada (termina em …${chave.slice(-4)}) — o Gemini entra quando o Groq esgota. Cole uma nova para substituir.`
+              : 'Nenhuma chave configurada — sem reserva, o assistente depende só do Groq.';
       } catch (e) {
           console.warn('Sem acesso à chave do Gemini:', e);
           statusEl.textContent = 'Não foi possível verificar a chave (recurso de administrador).';
@@ -3686,9 +3686,10 @@ ${corpo}
       showToast('Chave salva! O Assistente IA já pode ser usado (após o deploy da função).');
   }
 
-  // ===== Cartão da chave do Groq — IA de reserva (Configurações, admin) =====
+  // ===== Cartão da chave do Groq — IA principal (Configurações, admin) =====
   // A chave fica em segredos/groq (admin-only nas rules); a Cloud Function
-  // `assistente` a lê via Admin SDK e usa o Groq quando o Gemini fica sem cota.
+  // `assistente` a lê via Admin SDK. O Groq é o titular (cotas maiores);
+  // o Gemini fica de reserva quando o Groq esgota.
   async function renderGroqTokenCard() {
       const statusEl = $('#groqTokenStatus'); if (!statusEl) return;
       if (!isAdminSession()) return;
@@ -3696,8 +3697,8 @@ ${corpo}
           const doc = await dbHelper.get('segredos', 'groq');
           const chave = doc && doc.token ? String(doc.token) : '';
           statusEl.textContent = chave
-              ? `✅ Reserva configurada (termina em …${chave.slice(-4)}). Quando o Gemini atingir o limite, o assistente usa o Groq automaticamente. Cole uma nova para substituir.`
-              : 'Nenhuma reserva configurada — quando o Gemini atingir o limite, o assistente fica indisponível até a cota voltar.';
+              ? `✅ Chave configurada (termina em …${chave.slice(-4)}) — o Groq é a IA principal do assistente. Cole uma nova para substituir.`
+              : 'Nenhuma chave configurada — o assistente depende só do Gemini (cota diária pequena). Recomendado configurar.';
       } catch (e) {
           console.warn('Sem acesso à chave do Groq:', e);
           statusEl.textContent = 'Não foi possível verificar a chave (recurso de administrador).';
@@ -3722,9 +3723,9 @@ ${corpo}
           return;
       }
       input.value = '';
-      await logAuditoria('integracoes', 'editado', 'Chave da API do Groq (reserva)');
+      await logAuditoria('integracoes', 'editado', 'Chave da API do Groq');
       renderGroqTokenCard();
-      showToast('Reserva salva! Quando o Gemini atingir o limite, o assistente usa o Groq automaticamente (após o deploy da função).');
+      showToast('Chave salva! O Groq passa a ser a IA principal do assistente (após o deploy da função).');
   }
 
   async function renderAuditoria() {
