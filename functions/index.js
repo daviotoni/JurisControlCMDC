@@ -407,7 +407,10 @@ async function chamarCopiloto(contexto, historico, prompt) {
 // para o procurador não ficar sem apoio. A chave fica em segredos/groq
 // (admin-only nas rules); o admin a cola em Configurações → Assistente (reserva).
 // A API do Groq é compatível com o formato OpenAI (chat/completions + tools).
-const GROQ_MODELO = 'llama-3.3-70b-versatile';
+// Modelos em ordem de preferência: o 70B escreve melhor, mas tem cota diária
+// de tokens pequena (~100k/dia); o 8B é mais simples, porém com cota ~5x maior
+// (~500k tokens/dia) — quando o 70B esgota, o 8B assume e o assistente segue.
+const GROQ_MODELOS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Ferramentas no formato OpenAI (reaproveita o schema já definido p/ o Gemini).
@@ -441,11 +444,28 @@ async function groqChat(chave, corpo) {
   return msg;
 }
 
+// Tenta os modelos do Groq em ordem, trocando para o próximo APENAS em erro de
+// cota (429) — outros erros são devolvidos direto. `aPartirDe` permite ao laço
+// do copiloto "lembrar" qual modelo funcionou e não re-bater no que já esgotou.
+async function groqChatAuto(chave, corpo, aPartirDe = 0) {
+  let ultimoErro = null;
+  for (let i = aPartirDe; i < GROQ_MODELOS.length; i++) {
+    try {
+      const msg = await groqChat(chave, { ...corpo, model: GROQ_MODELOS[i] });
+      return { msg, indiceModelo: i };
+    } catch (e) {
+      if (e.statusCliente !== 429) throw e;
+      console.warn(`Groq ${GROQ_MODELOS[i]} sem cota, tentando o próximo modelo:`, e.message);
+      ultimoErro = e;
+    }
+  }
+  throw ultimoErro;
+}
+
 async function chamarGroqSimples(sistema, prompt) {
   const chave = await lerChaveGroq();
   if (!chave) throw erroCliente(424, 'Reserva (Groq) não configurada.');
-  const msg = await groqChat(chave, {
-    model: GROQ_MODELO,
+  const { msg } = await groqChatAuto(chave, {
     messages: [
       { role: 'system', content: sistema },
       { role: 'user', content: prompt },
@@ -480,14 +500,16 @@ async function chamarGroqCopiloto(contexto, historico, prompt) {
   messages.push({ role: 'user', content: `${contextoTxt}\n\nPEDIDO DO PROCURADOR:\n${prompt}` });
 
   let msg = null;
+  let indiceModelo = 0;
   for (let rodada = 0; rodada < 3; rodada++) {
-    msg = await groqChat(chave, {
-      model: GROQ_MODELO,
+    const r = await groqChatAuto(chave, {
       messages,
       tools: GROQ_FERRAMENTAS,
       max_tokens: IA_MAX_SAIDA_TOKENS,
       temperature: 0.3,
-    });
+    }, indiceModelo);
+    msg = r.msg;
+    indiceModelo = r.indiceModelo;
     const chamadas = msg.tool_calls || [];
     if (!chamadas.length || rodada === 2) break;
     messages.push(msg); // eco da mensagem do assistente (com tool_calls)
