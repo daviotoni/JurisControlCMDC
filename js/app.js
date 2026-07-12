@@ -1780,7 +1780,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(key==='leis') renderLeis();
     if(key==='juris') { initJurisAba(); $('#jr_tema_aba')?.focus(); }
-    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); renderGroqTokenCard(); }
+    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); }
   }
 
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
@@ -3654,8 +3654,8 @@ ${corpo}
           const doc = await dbHelper.get('segredos', 'gemini');
           const chave = doc && doc.token ? String(doc.token) : '';
           statusEl.textContent = chave
-              ? `✅ Chave configurada (termina em …${chave.slice(-4)}) — o Gemini entra quando o Groq esgota. Cole uma nova para substituir.`
-              : 'Nenhuma chave configurada — sem reserva, o assistente depende só do Groq.';
+              ? `✅ Chave configurada (termina em …${chave.slice(-4)}). Cole uma nova para substituir.`
+              : 'Nenhuma chave configurada ainda — o Assistente IA fica indisponível até colar uma.';
       } catch (e) {
           console.warn('Sem acesso à chave do Gemini:', e);
           statusEl.textContent = 'Não foi possível verificar a chave (recurso de administrador).';
@@ -3684,48 +3684,6 @@ ${corpo}
       await logAuditoria('integracoes', 'editado', 'Chave da API do Gemini');
       renderGeminiTokenCard();
       showToast('Chave salva! O Assistente IA já pode ser usado (após o deploy da função).');
-  }
-
-  // ===== Cartão da chave do Groq — IA principal (Configurações, admin) =====
-  // A chave fica em segredos/groq (admin-only nas rules); a Cloud Function
-  // `assistente` a lê via Admin SDK. O Groq é o titular (cotas maiores);
-  // o Gemini fica de reserva quando o Groq esgota.
-  async function renderGroqTokenCard() {
-      const statusEl = $('#groqTokenStatus'); if (!statusEl) return;
-      if (!isAdminSession()) return;
-      try {
-          const doc = await dbHelper.get('segredos', 'groq');
-          const chave = doc && doc.token ? String(doc.token) : '';
-          statusEl.textContent = chave
-              ? `✅ Chave configurada (termina em …${chave.slice(-4)}) — o Groq é a IA principal do assistente. Cole uma nova para substituir.`
-              : 'Nenhuma chave configurada — o assistente depende só do Gemini (cota diária pequena). Recomendado configurar.';
-      } catch (e) {
-          console.warn('Sem acesso à chave do Groq:', e);
-          statusEl.textContent = 'Não foi possível verificar a chave (recurso de administrador).';
-      }
-  }
-
-  async function salvarGroqToken() {
-      const input = $('#groqToken'); if (!input) return;
-      const chave = input.value.trim();
-      // A chave do Groq começa com "gsk_". Só barra colagens obviamente
-      // incompletas; a validação real é feita pela função ao chamar a API.
-      if (!chave.startsWith('gsk_') || chave.length < 20) {
-          showToast('Chave inválida — a chave do Groq começa com "gsk_". Copie-a de console.groq.com/keys.', 'danger');
-          input.focus();
-          return;
-      }
-      try {
-          await dbHelper.put('segredos', { id: 'groq', token: chave, atualizadoEm: new Date().toISOString() });
-      } catch (e) {
-          console.error('Erro ao salvar chave do Groq:', e);
-          showToast('Sem permissão para salvar a chave (recurso de administrador).', 'danger');
-          return;
-      }
-      input.value = '';
-      await logAuditoria('integracoes', 'editado', 'Chave da API do Groq');
-      renderGroqTokenCard();
-      showToast('Chave salva! O Groq passa a ser a IA principal do assistente (após o deploy da função).');
   }
 
   async function renderAuditoria() {
@@ -4349,8 +4307,6 @@ ${corpo}
     if (btnJurisaiTk) btnJurisaiTk.onclick = salvarJurisaiToken;
     const btnGeminiTk = $('#btnSalvarGeminiToken');
     if (btnGeminiTk) btnGeminiTk.onclick = salvarGeminiToken;
-    const btnGroqTk = $('#btnSalvarGroqToken');
-    if (btnGroqTk) btnGroqTk.onclick = salvarGroqToken;
 
     setupEnhancedNav();
 
