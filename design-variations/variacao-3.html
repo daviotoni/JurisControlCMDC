@@ -117,14 +117,12 @@
   }
   .crest{
     flex:0 0 auto;
-    width:66px;height:66px;
+    width:72px;height:72px;
     display:grid;place-items:center;
-    border-radius:16px;
-    background:linear-gradient(160deg, var(--marinho), var(--marinho-deep));
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.10), var(--shadow);
-    padding:8px;
+    background:transparent;
+    padding:0;
   }
-  .crest img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+  .crest img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 2px 5px rgba(0,60,108,.20))}
   .mast-titles{display:flex;flex-direction:column;gap:3px;min-width:0}
   .mast-org{
     font-family:var(--ff-mono);
@@ -214,6 +212,7 @@
   }
   .gauge-water{
     position:absolute;left:0;right:0;bottom:0;
+    z-index:1;
     height:var(--lvl,20%);
     background:linear-gradient(180deg,
       color-mix(in srgb, var(--wc,var(--marinho-water)) 78%, white 22%),
@@ -261,11 +260,17 @@
   .gauge.sev-calm  { --wc:var(--marinho-water); }
 
   .gauge-count{
-    position:absolute;left:0;right:0;top:12px;
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    z-index:3;
+    display:inline-flex;flex-direction:column;align-items:center;
+    padding:5px 13px 6px;border-radius:13px;
+    background:color-mix(in srgb, var(--paper) 74%, transparent);
+    -webkit-backdrop-filter:blur(4px) saturate(1.1);backdrop-filter:blur(4px) saturate(1.1);
+    box-shadow:0 1px 4px rgba(0,60,108,.12), inset 0 0 0 1px rgba(255,255,255,.5);
     font-family:var(--ff-display);font-weight:500;
-    font-size:1.55rem;line-height:1;color:var(--ink);
+    font-size:1.5rem;line-height:1;color:var(--ink);
   }
-  .gauge-count small{display:block;font-family:var(--ff-body);font-weight:500;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);margin-top:4px}
+  .gauge-count small{display:block;font-family:var(--ff-body);font-weight:500;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);margin-top:3px}
   .gauge-sev{
     position:absolute;left:0;right:0;bottom:8px;
     font-family:var(--ff-mono);font-size:.58rem;letter-spacing:.04em;
