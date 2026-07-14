@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JurisControl — Arquivo Vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Paleta — tinta de protocolo, papel de ledger, carimbo, cartório */
+  --papel:#E7E3D4;        /* papel de processo (fundo) */
+  --papel-2:#F2EFE5;      /* folha/card */
+  --papel-3:#FBFAF4;      /* folha destacada */
+  --tinta:#182437;        /* tinta de protocolo (texto/escuro) */
+  --tinta-2:#55607A;      /* texto secundário */
+  --carimbo:#B23A2C;      /* carimbo vermelho (crítico/vencido) */
+  --verde:#2C5A4B;        /* verde-cartório (estável/finalizado) */
+  --ambar:#A9741A;        /* âmbar (atenção) */
+  --linha:#CBC1A6;        /* fio de encadernação/divisória */
+  --furo:#D4CDBA;         /* sombra do furo */
+  --radius:14px;
+  --sheet-max:1180px;
+  --bind:64px;
+  --shadow:0 1px 0 rgba(24,36,55,.04), 0 18px 40px -28px rgba(24,36,55,.45);
+  --tinta-rgb:24,36,55;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --papel:#161B24;--papel-2:#1E2530;--papel-3:#232B38;
+    --tinta:#EDEADD;--tinta-2:#9AA3B4;--carimbo:#E56A57;--verde:#68C0A2;
+    --ambar:#E0A63C;--linha:#333C4B;--furo:#0F131A;
+    --shadow:0 1px 0 rgba(0,0,0,.3), 0 18px 40px -26px rgba(0,0,0,.7);
+    --tinta-rgb:237,234,221;
+  }
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--papel);color:var(--tinta);
+  font-family:"Instrument Sans",system-ui,sans-serif;
+  font-size:16px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(var(--bind) - 1px), var(--linha) calc(var(--bind) - 1px), transparent var(--bind));
+}
+@media (max-width:760px){ body{background-image:none} }
+
+/* ---------- utilidades tipográficas ---------- */
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:.68rem;font-weight:500;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--tinta-2);
+}
+h1,h2,h3{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;
+  letter-spacing:-.015em;line-height:1.02;margin:0}
+
+/* ---------- estrutura: a folha encadernada ---------- */
+.sheet{
+  max-width:var(--sheet-max);margin:0 auto;
+  padding:34px var(--bind) 80px calc(var(--bind) + 22px);
+  position:relative;
+}
+/* furos de encadernação */
+.binding{position:absolute;left:0;top:0;width:var(--bind);height:100%;
+  display:flex;flex-direction:column;align-items:center;gap:46px;
+  padding-top:120px;pointer-events:none}
+.hole{width:15px;height:15px;border-radius:50%;
+  background:var(--papel);
+  box-shadow:inset 0 2px 3px rgba(0,0,0,.28), inset 0 -1px 0 rgba(255,255,255,.5),
+             0 0 0 1px var(--linha);
+}
+@media (prefers-color-scheme:dark){ .hole{box-shadow:inset 0 2px 4px rgba(0,0,0,.7), 0 0 0 1px var(--linha)} }
+@media (max-width:760px){
+  .sheet{padding:22px 16px 60px}
+  .binding{display:none}
+}
+
+/* folha genérica (painel) — com nº de folha carimbado */
+.folha{position:relative;background:var(--papel-2);border:1px solid var(--linha);
+  border-radius:var(--radius);box-shadow:var(--shadow)}
+.folha > .folio{position:absolute;top:10px;right:14px;z-index:2;
+  font-family:"IBM Plex Mono",monospace;font-size:.62rem;letter-spacing:.12em;
+  color:var(--tinta-2);opacity:.8}
+.folha > .folio::before{content:"fls. "}
+
+/* ---------- masthead / capa de autos ---------- */
+.masthead{display:flex;justify-content:space-between;align-items:flex-start;
+  gap:24px;flex-wrap:wrap;margin-bottom:26px}
+.brand-eye{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.brasao{width:26px;height:26px;border-radius:5px;flex:none;
+  background:var(--tinta);color:var(--papel-2);display:grid;place-items:center;
+  font-family:"Bricolage Grotesque";font-weight:800;font-size:.82rem}
+.masthead h1{font-size:clamp(2.1rem,5vw,3.35rem)}
+.masthead h1 em{font-style:normal;color:var(--carimbo)}
+.masthead p.sub{margin:.5rem 0 0;max-width:44ch;color:var(--tinta-2);font-size:1rem}
+
+/* carimbo de protocolo (assinatura) */
+.carimbo{--c:var(--verde);
+  border:2px solid var(--c);color:var(--c);border-radius:10px;
+  padding:11px 15px 9px;transform:rotate(-3.2deg);
+  box-shadow:inset 0 0 0 1px var(--c);
+  font-family:"IBM Plex Mono",monospace;text-align:center;
+  background:color-mix(in srgb, var(--papel-2) 88%, transparent);
+  flex:none;position:relative;animation:stamp .6s cubic-bezier(.2,1.5,.4,1) both}
+.carimbo .k{font-size:.58rem;letter-spacing:.28em;text-transform:uppercase;opacity:.85}
+.carimbo .n{font-size:1.02rem;font-weight:600;letter-spacing:.06em;margin-top:3px}
+.carimbo .d{font-size:.62rem;letter-spacing:.14em;margin-top:4px;opacity:.85}
+.carimbo::after{content:"";position:absolute;inset:4px;border:1px dashed var(--c);
+  border-radius:6px;opacity:.45;pointer-events:none}
+@keyframes stamp{0%{opacity:0;transform:rotate(-3.2deg) scale(1.35)}
+  60%{opacity:1}100%{opacity:1;transform:rotate(-3.2deg) scale(1)}}
+
+/* ---------- HERÓI: radar de prazos ---------- */
+.radar{padding:22px 24px 26px;margin-bottom:26px}
+.radar-head{display:flex;justify-content:space-between;align-items:flex-end;
+  gap:18px;flex-wrap:wrap;margin-bottom:18px}
+.radar-head h2{font-size:1.5rem}
+.radar-head .lede{color:var(--tinta-2);font-size:.92rem;margin-top:4px}
+.vencidos-badge{display:flex;align-items:center;gap:12px;
+  border:2px solid var(--carimbo);border-radius:11px;padding:9px 14px;
+  background:color-mix(in srgb,var(--carimbo) 8%, var(--papel-2))}
+.vencidos-badge .big{font-family:"Bricolage Grotesque";font-weight:800;
+  font-size:1.9rem;color:var(--carimbo);line-height:1}
+.vencidos-badge .txt{font-family:"IBM Plex Mono",monospace;font-size:.64rem;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--carimbo)}
+
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+.day{position:relative;background:var(--papel-3);border:1px solid var(--linha);
+  border-radius:10px;padding:12px 10px 14px;min-height:118px;
+  display:flex;flex-direction:column;gap:6px;overflow:hidden;
+  transition:transform .18s ease, box-shadow .18s ease}
+.day::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:var(--sev,var(--linha))}
+.day:hover{transform:translateY(-3px);box-shadow:0 12px 24px -18px rgba(var(--tinta-rgb),.6)}
+.day .dow{font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--tinta-2)}
+.day .date{font-family:"Bricolage Grotesque";font-weight:700;font-size:1.4rem}
+.day .count{margin-top:auto;font-family:"IBM Plex Mono",monospace;font-size:.7rem;
+  color:var(--tinta-2);letter-spacing:.03em}
+.day .count b{color:var(--tinta);font-weight:600}
+.day.is-hoje{--sev:var(--carimbo);background:color-mix(in srgb,var(--carimbo) 7%,var(--papel-3))}
+.day.is-hoje .date{color:var(--carimbo)}
+.day.crit{--sev:var(--carimbo)}
+.day.aten{--sev:var(--ambar)}
+.day.proc{--sev:var(--tinta)}
+.day.comp{--sev:var(--verde)}
+.day.vazio{--sev:var(--linha);opacity:.72}
+.selo{position:absolute;top:8px;right:8px;transform:rotate(6deg);
+  font-family:"IBM Plex Mono",monospace;font-size:.5rem;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--carimbo);
+  border:1.5px solid var(--carimbo);border-radius:4px;padding:2px 4px;line-height:1}
+/* legenda de severidade */
+.leg{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px}
+.leg span{display:inline-flex;align-items:center;gap:7px;
+  font-family:"IBM Plex Mono",monospace;font-size:.62rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--tinta-2)}
+.leg i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+/* ---------- KPIs — abas de folio ---------- */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:26px}
+.kpi{--c:var(--tinta);position:relative;background:var(--papel-2);
+  border:1px solid var(--linha);border-radius:12px;padding:15px 14px 14px;
+  box-shadow:var(--shadow);overflow:hidden;
+  transition:transform .16s ease}
+.kpi:hover{transform:translateY(-2px)}
+.kpi::before{content:"";position:absolute;top:0;left:14px;width:32px;height:5px;
+  border-radius:0 0 4px 4px;background:var(--c)}
+.kpi .tag{font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--tinta-2);display:block;margin-top:6px;min-height:2.4em}
+.kpi .num{font-family:"Bricolage Grotesque";font-weight:800;font-size:2.35rem;
+  line-height:1;color:var(--c);letter-spacing:-.02em}
+.kpi .foot{font-family:"IBM Plex Mono",monospace;font-size:.58rem;color:var(--tinta-2);
+  margin-top:6px;letter-spacing:.04em}
+.kpi.total{--c:var(--tinta)}
+.kpi.pend{--c:var(--ambar)}
+.kpi.anal{--c:#3B6EA5}
+.kpi.fim{--c:var(--verde)}
+.kpi.venc{--c:var(--ambar)}
+.kpi.atr{--c:var(--carimbo)}
+
+/* ---------- gráficos ---------- */
+.grid-3{display:grid;grid-template-columns:1.2fr .9fr 1.2fr;gap:16px;margin-bottom:26px}
+.panel{padding:18px 20px 20px}
+.panel h3{font-size:1.06rem;margin-bottom:2px}
+.panel .cap{font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--tinta-2);margin-bottom:16px}
+
+.bars{display:flex;align-items:flex-end;gap:9px;height:150px}
+.bars .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%}
+.bars .bar{width:100%;background:linear-gradient(var(--tinta),color-mix(in srgb,var(--tinta) 72%,var(--papel-2)));
+  border-radius:5px 5px 2px 2px;margin-top:auto;min-height:4px;position:relative;
+  transition:filter .15s}
+.bars.parece .bar{background:linear-gradient(var(--verde),color-mix(in srgb,var(--verde) 70%,var(--papel-2)))}
+.bars .col:hover .bar{filter:brightness(1.12)}
+.bars .col .v{font-family:"IBM Plex Mono",monospace;font-size:.58rem;color:var(--tinta-2)}
+.bars .col .m{font-family:"IBM Plex Mono",monospace;font-size:.55rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--tinta-2)}
+
+.donut-wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.donut{width:150px;height:150px;flex:none;transform:rotate(-90deg)}
+.donut .hole-lbl{transform:rotate(90deg)}
+.donut-center{position:relative}
+.donut-num{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center}
+.donut-num b{font-family:"Bricolage Grotesque";font-weight:800;font-size:1.7rem;line-height:1}
+.donut-num small{font-family:"IBM Plex Mono",monospace;font-size:.53rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--tinta-2)}
+.donut-leg{display:flex;flex-direction:column;gap:8px;font-size:.82rem;min-width:120px}
+.donut-leg .row{display:flex;align-items:center;gap:9px}
+.donut-leg i{width:10px;height:10px;border-radius:3px;flex:none}
+.donut-leg .row b{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:.8rem}
+.donut-leg .row span{color:var(--tinta-2)}
+
+/* ---------- listas ---------- */
+.grid-lists{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.list{padding:18px 20px 8px}
+.list h3{font-size:1.06rem}
+.list .cap{font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--tinta-2);margin:2px 0 12px}
+.list ul{list-style:none;margin:0;padding:0}
+.list li{padding:12px 0;border-top:1px solid var(--linha);display:flex;gap:12px;align-items:flex-start}
+.list li:first-child{border-top:0}
+
+/* prazos */
+.proc{font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:600;color:var(--tinta)}
+.who{font-size:.86rem;color:var(--tinta-2);margin-top:2px}
+.dias{margin-left:auto;flex:none;text-align:right;font-family:"IBM Plex Mono",monospace;
+  font-weight:600;font-size:.72rem;padding:4px 8px;border-radius:20px;letter-spacing:.02em;
+  border:1px solid currentColor}
+.dias.d0{color:var(--carimbo)}
+.dias.d1{color:var(--ambar)}
+.dias.d2{color:var(--tinta-2)}
+
+/* alertas */
+.alert-ic{width:26px;height:26px;flex:none;border-radius:7px;display:grid;place-items:center;
+  font-family:"IBM Plex Mono",monospace;font-size:.8rem;font-weight:600;margin-top:1px}
+.alert-ic.r{background:color-mix(in srgb,var(--carimbo) 14%,var(--papel-2));color:var(--carimbo)}
+.alert-ic.a{background:color-mix(in srgb,var(--ambar) 16%,var(--papel-2));color:var(--ambar)}
+.alert-ic.i{background:color-mix(in srgb,#3B6EA5 14%,var(--papel-2));color:#3B6EA5}
+.alert-tx{font-size:.88rem}
+.alert-tx small{display:block;color:var(--tinta-2);font-family:"IBM Plex Mono",monospace;
+  font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+
+/* atividades — linha do tempo de tramitação */
+.act li{position:relative;padding-left:20px}
+.act li::before{content:"";position:absolute;left:3px;top:16px;width:8px;height:8px;
+  border-radius:50%;background:var(--verde);box-shadow:0 0 0 3px color-mix(in srgb,var(--verde) 22%,transparent)}
+.act li.dist::before{background:#3B6EA5;box-shadow:0 0 0 3px color-mix(in srgb,#3B6EA5 22%,transparent)}
+.act li.prorr::before{background:var(--ambar);box-shadow:0 0 0 3px color-mix(in srgb,var(--ambar) 22%,transparent)}
+.act .act-t{font-size:.86rem}
+.act .act-t b{font-weight:600}
+.act .when{margin-left:auto;flex:none;font-family:"IBM Plex Mono",monospace;
+  font-size:.58rem;color:var(--tinta-2);letter-spacing:.04em;white-space:nowrap;padding-top:2px}
+
+/* rodapé */
+.foot-note{margin-top:30px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--tinta-2);border-top:1px solid var(--linha);padding-top:16px}
+
+/* foco de teclado */
+a:focus-visible,button:focus-visible,li:focus-visible,.day:focus-visible{
+  outline:2.5px solid var(--carimbo);outline-offset:3px;border-radius:4px}
+
+/* responsivo */
+@media (max-width:1000px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .grid-3{grid-template-columns:1fr}
+  .grid-lists{grid-template-columns:1fr}
+  .week{grid-template-columns:repeat(4,1fr)}
+}
+@media (max-width:560px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .week{grid-template-columns:repeat(2,1fr)}
+  .masthead h1{font-size:2rem}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<main class="sheet">
+  <div class="binding" aria-hidden="true">
+    <span class="hole"></span><span class="hole"></span><span class="hole"></span>
+    <span class="hole"></span><span class="hole"></span><span class="hole"></span>
+  </div>
+
+  <!-- CAPA DE AUTOS -->
+  <header class="masthead">
+    <div>
+      <div class="brand-eye">
+        <span class="brasao">JC</span>
+        <span class="eyebrow">Procuradoria · Câmara Municipal de Duque de Caxias</span>
+      </div>
+      <h1>JurisControl <em>Arquivo Vivo</em></h1>
+      <p class="sub">Painel de controle de processos, prazos e pareceres. Cada folha do dossiê, protocolada e tramitando em tempo real.</p>
+    </div>
+    <div class="carimbo" role="img" aria-label="Carimbo de protocolo. Sessão de 14 de julho de 2026.">
+      <div class="k">Protocolo · CMDC</div>
+      <div class="n" id="proto">2026.07.14</div>
+      <div class="d" id="clock">SESSÃO ATIVA</div>
+    </div>
+  </header>
+
+  <!-- HERÓI: RADAR DE PRAZOS -->
+  <section class="folha radar" aria-labelledby="radar-h">
+    <span class="folio">002</span>
+    <div class="radar-head">
+      <div>
+        <span class="eyebrow">Eixo crítico</span>
+        <h2 id="radar-h">Radar de Prazos — próximos 7 dias</h2>
+        <p class="lede">Perder um prazo tem consequência. O que vence primeiro, aparece primeiro.</p>
+      </div>
+      <div class="vencidos-badge" role="status">
+        <span class="big">04</span>
+        <span class="txt">processos<br>vencidos</span>
+      </div>
+    </div>
+
+    <div class="week">
+      <div class="day is-hoje crit" tabindex="0">
+        <span class="selo">Vence hoje</span>
+        <span class="dow">Ter</span><span class="date">14/07</span>
+        <span class="count"><b>2</b> prazos<br>vencendo</span>
+      </div>
+      <div class="day aten" tabindex="0">
+        <span class="dow">Qua</span><span class="date">15/07</span>
+        <span class="count"><b>3</b> prazos<br>de processo</span>
+      </div>
+      <div class="day aten" tabindex="0">
+        <span class="dow">Qui</span><span class="date">16/07</span>
+        <span class="count"><b>1</b> prazo +<br>1 compromisso</span>
+      </div>
+      <div class="day proc" tabindex="0">
+        <span class="dow">Sex</span><span class="date">17/07</span>
+        <span class="count"><b>2</b> prazos<br>de processo</span>
+      </div>
+      <div class="day vazio" tabindex="0">
+        <span class="dow">Sáb</span><span class="date">18/07</span>
+        <span class="count">sem prazos</span>
+      </div>
+      <div class="day vazio" tabindex="0">
+        <span class="dow">Dom</span><span class="date">19/07</span>
+        <span class="count">sem prazos</span>
+      </div>
+      <div class="day comp" tabindex="0">
+        <span class="dow">Seg</span><span class="date">20/07</span>
+        <span class="count"><b>1</b> audiência<br>agendada</span>
+      </div>
+    </div>
+
+    <div class="leg" aria-hidden="true">
+      <span><i style="background:var(--carimbo)"></i> Vence hoje / atrasado</span>
+      <span><i style="background:var(--ambar)"></i> 1–2 dias (atenção)</span>
+      <span><i style="background:var(--tinta)"></i> Prazo de processo</span>
+      <span><i style="background:var(--verde)"></i> Compromisso</span>
+    </div>
+  </section>
+
+  <!-- KPIs -->
+  <section class="kpi-grid" aria-label="Indicadores gerais">
+    <div class="kpi total"><span class="num">342</span><span class="tag">Total de processos</span><span class="foot">base ativa</span></div>
+    <div class="kpi pend"><span class="num">47</span><span class="tag">Pendentes</span><span class="foot">aguardando</span></div>
+    <div class="kpi anal"><span class="num">28</span><span class="tag">Em análise</span><span class="foot">com procurador</span></div>
+    <div class="kpi fim"><span class="num">251</span><span class="tag">Finalizados</span><span class="foot">arquivados</span></div>
+    <div class="kpi venc"><span class="num">9</span><span class="tag">Vencendo ≤ 5 dias</span><span class="foot">atenção</span></div>
+    <div class="kpi atr"><span class="num">4</span><span class="tag">Vencidos</span><span class="foot">ação imediata</span></div>
+  </section>
+
+  <!-- GRÁFICOS -->
+  <section class="grid-3" aria-label="Gráficos">
+    <div class="folha panel">
+      <span class="folio">003</span>
+      <h3>Entradas por mês</h3>
+      <p class="cap">Distribuição de novos autos · últimos 8 meses</p>
+      <div class="bars">
+        <div class="col"><div class="bar" style="height:63%"></div><span class="v">22</span><span class="m">nov</span></div>
+        <div class="col"><div class="bar" style="height:51%"></div><span class="v">18</span><span class="m">dez</span></div>
+        <div class="col"><div class="bar" style="height:77%"></div><span class="v">27</span><span class="m">jan</span></div>
+        <div class="col"><div class="bar" style="height:69%"></div><span class="v">24</span><span class="m">fev</span></div>
+        <div class="col"><div class="bar" style="height:89%"></div><span class="v">31</span><span class="m">mar</span></div>
+        <div class="col"><div class="bar" style="height:83%"></div><span class="v">29</span><span class="m">abr</span></div>
+        <div class="col"><div class="bar" style="height:100%"></div><span class="v">35</span><span class="m">mai</span></div>
+        <div class="col"><div class="bar" style="height:94%"></div><span class="v">33</span><span class="m">jun</span></div>
+      </div>
+    </div>
+
+    <div class="folha panel">
+      <span class="folio">004</span>
+      <h3>Distribuição por status</h3>
+      <p class="cap">Situação atual dos 342 autos</p>
+      <div class="donut-wrap">
+        <div class="donut-center">
+          <svg class="donut" viewBox="0 0 120 120" role="img" aria-label="Rosca de distribuição por status">
+            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--linha)" stroke-width="12" opacity=".35"/>
+            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--verde)"  stroke-width="12" stroke-dasharray="249 90" stroke-dashoffset="0"/>
+            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--ambar)"  stroke-width="12" stroke-dasharray="46.6 293" stroke-dashoffset="-249"/>
+            <circle cx="60" cy="60" r="54" fill="none" stroke="#3B6EA5"       stroke-width="12" stroke-dasharray="27.8 312" stroke-dashoffset="-295.6"/>
+            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--tinta-2)" stroke-width="12" stroke-dasharray="11.9 328" stroke-dashoffset="-323.4"/>
+            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--carimbo)" stroke-width="12" stroke-dasharray="3.97 336" stroke-dashoffset="-335.3"/>
+          </svg>
+          <div class="donut-num"><b>342</b><small>autos</small></div>
+        </div>
+        <div class="donut-leg">
+          <div class="row"><i style="background:var(--verde)"></i><span>Finalizados</span><b>251</b></div>
+          <div class="row"><i style="background:var(--ambar)"></i><span>Pendentes</span><b>47</b></div>
+          <div class="row"><i style="background:#3B6EA5"></i><span>Em análise</span><b>28</b></div>
+          <div class="row"><i style="background:var(--tinta-2)"></i><span>Suspensos</span><b>12</b></div>
+          <div class="row"><i style="background:var(--carimbo)"></i><span>Vencidos</span><b>4</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="folha panel">
+      <span class="folio">005</span>
+      <h3>Pareceres emitidos por mês</h3>
+      <p class="cap">Produção da procuradoria · últimos 8 meses</p>
+      <div class="bars parece">
+        <div class="col"><div class="bar" style="height:54%"></div><span class="v">14</span><span class="m">nov</span></div>
+        <div class="col"><div class="bar" style="height:42%"></div><span class="v">11</span><span class="m">dez</span></div>
+        <div class="col"><div class="bar" style="height:73%"></div><span class="v">19</span><span class="m">jan</span></div>
+        <div class="col"><div class="bar" style="height:65%"></div><span class="v">17</span><span class="m">fev</span></div>
+        <div class="col"><div class="bar" style="height:85%"></div><span class="v">22</span><span class="m">mar</span></div>
+        <div class="col"><div class="bar" style="height:77%"></div><span class="v">20</span><span class="m">abr</span></div>
+        <div class="col"><div class="bar" style="height:100%"></div><span class="v">26</span><span class="m">mai</span></div>
+        <div class="col"><div class="bar" style="height:92%"></div><span class="v">24</span><span class="m">jun</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LISTAS -->
+  <section class="grid-lists" aria-label="Prazos, alertas e atividades">
+    <!-- Próximos prazos -->
+    <div class="folha list">
+      <span class="folio">006</span>
+      <h3>Próximos prazos</h3>
+      <p class="cap">Vencendo em até 15 dias</p>
+      <ul>
+        <li><div><div class="proc">2024/0457</div><div class="who">Gabinete de Vereador · parecer sobre projeto de lei</div></div><span class="dias d1">1 dia</span></li>
+        <li><div><div class="proc">2024/0192</div><div class="who">Secretaria de Administração · legalidade de licitação</div></div><span class="dias d0">2 dias</span></li>
+        <li><div><div class="proc">2024/0388</div><div class="who">Comissão de Licitação · impugnação de edital</div></div><span class="dias d2">4 dias</span></li>
+        <li><div><div class="proc">2024/0421</div><div class="who">Departamento de RH · revisão de contrato administrativo</div></div><span class="dias d2">7 dias</span></li>
+        <li><div><div class="proc">2024/0503</div><div class="who">Secretaria de Administração · consulta de servidor</div></div><span class="dias d2">11 dias</span></li>
+      </ul>
+    </div>
+
+    <!-- Alertas inteligentes -->
+    <div class="folha list">
+      <span class="folio">007</span>
+      <h3>Alertas inteligentes</h3>
+      <p class="cap">Sinais que pedem decisão</p>
+      <ul>
+        <li><span class="alert-ic r">!</span><div class="alert-tx">Prazo do processo <b>2024/0457</b> vence amanhã.<small>ação imediata</small></div></li>
+        <li><span class="alert-ic a">◷</span><div class="alert-tx"><b>3 processos</b> sem movimentação há 30 dias.<small>tramitação parada</small></div></li>
+        <li><span class="alert-ic a">≤5</span><div class="alert-tx"><b>9 processos</b> vencendo em até 5 dias.<small>atenção</small></div></li>
+        <li><span class="alert-ic i">✓</span><div class="alert-tx"><b>2 pareceres</b> aguardando revisão do procurador-chefe.<small>fila de assinatura</small></div></li>
+      </ul>
+    </div>
+
+    <!-- Últimas atividades -->
+    <div class="folha list">
+      <span class="folio">008</span>
+      <h3>Últimas atividades</h3>
+      <p class="cap">Tramitação recente</p>
+      <ul class="act">
+        <li><div class="act-t">Parecer emitido — <b>2024/0377</b><br><span class="who">análise de legalidade de licitação</span></div><span class="when">há 25 min</span></li>
+        <li class="dist"><div class="act-t">Processo distribuído — <b>2024/0512</b><br><span class="who">à Dra. Marina Vasconcelos</span></div><span class="when">há 2 h</span></li>
+        <li class="prorr"><div class="act-t">Prazo prorrogado — <b>2024/0298</b><br><span class="who">+10 dias, despacho fundamentado</span></div><span class="when">ontem</span></li>
+        <li><div class="act-t">Parecer protocolado — <b>2024/0466</b><br><span class="who">projeto de lei · vista à Mesa Diretora</span></div><span class="when">ontem</span></li>
+        <li class="dist"><div class="act-t">Revisão concluída — <b>2024/0219</b><br><span class="who">contrato administrativo · aprovado</span></div><span class="when">2 dias</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="foot-note">
+    <span>JurisControl · Arquivo Vivo · Procuradoria CMDC</span>
+    <span id="stamp-now">Última atualização — 14/07/2026</span>
+  </footer>
+</main>
+
+<script>
+// Relógio discreto no carimbo de protocolo (respeitando ausência de backend)
+(function(){
+  var clock = document.getElementById('clock');
+  if(!clock) return;
+  function tick(){
+    var d = new Date();
+    var hh = String(d.getHours()).padStart(2,'0');
+    var mm = String(d.getMinutes()).padStart(2,'0');
+    clock.textContent = 'SESSÃO · ' + hh + ':' + mm;
+  }
+  tick(); setInterval(tick, 30000);
+})();
+</script>
+</body>
+</html>

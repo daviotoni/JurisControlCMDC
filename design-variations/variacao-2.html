@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JurisControl · Torre de Controle de Prazos — CMDC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink-900:#0C1A1C;
+    --ink-850:#0F2124;
+    --ink-800:#12262A;
+    --ink-750:#173036;
+    --ink-700:#1E3A40;
+    --line:#25474E;
+    --haze:#7E9AA0;
+    --haze-dim:#54767C;
+    --paper:#E8EDE9;
+    --amber:#F2A83B;
+    --amber-dim:#B67F2C;
+    --coral:#FF5C49;
+    --coral-dim:#C4402F;
+    --mint:#4FD1B5;
+    --mint-dim:#2E7E6C;
+    --radius:3px;
+    --grid:rgba(126,154,160,.07);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:
+      linear-gradient(0deg, var(--grid) 1px, transparent 1px) 0 0/100% 34px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/34px 100%,
+      radial-gradient(120% 90% at 50% -10%, #123035 0%, var(--ink-900) 62%);
+    background-attachment:fixed;
+    color:var(--paper);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .hud{font-family:"Chakra Petch",sans-serif}
+
+  .console{max-width:1360px;margin:0 auto;padding:20px clamp(14px,3vw,34px) 60px}
+
+  /* ---------- MASTHEAD ---------- */
+  .masthead{
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg,var(--ink-800),var(--ink-850));
+    border-radius:var(--radius);
+    padding:12px 18px;
+    position:relative;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03), 0 10px 30px -18px #000;
+  }
+  .brand{display:flex;align-items:baseline;gap:12px;min-width:0}
+  .brand .mark{
+    font-family:"Chakra Petch";font-weight:700;font-size:1.28rem;letter-spacing:.01em;
+    color:var(--paper);white-space:nowrap;
+  }
+  .brand .mark b{color:var(--amber);font-weight:700}
+  .brand .org{
+    font-family:"IBM Plex Mono";font-size:.66rem;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--haze-dim);white-space:nowrap;
+  }
+  .masthead .spacer{flex:1 1 auto}
+  .telemetry{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .tm{display:flex;flex-direction:column;line-height:1.15}
+  .tm .k{font-family:"IBM Plex Mono";font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--haze-dim)}
+  .tm .v{font-family:"IBM Plex Mono";font-size:.92rem;color:var(--paper);font-weight:500}
+  .status-lamp{display:flex;align-items:center;gap:9px;
+    border:1px solid var(--line);border-radius:2px;padding:7px 12px;background:var(--ink-750)}
+  .status-lamp .dot{width:9px;height:9px;border-radius:50%;background:var(--coral);
+    box-shadow:0 0 0 3px rgba(255,92,73,.16),0 0 12px 1px var(--coral);animation:pulse 1.9s ease-in-out infinite}
+  .status-lamp .txt{font-family:"Chakra Petch";font-weight:600;font-size:.74rem;letter-spacing:.12em;text-transform:uppercase}
+  .status-lamp .txt small{display:block;font-family:"IBM Plex Mono";font-weight:400;font-size:.58rem;letter-spacing:.1em;color:var(--haze-dim);text-transform:none}
+
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* ---------- SECTION FRAME ---------- */
+  .frame{
+    border:1px solid var(--line);border-radius:var(--radius);
+    background:linear-gradient(180deg,var(--ink-800),var(--ink-850));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025), 0 12px 32px -22px #000;
+  }
+  .frame-hd{
+    display:flex;align-items:center;gap:12px;
+    padding:11px 16px;border-bottom:1px solid var(--line);
+  }
+  .frame-hd .idx{font-family:"IBM Plex Mono";font-size:.62rem;color:var(--amber);letter-spacing:.14em;border:1px solid var(--amber-dim);border-radius:2px;padding:2px 6px}
+  .frame-hd h2{margin:0;font-family:"Chakra Petch";font-weight:600;font-size:.86rem;letter-spacing:.14em;text-transform:uppercase;color:var(--paper)}
+  .frame-hd .sub{font-family:"IBM Plex Mono";font-size:.64rem;color:var(--haze-dim);letter-spacing:.06em;margin-left:auto}
+
+  /* ---------- RADAR (signature) ---------- */
+  .radar{margin-top:16px;overflow:hidden}
+  .radar-body{position:relative;padding:0}
+  .radar-scan{position:absolute;top:0;bottom:0;width:2px;background:linear-gradient(180deg,transparent,rgba(242,168,59,.75),transparent);
+    box-shadow:0 0 14px 2px rgba(242,168,59,.5);left:0;animation:sweep 6.5s linear infinite;pointer-events:none;z-index:3;mix-blend-mode:screen}
+  @keyframes sweep{0%{left:0;opacity:0}6%{opacity:1}94%{opacity:1}100%{left:100%;opacity:0}}
+
+  .days{display:grid;grid-template-columns:170px repeat(7,1fr);position:relative;z-index:2}
+  .day-legend{border-right:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;justify-content:center;gap:10px;background:var(--ink-850)}
+  .day-legend .lead{font-family:"Chakra Petch";font-weight:600;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--haze)}
+  .overdue{display:flex;align-items:center;gap:10px;border:1px solid var(--coral-dim);border-radius:2px;padding:8px 10px;background:rgba(255,92,73,.06)}
+  .overdue .n{font-family:"IBM Plex Mono";font-weight:600;font-size:1.5rem;color:var(--coral);line-height:1}
+  .overdue .l{font-family:"IBM Plex Mono";font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--coral);line-height:1.25}
+
+  .day{border-right:1px solid var(--line);padding:12px 8px 14px;text-align:center;position:relative;transition:background .18s}
+  .day:last-child{border-right:0}
+  .day:hover,.day:focus-within{background:var(--ink-800)}
+  .day .dow{font-family:"Chakra Petch";font-size:.66rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--haze-dim)}
+  .day .date{font-family:"IBM Plex Mono";font-size:.78rem;color:var(--haze);margin-top:2px}
+  .day.today .dow{color:var(--amber)}
+  .day.today{background:rgba(242,168,59,.05)}
+  .day.today::before{content:"HOJE";position:absolute;top:6px;left:50%;transform:translateX(-50%);
+    font-family:"IBM Plex Mono";font-size:.5rem;letter-spacing:.18em;color:var(--amber);opacity:.9}
+  .day.today .dow{margin-top:10px}
+  .gauge{margin:12px auto 8px;width:56px;height:56px;position:relative;display:flex;align-items:center;justify-content:center}
+  .gauge .cnt{font-family:"IBM Plex Mono";font-weight:600;font-size:1.35rem;line-height:1;z-index:2}
+  .gauge svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .gauge .ring-bg{stroke:var(--ink-700);fill:none;stroke-width:4}
+  .gauge .ring-fg{fill:none;stroke-width:4;stroke-linecap:round}
+  .lamp{display:inline-flex;align-items:center;gap:6px;font-family:"IBM Plex Mono";font-size:.56rem;letter-spacing:.08em;text-transform:uppercase}
+  .lamp i{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .sev-crit .ring-fg{stroke:var(--coral)} .sev-crit .cnt{color:var(--coral)} .sev-crit .lamp{color:var(--coral)} .sev-crit .lamp i{background:var(--coral);box-shadow:0 0 8px 1px var(--coral)}
+  .sev-warn .ring-fg{stroke:var(--amber)} .sev-warn .cnt{color:var(--amber)} .sev-warn .lamp{color:var(--amber)} .sev-warn .lamp i{background:var(--amber);box-shadow:0 0 8px 1px var(--amber)}
+  .sev-ok   .ring-fg{stroke:var(--mint)}  .sev-ok .cnt{color:var(--paper)}  .sev-ok .lamp{color:var(--mint-dim)} .sev-ok .lamp i{background:var(--mint-dim)}
+  .sev-idle .ring-fg{stroke:var(--ink-700)} .sev-idle .cnt{color:var(--haze-dim)} .sev-idle .lamp{color:var(--haze-dim)} .sev-idle .lamp i{background:var(--ink-700)}
+
+  .radar-key{display:flex;gap:20px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line);background:var(--ink-850)}
+  .radar-key span{display:inline-flex;align-items:center;gap:7px;font-family:"IBM Plex Mono";font-size:.6rem;letter-spacing:.06em;color:var(--haze)}
+  .radar-key i{width:8px;height:8px;border-radius:50%}
+
+  /* ---------- KPI CLUSTER ---------- */
+  .kpis{margin-top:16px;display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  .kpi{
+    border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,var(--ink-800),var(--ink-850));
+    padding:14px 15px 13px;position:relative;overflow:hidden;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+  }
+  .kpi::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--mint-dim);opacity:.55}
+  .kpi.k-warn::after{background:var(--amber)}
+  .kpi.k-crit::after{background:var(--coral)}
+  .kpi .lbl{font-family:"Chakra Petch";font-weight:600;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--haze);min-height:2.2em;display:flex;align-items:flex-start}
+  .kpi .val{font-family:"IBM Plex Mono";font-weight:600;font-size:2.35rem;line-height:1;margin-top:8px;color:var(--paper)}
+  .kpi.k-warn .val{color:var(--amber)}
+  .kpi.k-crit .val{color:var(--coral)}
+  .kpi .foot{display:flex;align-items:center;gap:6px;margin-top:9px;font-family:"IBM Plex Mono";font-size:.58rem;letter-spacing:.06em;color:var(--haze-dim)}
+  .kpi .foot i{width:6px;height:6px;border-radius:50%;background:var(--mint-dim)}
+  .kpi.k-warn .foot i{background:var(--amber);box-shadow:0 0 7px var(--amber)}
+  .kpi.k-crit .foot i{background:var(--coral);box-shadow:0 0 7px var(--coral);animation:pulse 1.9s ease-in-out infinite}
+
+  /* ---------- CHARTS ---------- */
+  .charts{margin-top:16px;display:grid;grid-template-columns:1.15fr 1fr 1.15fr;gap:14px}
+  .chart-body{padding:16px}
+  .bars{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}
+  .bar-col .bwrap{width:100%;display:flex;align-items:flex-end;justify-content:center;height:100%}
+  .bar{width:64%;max-width:26px;background:linear-gradient(180deg,var(--amber),var(--amber-dim));border-radius:2px 2px 0 0;position:relative;transition:filter .18s}
+  .bar.alt{background:linear-gradient(180deg,var(--mint),var(--mint-dim))}
+  .bar-col:hover .bar{filter:brightness(1.18)}
+  .bar .tip{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-family:"IBM Plex Mono";font-size:.62rem;color:var(--paper)}
+  .bar-col .bx{font-family:"IBM Plex Mono";font-size:.6rem;color:var(--haze-dim);letter-spacing:.04em}
+  .donut-wrap{display:flex;align-items:center;gap:16px}
+  .donut{width:132px;height:132px;flex:none}
+  .donut svg{transform:rotate(-90deg)}
+  .legend{display:flex;flex-direction:column;gap:9px;min-width:0}
+  .legend .li{display:flex;align-items:center;gap:9px;font-size:.78rem}
+  .legend .li i{width:9px;height:9px;border-radius:2px;flex:none}
+  .legend .li .nm{color:var(--haze)}
+  .legend .li .qt{font-family:"IBM Plex Mono";margin-left:auto;color:var(--paper);font-weight:500}
+
+  /* ---------- LISTS ---------- */
+  .lists{margin-top:16px;display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:14px}
+  .rows{display:flex;flex-direction:column}
+  .row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--ink-750)}
+  .row:last-child{border-bottom:0}
+  .row .pid{font-family:"IBM Plex Mono";font-weight:600;font-size:.8rem;color:var(--paper);white-space:nowrap}
+  .row .who{color:var(--haze);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .obj{color:var(--haze-dim);font-size:.68rem;display:block;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .col-main{min-width:0;flex:1}
+  .countdown{font-family:"IBM Plex Mono";font-weight:600;font-size:.78rem;padding:4px 9px;border-radius:2px;white-space:nowrap;border:1px solid transparent}
+  .cd-crit{color:var(--coral);border-color:var(--coral-dim);background:rgba(255,92,73,.08)}
+  .cd-warn{color:var(--amber);border-color:var(--amber-dim);background:rgba(242,168,59,.08)}
+  .cd-ok{color:var(--mint);border-color:var(--mint-dim);background:rgba(79,209,181,.07)}
+
+  .alert{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ink-750);align-items:flex-start}
+  .alert:last-child{border-bottom:0}
+  .alert .ic{width:26px;height:26px;flex:none;border-radius:2px;display:flex;align-items:center;justify-content:center;
+    font-family:"IBM Plex Mono";font-weight:600;font-size:.8rem;border:1px solid}
+  .alert.a-crit .ic{color:var(--coral);border-color:var(--coral-dim);background:rgba(255,92,73,.08)}
+  .alert.a-warn .ic{color:var(--amber);border-color:var(--amber-dim);background:rgba(242,168,59,.08)}
+  .alert.a-info .ic{color:var(--haze);border-color:var(--line);background:var(--ink-750)}
+  .alert .txt{font-size:.8rem;color:var(--paper);line-height:1.4}
+  .alert .txt b{color:var(--amber);font-weight:600}
+  .alert .txt small{display:block;font-family:"IBM Plex Mono";font-size:.6rem;color:var(--haze-dim);letter-spacing:.05em;margin-top:3px;text-transform:uppercase}
+
+  .log{display:flex;gap:12px;padding:11px 16px;border-bottom:1px solid var(--ink-750);align-items:baseline}
+  .log:last-child{border-bottom:0}
+  .log .ts{font-family:"IBM Plex Mono";font-size:.62rem;color:var(--haze-dim);white-space:nowrap;letter-spacing:.04em}
+  .log .ev{font-size:.78rem;color:var(--paper)}
+  .log .ev .tag{font-family:"Chakra Petch";font-weight:600;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:1px 6px;border-radius:2px;margin-right:7px;border:1px solid var(--line);color:var(--haze)}
+  .log .ev .tag.g{color:var(--mint);border-color:var(--mint-dim)}
+  .log .ev .tag.a{color:var(--amber);border-color:var(--amber-dim)}
+  .log .ev b{font-family:"IBM Plex Mono";color:var(--paper);font-weight:600}
+
+  footer{margin-top:26px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    font-family:"IBM Plex Mono";font-size:.6rem;letter-spacing:.1em;color:var(--haze-dim);text-transform:uppercase;
+    border-top:1px solid var(--line);padding-top:14px}
+
+  /* focus */
+  a:focus-visible,[tabindex]:focus-visible,button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:2px}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media(max-width:1080px){
+    .kpis{grid-template-columns:repeat(3,1fr)}
+    .charts{grid-template-columns:1fr 1fr}
+    .charts .frame:last-child{grid-column:1/-1}
+    .lists{grid-template-columns:1fr 1fr}
+    .lists .frame:last-child{grid-column:1/-1}
+  }
+  @media(max-width:820px){
+    .days{grid-template-columns:1fr}
+    .day-legend{border-right:0;border-bottom:1px solid var(--line);flex-direction:row;justify-content:space-between}
+    .day{display:grid;grid-template-columns:auto 56px 1fr;align-items:center;gap:14px;text-align:left;border-right:0;border-bottom:1px solid var(--ink-750);padding:10px 16px}
+    .day .gauge{margin:0}
+    .day.today::before{position:static;transform:none;display:inline-block;margin-left:8px}
+    .day.today .dow{margin-top:0}
+    .day .lamp{justify-self:start}
+    .radar-scan{display:none}
+  }
+  @media(max-width:720px){
+    .charts,.lists{grid-template-columns:1fr}
+    .charts .frame:last-child,.lists .frame:last-child{grid-column:auto}
+    .telemetry{gap:14px}
+  }
+  @media(max-width:560px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .brand{flex-direction:column;gap:2px}
+  }
+
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    .radar-scan{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="console">
+
+  <!-- MASTHEAD -->
+  <header class="masthead">
+    <div class="brand">
+      <span class="mark hud">Juris<b>Control</b></span>
+      <span class="org">Procuradoria · CMDC · Duque de Caxias</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="telemetry">
+      <div class="tm"><span class="k">Data operacional</span><span class="v" id="opdate">14/07/2026</span></div>
+      <div class="tm"><span class="k">Hora local</span><span class="v" id="clock">--:--:--</span></div>
+      <div class="tm"><span class="k">Turno</span><span class="v">Diurno</span></div>
+      <div class="status-lamp" role="status" aria-label="Situação da torre: atenção, 4 processos vencidos">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="txt hud">Atenção<small>4 vencidos · 9 vencendo</small></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- RADAR DE PRAZOS (SIGNATURE) -->
+  <section class="frame radar" aria-labelledby="radar-h">
+    <div class="frame-hd">
+      <span class="idx mono">RDR</span>
+      <h2 id="radar-h">Radar de Prazos</h2>
+      <span class="sub mono">horizonte · próximos 7 dias</span>
+    </div>
+    <div class="radar-body">
+      <div class="radar-scan" aria-hidden="true"></div>
+      <div class="days">
+        <div class="day-legend">
+          <span class="lead hud">Varredura ativa</span>
+          <div class="overdue" role="alert">
+            <span class="n mono">4</span>
+            <span class="l">processos<br>vencidos</span>
+          </div>
+        </div>
+
+        <!-- Ter HOJE -->
+        <div class="day today sev-crit" tabindex="0" aria-label="Terça 14/07, hoje, 2 prazos críticos vencendo hoje">
+          <div class="dow hud">Ter</div><div class="date mono">14/07</div>
+          <div class="gauge"><svg viewBox="0 0 56 56"><circle class="ring-bg" cx="28" cy="28" r="24"/><circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="75.4"/></svg><span class="cnt mono">2</span></div>
+          <span class="lamp"><i></i>vence hoje</span>
+        </div>
+        <!-- Qua -->
+        <div class="day sev-warn" tabindex="0" aria-label="Quarta 15/07, 3 prazos, atenção">
+          <div class="dow hud">Qua</div><div class="date mono">15/07</div>
+          <div class="gauge"><svg viewBox="0 0 56 56"><circle class="ring-bg" cx="28" cy="28" r="24"/><circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="45"/></svg><span class="cnt mono">3</span></div>
+          <span class="lamp"><i></i>1 dia</span>
+        </div>
+        <!-- Qui -->
+        <div class="day sev-warn" tabindex="0" aria-label="Quinta 16/07, 1 prazo, atenção">
+          <div class="dow hud">Qui</div><div class="date mono">16/07</div>
+          <div class="gauge"><svg viewBox="0 0 56 56"><circle class="ring-bg" cx="28" cy="28" r="24"/><circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="113"/></svg><span class="cnt mono">1</span></div>
+          <span class="lamp"><i></i>2 dias</span>
+        </div>
+        <!-- Sex -->
+        <div class="day sev-ok" tabindex="0" aria-label="Sexta 17/07, 2 prazos de processo">
+          <div class="dow hud">Sex</div><div class="date mono">17/07</div>
+          <div class="gauge"><svg viewBox="0 0 56 56"><circle class="ring-bg" cx="28" cy="28" r="24"/><circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="90"/></svg><span class="cnt mono">2</span></div>
+          <span class="lamp"><i></i>prazo</span>
+        </div>
+        <!-- Sáb -->
+        <div class="day sev-idle" tabindex="0" aria-label="Sábado 18/07, sem prazos">
+          <div class="dow hud">Sáb</div><div class="date mono">18/07</div>
+          <div class="gauge"><svg viewBox="0 0 56 56"><circle class="ring-bg" cx="28" cy="28" r="24"/><circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><span class="cnt mono">0</span></div>
+          <span class="lamp"><i></i>livre</span>
+        </div>
+        <!-- Dom -->
+        <div class="day sev-idle" tabindex="0" aria-label="Domingo 19/07, sem prazos">
+          <div class="dow hud">Dom</div><div class="date mono">19/07</div>
+          <div class="gauge"><svg viewBox="0 0 56 56"><circle class="ring-bg" cx="28" cy="28" r="24"/><circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="150.8"/></svg><span class="cnt mono">0</span></div>
+          <span class="lamp"><i></i>livre</span>
+        </div>
+        <!-- Seg -->
+        <div class="day sev-ok" tabindex="0" aria-label="Segunda 20/07, 4 compromissos">
+          <div class="dow hud">Seg</div><div class="date mono">20/07</div>
+          <div class="gauge"><svg viewBox="0 0 56 56"><circle class="ring-bg" cx="28" cy="28" r="24"/><circle class="ring-fg" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="45"/></svg><span class="cnt mono">4</span></div>
+          <span class="lamp"><i></i>agenda</span>
+        </div>
+      </div>
+    </div>
+    <div class="radar-key">
+      <span><i style="background:var(--coral)"></i>Crítico · vence hoje / atrasado</span>
+      <span><i style="background:var(--amber)"></i>Atenção · 1–2 dias</span>
+      <span><i style="background:var(--mint-dim)"></i>Prazo de processo</span>
+      <span><i style="background:var(--ink-700)"></i>Sem prazos</span>
+    </div>
+  </section>
+
+  <!-- KPI CLUSTER -->
+  <section class="kpis" aria-label="Indicadores operacionais">
+    <div class="kpi"><span class="lbl">Total de Processos</span><span class="val mono">342</span><span class="foot"><i></i>base ativa</span></div>
+    <div class="kpi"><span class="lbl">Pendentes</span><span class="val mono">47</span><span class="foot"><i></i>aguardando</span></div>
+    <div class="kpi"><span class="lbl">Em Análise</span><span class="val mono">28</span><span class="foot"><i></i>em curso</span></div>
+    <div class="kpi"><span class="lbl">Finalizados</span><span class="val mono">251</span><span class="foot"><i></i>concluídos</span></div>
+    <div class="kpi k-warn"><span class="lbl">Vencendo ≤ 5 dias</span><span class="val mono">9</span><span class="foot"><i></i>monitorar</span></div>
+    <div class="kpi k-crit"><span class="lbl">Vencidos</span><span class="val mono">4</span><span class="foot"><i></i>ação imediata</span></div>
+  </section>
+
+  <!-- CHARTS -->
+  <section class="charts" aria-label="Gráficos operacionais">
+    <div class="frame">
+      <div class="frame-hd"><span class="idx mono">G01</span><h2>Entradas por Mês</h2><span class="sub mono">fev–jul</span></div>
+      <div class="chart-body">
+        <div class="bars" role="img" aria-label="Entradas por mês: fevereiro 38, março 44, abril 51, maio 47, junho 55, julho 42">
+          <div class="bar-col"><div class="bwrap"><div class="bar" style="height:69%"><span class="tip mono">38</span></div></div><span class="bx mono">FEV</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar" style="height:80%"><span class="tip mono">44</span></div></div><span class="bx mono">MAR</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar" style="height:93%"><span class="tip mono">51</span></div></div><span class="bx mono">ABR</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar" style="height:85%"><span class="tip mono">47</span></div></div><span class="bx mono">MAI</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar" style="height:100%"><span class="tip mono">55</span></div></div><span class="bx mono">JUN</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar" style="height:76%"><span class="tip mono">42</span></div></div><span class="bx mono">JUL</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-hd"><span class="idx mono">G02</span><h2>Distribuição por Status</h2></div>
+      <div class="chart-body">
+        <div class="donut-wrap">
+          <div class="donut">
+            <svg viewBox="0 0 132 132" role="img" aria-label="Distribuição por status: finalizados 251, pendentes 47, em análise 28, outros 16">
+              <circle cx="66" cy="66" r="52" fill="none" stroke="var(--ink-750)" stroke-width="16"/>
+              <!-- C = 326.7 ; segments -->
+              <circle cx="66" cy="66" r="52" fill="none" stroke="var(--mint-dim)" stroke-width="16" stroke-dasharray="239.8 86.9" stroke-dashoffset="0"/>
+              <circle cx="66" cy="66" r="52" fill="none" stroke="var(--amber)" stroke-width="16" stroke-dasharray="44.9 281.8" stroke-dashoffset="-239.8"/>
+              <circle cx="66" cy="66" r="52" fill="none" stroke="#6FA8C8" stroke-width="16" stroke-dasharray="26.7 300" stroke-dashoffset="-284.7"/>
+              <circle cx="66" cy="66" r="52" fill="none" stroke="var(--coral-dim)" stroke-width="16" stroke-dasharray="15.3 311.4" stroke-dashoffset="-311.4"/>
+            </svg>
+          </div>
+          <div class="legend">
+            <div class="li"><i style="background:var(--mint-dim)"></i><span class="nm">Finalizados</span><span class="qt mono">251</span></div>
+            <div class="li"><i style="background:var(--amber)"></i><span class="nm">Pendentes</span><span class="qt mono">47</span></div>
+            <div class="li"><i style="background:#6FA8C8"></i><span class="nm">Em Análise</span><span class="qt mono">28</span></div>
+            <div class="li"><i style="background:var(--coral-dim)"></i><span class="nm">Vencidos/Outros</span><span class="qt mono">16</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-hd"><span class="idx mono">G03</span><h2>Pareceres Emitidos</h2><span class="sub mono">fev–jul</span></div>
+      <div class="chart-body">
+        <div class="bars" role="img" aria-label="Pareceres emitidos por mês: fevereiro 29, março 33, abril 40, maio 36, junho 45, julho 31">
+          <div class="bar-col"><div class="bwrap"><div class="bar alt" style="height:64%"><span class="tip mono">29</span></div></div><span class="bx mono">FEV</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar alt" style="height:73%"><span class="tip mono">33</span></div></div><span class="bx mono">MAR</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar alt" style="height:89%"><span class="tip mono">40</span></div></div><span class="bx mono">ABR</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar alt" style="height:80%"><span class="tip mono">36</span></div></div><span class="bx mono">MAI</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar alt" style="height:100%"><span class="tip mono">45</span></div></div><span class="bx mono">JUN</span></div>
+          <div class="bar-col"><div class="bwrap"><div class="bar alt" style="height:69%"><span class="tip mono">31</span></div></div><span class="bx mono">JUL</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LISTS -->
+  <section class="lists" aria-label="Painéis de acompanhamento">
+
+    <div class="frame">
+      <div class="frame-hd"><span class="idx mono">L01</span><h2>Próximos Prazos</h2><span class="sub mono">15 dias</span></div>
+      <div class="rows">
+        <div class="row">
+          <div class="col-main"><span class="pid">2024/0457</span> <span class="who">Gabinete de Vereador</span><span class="obj">Parecer sobre projeto de lei</span></div>
+          <span class="countdown cd-crit">1 dia</span>
+        </div>
+        <div class="row">
+          <div class="col-main"><span class="pid">2024/0192</span> <span class="who">Secretaria de Administração</span><span class="obj">Análise de legalidade de licitação</span></div>
+          <span class="countdown cd-crit">2 dias</span>
+        </div>
+        <div class="row">
+          <div class="col-main"><span class="pid">2024/0331</span> <span class="who">Departamento de RH</span><span class="obj">Revisão de contrato administrativo</span></div>
+          <span class="countdown cd-warn">4 dias</span>
+        </div>
+        <div class="row">
+          <div class="col-main"><span class="pid">2024/0508</span> <span class="who">Comissão de Licitação</span><span class="obj">Impugnação a edital</span></div>
+          <span class="countdown cd-ok">6 dias</span>
+        </div>
+        <div class="row">
+          <div class="col-main"><span class="pid">2024/0276</span> <span class="who">Secretaria de Administração</span><span class="obj">Parecer sobre reajuste contratual</span></div>
+          <span class="countdown cd-ok">9 dias</span>
+        </div>
+        <div class="row">
+          <div class="col-main"><span class="pid">2023/0912</span> <span class="who">Gabinete de Vereador</span><span class="obj">Resposta a requerimento</span></div>
+          <span class="countdown cd-crit">−3 dias</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-hd"><span class="idx mono">L02</span><h2>Alertas Inteligentes</h2></div>
+      <div class="rows">
+        <div class="alert a-crit">
+          <span class="ic">!</span>
+          <span class="txt"><b>4 processos vencidos</b> aguardando providência da Procuradoria.<small>Prioridade máxima</small></span>
+        </div>
+        <div class="alert a-crit">
+          <span class="ic">!</span>
+          <span class="txt">Prazo do processo <b>2024/0457</b> vence amanhã (15/07).<small>Parecer sobre projeto de lei</small></span>
+        </div>
+        <div class="alert a-warn">
+          <span class="ic">~</span>
+          <span class="txt"><b>3 processos</b> sem movimentação há mais de 30 dias.<small>Risco de estagnação</small></span>
+        </div>
+        <div class="alert a-info">
+          <span class="ic">i</span>
+          <span class="txt">Comissão de Licitação com <b>2 prazos</b> concentrados em 20/07.<small>Redistribuir carga</small></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-hd"><span class="idx mono">L03</span><h2>Últimas Atividades</h2></div>
+      <div class="rows">
+        <div class="log"><span class="ts">09:42</span><span class="ev"><span class="tag g">Parecer</span>emitido no processo <b>2024/0188</b></span></div>
+        <div class="log"><span class="ts">08:30</span><span class="ev"><span class="tag">Distribuição</span>processo <b>2024/0511</b> ao Proc. Andrade</span></div>
+        <div class="log"><span class="ts">ontem 17:15</span><span class="ev"><span class="tag a">Prazo</span>prorrogado no processo <b>2024/0402</b></span></div>
+        <div class="log"><span class="ts">ontem 15:03</span><span class="ev"><span class="tag g">Parecer</span>emitido no processo <b>2024/0177</b></span></div>
+        <div class="log"><span class="ts">ontem 11:20</span><span class="ev"><span class="tag">Arquivo</span>processo <b>2023/0855</b> arquivado</span></div>
+      </div>
+    </div>
+
+  </section>
+
+  <footer>
+    <span>JurisControl · Torre de Controle de Prazos</span>
+    <span id="uplink">Uplink Firestore · sincronizado</span>
+    <span>Procuradoria CMDC · Duque de Caxias / RJ</span>
+  </footer>
+
+</div>
+
+<script>
+  // Relógio de telemetria — mínimo, sem dependências
+  (function(){
+    var clock=document.getElementById('clock');
+    function pad(n){return String(n).padStart(2,'0');}
+    function tick(){
+      var d=new Date();
+      clock.textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    }
+    tick();
+    if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+      setInterval(tick,1000);
+    }
+  })();
+</script>
+</body>
+</html>

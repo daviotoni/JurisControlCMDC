@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JurisControl — Espaço de Foco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;1,300&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --mist:#E8ECEC;
+    --mist-2:#E1E6E6;
+    --card:#F7F9F8;
+    --card-line:#DCE2E1;
+    --ink:#22303A;
+    --slate:#64757C;
+    --slate-soft:#8A979C;
+    --sage:#6E9280;
+    --sage-deep:#537563;
+    --gold:#B98A46;
+    --terra:#9C5245;
+    --shadow:0 1px 2px rgba(34,48,58,.04), 0 8px 30px rgba(34,48,58,.05);
+    --radius:14px;
+    --ff-display:"Spectral", Georgia, serif;
+    --ff-body:"Instrument Sans", system-ui, sans-serif;
+    --ff-mono:"IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --mist:#161D22;
+      --mist-2:#131A1E;
+      --card:#1D262C;
+      --card-line:#2A353B;
+      --ink:#E7ECEC;
+      --slate:#9AA8AD;
+      --slate-soft:#6E7C82;
+      --sage:#8FB29C;
+      --sage-deep:#A9C6B4;
+      --gold:#D3AC6E;
+      --terra:#CB8175;
+      --shadow:0 1px 2px rgba(0,0,0,.25), 0 10px 34px rgba(0,0,0,.30);
+      --card-line:#2C373D;
+    }
+  }
+  :root[data-theme="dark"]{
+    --mist:#161D22;--mist-2:#131A1E;--card:#1D262C;--card-line:#2A353B;--ink:#E7ECEC;
+    --slate:#9AA8AD;--slate-soft:#6E7C82;--sage:#8FB29C;--sage-deep:#A9C6B4;--gold:#D3AC6E;--terra:#CB8175;
+    --shadow:0 1px 2px rgba(0,0,0,.25), 0 10px 34px rgba(0,0,0,.30);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 500px at 80% -8%, rgba(110,146,128,.10), transparent 60%),
+      var(--mist);
+    color:var(--ink);
+    font-family:var(--ff-body);
+    font-size:15px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    letter-spacing:.1px;
+  }
+  a{color:inherit}
+  .wrap{max-width:1200px;margin:0 auto;padding:clamp(20px,4vw,44px) clamp(16px,4vw,44px) 80px}
+
+  /* ---------- utility type ---------- */
+  .eyebrow{
+    font-family:var(--ff-mono);font-size:11px;font-weight:500;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--slate);
+  }
+  .mono{font-family:var(--ff-mono)}
+  .card{
+    background:var(--card);border:1px solid var(--card-line);
+    border-radius:var(--radius);box-shadow:var(--shadow);
+  }
+  h2.section-title{
+    font-family:var(--ff-display);font-weight:400;font-size:clamp(19px,2.4vw,24px);
+    letter-spacing:.2px;margin:0;color:var(--ink);
+  }
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 2px 16px}
+  .section-head .eyebrow{white-space:nowrap}
+
+  /* ---------- masthead ---------- */
+  header.masthead{
+    display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;
+    padding-bottom:26px;margin-bottom:34px;
+    border-bottom:1px solid var(--card-line);
+  }
+  .brand-mark{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .seal{
+    width:34px;height:34px;border-radius:50%;flex:none;
+    border:1.5px solid var(--sage-deep);
+    display:grid;place-items:center;
+    background:
+      radial-gradient(circle at 50% 120%, rgba(110,146,128,.35), transparent 70%);
+  }
+  .seal span{font-family:var(--ff-display);font-size:16px;color:var(--sage-deep);line-height:1}
+  .brand-mark .eyebrow{letter-spacing:.24em}
+  h1{
+    font-family:var(--ff-display);font-weight:300;
+    font-size:clamp(30px,5vw,50px);line-height:1.02;letter-spacing:-.4px;
+    margin:0;color:var(--ink);
+  }
+  h1 em{font-style:italic;color:var(--sage-deep);font-weight:400}
+  .lede{margin:12px 0 0;max-width:46ch;color:var(--slate);font-size:15px}
+  .masthead-side{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:14px}
+  .today{font-family:var(--ff-mono);font-size:13px;color:var(--slate)}
+  .today b{color:var(--ink);font-weight:500}
+  .overdue-note{
+    display:inline-flex;align-items:center;gap:9px;
+    padding:9px 14px;border-radius:999px;
+    border:1px solid color-mix(in srgb, var(--terra) 32%, transparent);
+    background:color-mix(in srgb, var(--terra) 8%, var(--card));
+    font-size:13px;color:var(--ink);white-space:nowrap;
+  }
+  .overdue-note .dot{width:8px;height:8px;border-radius:50%;background:var(--terra);flex:none}
+  .overdue-note b{font-family:var(--ff-mono);font-weight:500}
+  .theme-toggle{
+    font-family:var(--ff-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--slate);background:transparent;border:1px solid var(--card-line);
+    padding:7px 12px;border-radius:999px;cursor:pointer;transition:color .2s, border-color .2s;
+  }
+  .theme-toggle:hover{color:var(--ink);border-color:var(--slate-soft)}
+
+  /* ---------- KPI ---------- */
+  .kpis{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:44px;
+  }
+  .kpi{padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px;min-height:132px;position:relative;overflow:hidden}
+  .kpi .label{font-family:var(--ff-mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--slate);line-height:1.35}
+  .kpi .num{
+    font-family:var(--ff-display);font-weight:300;font-size:44px;line-height:.95;
+    letter-spacing:-1px;color:var(--ink);margin-top:auto;
+  }
+  .kpi .foot{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--slate-soft)}
+  .kpi .bar{height:3px;border-radius:2px;background:var(--card-line);overflow:hidden}
+  .kpi .bar > i{display:block;height:100%;border-radius:2px;background:var(--slate-soft)}
+  .kpi.accent-sage .bar > i{background:var(--sage)}
+  .kpi.accent-gold .num{color:color-mix(in srgb,var(--gold) 70%, var(--ink))}
+  .kpi.accent-gold .bar > i{background:var(--gold)}
+  .kpi.accent-terra .num{color:var(--terra)}
+  .kpi.accent-terra .bar > i{background:var(--terra)}
+  .kpi .tag{display:inline-flex;align-items:center;gap:6px}
+  .kpi .tag .d{width:6px;height:6px;border-radius:50%;background:var(--slate-soft)}
+  .kpi.accent-gold .tag .d{background:var(--gold)}
+  .kpi.accent-terra .tag .d{background:var(--terra)}
+  .kpi.accent-sage .tag .d{background:var(--sage)}
+
+  /* ---------- signature: horizonte ---------- */
+  .horizon{padding:24px clamp(16px,3vw,30px) 20px;margin-bottom:44px}
+  .horizon-top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:6px;flex-wrap:wrap}
+  .horizon .legend{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--ff-mono);font-size:11px;color:var(--slate)}
+  .horizon .legend span{display:inline-flex;align-items:center;gap:7px}
+  .horizon .legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .lg-crit{background:var(--terra)} .lg-att{background:var(--gold)}
+  .lg-proc{background:var(--sage)} .lg-comp{background:var(--slate-soft)}
+
+  .sky{
+    position:relative;margin-top:22px;
+    display:grid;grid-template-columns:repeat(7,1fr);gap:0;
+    border-bottom:1.5px solid var(--slate-soft);
+  }
+  .sky::before{
+    content:"";position:absolute;left:0;right:0;bottom:-1.5px;height:120px;
+    background:linear-gradient(to top, color-mix(in srgb,var(--sage) 9%, transparent), transparent);
+    pointer-events:none;
+  }
+  .day{
+    position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+    height:190px;padding-bottom:12px;text-align:center;
+    border-left:1px solid var(--card-line);
+  }
+  .day:first-child{border-left:none}
+  .day .rise{
+    width:70%;max-width:66px;border-radius:8px 8px 0 0;margin-bottom:12px;
+    background:linear-gradient(to top, var(--fill,var(--slate-soft)), color-mix(in srgb,var(--fill,var(--slate-soft)) 30%, transparent));
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--fill,var(--slate-soft)) 40%, transparent);
+    transition:height .6s cubic-bezier(.2,.7,.2,1);
+  }
+  .day .count{
+    position:absolute;left:50%;transform:translateX(-50%);
+    top:8px;font-family:var(--ff-display);font-weight:300;font-size:26px;color:var(--ink);
+  }
+  .day .count.zero{color:var(--slate-soft);font-size:20px}
+  .day .date{font-family:var(--ff-mono);font-size:13px;color:var(--ink);font-weight:500}
+  .day .wd{font-family:var(--ff-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate-soft);margin-top:2px}
+  .day .sev{font-size:11px;color:var(--slate);margin-top:6px;min-height:15px}
+  .day .marker{width:6px;height:6px;border-radius:50%;background:var(--fill,var(--slate-soft));margin-top:8px}
+  .day.today{background:color-mix(in srgb,var(--sage) 7%, transparent);border-radius:10px 10px 0 0}
+  .day.today .date::after{content:" · hoje";color:var(--sage-deep);font-weight:500}
+  .day.today::before{
+    content:"";position:absolute;top:0;bottom:0;left:50%;width:1px;transform:translateX(-50%);
+    background:linear-gradient(to bottom, var(--sage-deep), transparent);opacity:.5;
+  }
+  .fill-crit{--fill:var(--terra)} .fill-att{--fill:var(--gold)}
+  .fill-proc{--fill:var(--sage)} .fill-comp{--fill:var(--slate-soft)}
+
+  /* ---------- charts ---------- */
+  .charts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:44px}
+  .chart{padding:20px}
+  .chart h3{margin:0 0 4px;font-family:var(--ff-display);font-weight:400;font-size:17px}
+  .chart .sub{font-family:var(--ff-mono);font-size:11px;color:var(--slate-soft);letter-spacing:.04em;margin-bottom:20px}
+  .bars{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px}
+  .bars .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;justify-content:flex-end;height:100%}
+  .bars .col .stalk{
+    width:100%;max-width:26px;border-radius:6px 6px 0 0;
+    background:linear-gradient(to top,var(--sage),color-mix(in srgb,var(--sage) 45%, transparent));
+    transition:height .6s cubic-bezier(.2,.7,.2,1);
+  }
+  .bars.gold .col .stalk{background:linear-gradient(to top,var(--gold),color-mix(in srgb,var(--gold) 45%, transparent))}
+  .bars .col .m{font-family:var(--ff-mono);font-size:10.5px;color:var(--slate-soft);letter-spacing:.06em}
+  .bars .col .v{font-family:var(--ff-mono);font-size:11px;color:var(--slate)}
+
+  .donut-wrap{display:flex;align-items:center;gap:20px}
+  .donut{
+    width:132px;height:132px;border-radius:50%;flex:none;position:relative;
+    background:conic-gradient(
+      var(--sage) 0turn 0.7606turn,
+      var(--gold) 0.7606turn 0.9030turn,
+      var(--slate) 0.9030turn 0.9879turn,
+      var(--terra) 0.9879turn 1turn
+    );
+  }
+  .donut::after{
+    content:"";position:absolute;inset:20px;border-radius:50%;background:var(--card);
+    box-shadow:inset 0 1px 3px rgba(34,48,58,.05);
+  }
+  .donut .center{position:absolute;inset:0;display:grid;place-content:center;text-align:center;z-index:1}
+  .donut .center b{font-family:var(--ff-display);font-weight:300;font-size:28px;line-height:1}
+  .donut .center small{font-family:var(--ff-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate-soft)}
+  .donut-legend{display:flex;flex-direction:column;gap:9px;font-size:13px}
+  .donut-legend .row{display:flex;align-items:center;gap:9px}
+  .donut-legend i{width:9px;height:9px;border-radius:2px;flex:none}
+  .donut-legend .row span{color:var(--slate)}
+  .donut-legend .row b{margin-left:auto;font-family:var(--ff-mono);font-weight:500;color:var(--ink)}
+
+  /* ---------- lists ---------- */
+  .lists{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .panel{padding:20px}
+  .panel h3{margin:0 0 3px;font-family:var(--ff-display);font-weight:400;font-size:17px}
+  .panel .sub{font-family:var(--ff-mono);font-size:11px;color:var(--slate-soft);margin-bottom:14px}
+  ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+  ul.items li{padding:13px 0;border-top:1px solid var(--card-line);display:flex;gap:12px;align-items:flex-start}
+  ul.items li:first-child{border-top:none}
+
+  /* prazos list */
+  .prazo{justify-content:space-between}
+  .prazo .who{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .prazo .proc{font-family:var(--ff-mono);font-size:12px;color:var(--slate)}
+  .prazo .obj{font-size:13.5px;color:var(--ink);line-height:1.35}
+  .prazo .rest{font-family:var(--ff-mono);font-size:12px;text-align:right;white-space:nowrap;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+  .prazo .rest b{font-size:19px;font-family:var(--ff-display);font-weight:400;line-height:1}
+  .prazo .rest small{color:var(--slate-soft);letter-spacing:.06em}
+  .rest.r-crit b{color:var(--terra)} .rest.r-att b{color:color-mix(in srgb,var(--gold) 75%,var(--ink))}
+  .rest.r-ok b{color:var(--sage-deep)}
+
+  /* alerts */
+  .alert{align-items:flex-start}
+  .alert .ic{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;font-family:var(--ff-mono);font-size:13px;margin-top:1px}
+  .alert.a-crit .ic{background:color-mix(in srgb,var(--terra) 14%,transparent);color:var(--terra)}
+  .alert.a-att .ic{background:color-mix(in srgb,var(--gold) 16%,transparent);color:color-mix(in srgb,var(--gold) 78%,var(--ink))}
+  .alert.a-info .ic{background:color-mix(in srgb,var(--sage) 16%,transparent);color:var(--sage-deep)}
+  .alert .txt{font-size:13.5px;line-height:1.4}
+  .alert .txt small{display:block;font-family:var(--ff-mono);font-size:10.5px;color:var(--slate-soft);margin-top:3px;letter-spacing:.04em}
+
+  /* activity */
+  .act{gap:14px}
+  .act .stamp{font-family:var(--ff-mono);font-size:11px;color:var(--slate-soft);flex:none;width:44px;padding-top:2px}
+  .act .body{font-size:13.5px;line-height:1.4}
+  .act .body b{font-weight:600;color:var(--ink)}
+  .act .body span{color:var(--slate)}
+  .act .rail{flex:none;width:9px;display:flex;justify-content:center;padding-top:5px}
+  .act .rail i{width:8px;height:8px;border-radius:50%;background:var(--sage);box-shadow:0 0 0 3px color-mix(in srgb,var(--sage) 18%,transparent)}
+  .act.t-gold .rail i{background:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 18%,transparent)}
+  .act.t-slate .rail i{background:var(--slate-soft);box-shadow:0 0 0 3px color-mix(in srgb,var(--slate-soft) 18%,transparent)}
+
+  footer{margin-top:54px;padding-top:22px;border-top:1px solid var(--card-line);
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-family:var(--ff-mono);font-size:11px;letter-spacing:.08em;color:var(--slate-soft)}
+
+  /* focus */
+  a:focus-visible,button:focus-visible,.day:focus-visible{
+    outline:2px solid var(--sage-deep);outline-offset:3px;border-radius:6px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;animation:none !important}
+  }
+
+  /* responsive */
+  @media (max-width:1000px){
+    .kpis{grid-template-columns:repeat(3,1fr)}
+    .charts,.lists{grid-template-columns:1fr}
+  }
+  @media (max-width:720px){
+    header.masthead{grid-template-columns:1fr}
+    .masthead-side{align-items:flex-start;text-align:left}
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .sky{overflow-x:auto}
+    .day{min-width:96px}
+    .donut-wrap{flex-direction:column;align-items:flex-start}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- MASTHEAD -->
+  <header class="masthead">
+    <div>
+      <div class="brand-mark">
+        <div class="seal" aria-hidden="true"><span>JC</span></div>
+        <div class="eyebrow">Procuradoria &middot; Câmara Municipal de Duque de Caxias</div>
+      </div>
+      <h1>Seu dia, <em>sem</em> sobressaltos.</h1>
+      <p class="lede">Um panorama sereno do que exige atenção — os prazos aparecem antes de virarem urgência.</p>
+    </div>
+    <div class="masthead-side">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Alternar tema claro e escuro">Tema</button>
+      <div class="today">Terça, <b>14 de julho de 2026</b></div>
+      <div class="overdue-note"><span class="dot" aria-hidden="true"></span> <b>4</b>&nbsp;processos vencidos aguardam retomada</div>
+    </div>
+  </header>
+
+  <!-- KPIs -->
+  <section aria-label="Indicadores gerais">
+    <div class="kpis">
+      <div class="kpi card">
+        <div class="label">Total de<br>Processos</div>
+        <div class="num">342</div>
+        <div class="bar"><i style="width:100%"></i></div>
+        <div class="foot"><span class="tag"><span class="d"></span>base ativa</span></div>
+      </div>
+      <div class="kpi card accent-gold">
+        <div class="label">Pendentes</div>
+        <div class="num">47</div>
+        <div class="bar"><i style="width:14%"></i></div>
+        <div class="foot"><span class="tag"><span class="d"></span>aguardando distribuição</span></div>
+      </div>
+      <div class="kpi card">
+        <div class="label">Em Análise</div>
+        <div class="num">28</div>
+        <div class="bar"><i style="width:8%"></i></div>
+        <div class="foot"><span class="tag"><span class="d"></span>com procurador</span></div>
+      </div>
+      <div class="kpi card accent-sage">
+        <div class="label">Finalizados</div>
+        <div class="num">251</div>
+        <div class="bar"><i style="width:73%"></i></div>
+        <div class="foot"><span class="tag"><span class="d"></span>concluídos no ano</span></div>
+      </div>
+      <div class="kpi card accent-gold">
+        <div class="label">Vencendo<br>&le; 5 dias</div>
+        <div class="num">9</div>
+        <div class="bar"><i style="width:26%"></i></div>
+        <div class="foot"><span class="tag"><span class="d"></span>janela de atenção</span></div>
+      </div>
+      <div class="kpi card accent-terra">
+        <div class="label">Vencidos</div>
+        <div class="num">4</div>
+        <div class="bar"><i style="width:12%"></i></div>
+        <div class="foot"><span class="tag"><span class="d"></span>retomada prioritária</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIGNATURE: HORIZONTE DE PRAZOS -->
+  <section class="horizon card" aria-label="Radar de prazos dos próximos sete dias">
+    <div class="horizon-top">
+      <div>
+        <div class="eyebrow">O elemento assinatura</div>
+        <h2 class="section-title" style="margin-top:6px">Horizonte de Prazos &middot; próximos 7 dias</h2>
+      </div>
+      <div class="legend" aria-hidden="true">
+        <span><i class="lg-crit"></i>vence hoje / atrasado</span>
+        <span><i class="lg-att"></i>1–2 dias</span>
+        <span><i class="lg-proc"></i>prazo de processo</span>
+        <span><i class="lg-comp"></i>compromisso</span>
+      </div>
+    </div>
+
+    <div class="sky" role="list">
+      <div class="day today fill-crit" role="listitem" tabindex="0" aria-label="14 de julho, terça, hoje: 2 prazos críticos, vence hoje">
+        <div class="count">2</div>
+        <div class="rise" style="height:150px"></div>
+        <div class="date">14/07</div><div class="wd">Ter</div>
+        <div class="sev">vence hoje</div><div class="marker" aria-hidden="true"></div>
+      </div>
+      <div class="day fill-att" role="listitem" tabindex="0" aria-label="15 de julho, quarta: 3 prazos, atenção, 1 a 2 dias">
+        <div class="count">3</div>
+        <div class="rise" style="height:118px"></div>
+        <div class="date">15/07</div><div class="wd">Qua</div>
+        <div class="sev">1–2 dias</div><div class="marker" aria-hidden="true"></div>
+      </div>
+      <div class="day fill-att" role="listitem" tabindex="0" aria-label="16 de julho, quinta: 1 prazo, atenção">
+        <div class="count">1</div>
+        <div class="rise" style="height:96px"></div>
+        <div class="date">16/07</div><div class="wd">Qui</div>
+        <div class="sev">1–2 dias</div><div class="marker" aria-hidden="true"></div>
+      </div>
+      <div class="day fill-proc" role="listitem" tabindex="0" aria-label="17 de julho, sexta: 2 prazos de processo">
+        <div class="count">2</div>
+        <div class="rise" style="height:86px"></div>
+        <div class="date">17/07</div><div class="wd">Sex</div>
+        <div class="sev">prazo de processo</div><div class="marker" aria-hidden="true"></div>
+      </div>
+      <div class="day fill-comp" role="listitem" tabindex="0" aria-label="18 de julho, sábado: sem prazos">
+        <div class="count zero">0</div>
+        <div class="rise" style="height:22px"></div>
+        <div class="date">18/07</div><div class="wd">Sáb</div>
+        <div class="sev">&mdash;</div><div class="marker" aria-hidden="true"></div>
+      </div>
+      <div class="day fill-comp" role="listitem" tabindex="0" aria-label="19 de julho, domingo: sem prazos">
+        <div class="count zero">0</div>
+        <div class="rise" style="height:22px"></div>
+        <div class="date">19/07</div><div class="wd">Dom</div>
+        <div class="sev">&mdash;</div><div class="marker" aria-hidden="true"></div>
+      </div>
+      <div class="day fill-comp" role="listitem" tabindex="0" aria-label="20 de julho, segunda: 4 itens, 1 compromisso e prazos de processo">
+        <div class="count">4</div>
+        <div class="rise" style="height:132px"></div>
+        <div class="date">20/07</div><div class="wd">Seg</div>
+        <div class="sev">compromisso + prazos</div><div class="marker" aria-hidden="true"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHARTS -->
+  <section aria-label="Gráficos">
+    <div class="charts">
+      <div class="chart card">
+        <h3>Entradas por Mês</h3>
+        <div class="sub">processos protocolados · 2026</div>
+        <div class="bars" role="img" aria-label="Entradas: janeiro 38, fevereiro 44, março 51, abril 47, maio 58, junho 62">
+          <div class="col"><div class="v">38</div><div class="stalk" style="height:56%"></div><div class="m">Jan</div></div>
+          <div class="col"><div class="v">44</div><div class="stalk" style="height:66%"></div><div class="m">Fev</div></div>
+          <div class="col"><div class="v">51</div><div class="stalk" style="height:78%"></div><div class="m">Mar</div></div>
+          <div class="col"><div class="v">47</div><div class="stalk" style="height:71%"></div><div class="m">Abr</div></div>
+          <div class="col"><div class="v">58</div><div class="stalk" style="height:88%"></div><div class="m">Mai</div></div>
+          <div class="col"><div class="v">62</div><div class="stalk" style="height:96%"></div><div class="m">Jun</div></div>
+        </div>
+      </div>
+
+      <div class="chart card">
+        <h3>Distribuição por Status</h3>
+        <div class="sub">330 processos ativos</div>
+        <div class="donut-wrap">
+          <div class="donut" role="img" aria-label="Distribuição: finalizados 251, pendentes 47, em análise 28, vencidos 4">
+            <div class="center"><b>330</b><small>ativos</small></div>
+          </div>
+          <div class="donut-legend">
+            <div class="row"><i style="background:var(--sage)"></i><span>Finalizados</span><b>251</b></div>
+            <div class="row"><i style="background:var(--gold)"></i><span>Pendentes</span><b>47</b></div>
+            <div class="row"><i style="background:var(--slate)"></i><span>Em Análise</span><b>28</b></div>
+            <div class="row"><i style="background:var(--terra)"></i><span>Vencidos</span><b>4</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart card">
+        <h3>Pareceres Emitidos por Mês</h3>
+        <div class="sub">manifestações da procuradoria · 2026</div>
+        <div class="bars gold" role="img" aria-label="Pareceres: janeiro 22, fevereiro 27, março 31, abril 29, maio 35, junho 41">
+          <div class="col"><div class="v">22</div><div class="stalk" style="height:54%"></div><div class="m">Jan</div></div>
+          <div class="col"><div class="v">27</div><div class="stalk" style="height:66%"></div><div class="m">Fev</div></div>
+          <div class="col"><div class="v">31</div><div class="stalk" style="height:76%"></div><div class="m">Mar</div></div>
+          <div class="col"><div class="v">29</div><div class="stalk" style="height:71%"></div><div class="m">Abr</div></div>
+          <div class="col"><div class="v">35</div><div class="stalk" style="height:85%"></div><div class="m">Mai</div></div>
+          <div class="col"><div class="v">41</div><div class="stalk" style="height:98%"></div><div class="m">Jun</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LISTS -->
+  <section aria-label="Listas de acompanhamento">
+    <div class="lists">
+
+      <!-- Próximos prazos -->
+      <div class="panel card">
+        <h3>Próximos Prazos</h3>
+        <div class="sub">janela de 15 dias</div>
+        <ul class="items">
+          <li class="prazo">
+            <div class="who">
+              <span class="proc">2024/0192</span>
+              <span class="obj">Secretaria de Administração &middot; análise de legalidade de licitação</span>
+            </div>
+            <span class="rest r-crit"><b>2</b><small>dias</small></span>
+          </li>
+          <li class="prazo">
+            <div class="who">
+              <span class="proc">2024/0457</span>
+              <span class="obj">Comissão de Licitação &middot; parecer sobre pregão presencial</span>
+            </div>
+            <span class="rest r-crit"><b>1</b><small>dia</small></span>
+          </li>
+          <li class="prazo">
+            <div class="who">
+              <span class="proc">2024/0388</span>
+              <span class="obj">Gabinete de Vereador &middot; parecer sobre projeto de lei</span>
+            </div>
+            <span class="rest r-att"><b>4</b><small>dias</small></span>
+          </li>
+          <li class="prazo">
+            <div class="who">
+              <span class="proc">2024/0301</span>
+              <span class="obj">Departamento de RH &middot; revisão de contrato administrativo</span>
+            </div>
+            <span class="rest r-att"><b>6</b><small>dias</small></span>
+          </li>
+          <li class="prazo">
+            <div class="who">
+              <span class="proc">2024/0274</span>
+              <span class="obj">Secretaria de Administração &middot; ressarcimento de diárias</span>
+            </div>
+            <span class="rest r-ok"><b>11</b><small>dias</small></span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Alertas -->
+      <div class="panel card">
+        <h3>Alertas Inteligentes</h3>
+        <div class="sub">o sistema observando por você</div>
+        <ul class="items">
+          <li class="alert a-crit">
+            <div class="ic" aria-hidden="true">!</div>
+            <div class="txt">Prazo do processo <b>2024/0457</b> vence amanhã.<small>Comissão de Licitação · sem parecer registrado</small></div>
+          </li>
+          <li class="alert a-att">
+            <div class="ic" aria-hidden="true">~</div>
+            <div class="txt">3 processos sem movimentação há 30 dias.<small>Sugestão: redistribuir ou despachar</small></div>
+          </li>
+          <li class="alert a-att">
+            <div class="ic" aria-hidden="true">~</div>
+            <div class="txt">2 prazos concentrados na terça — considere adiantar um.<small>Equilíbrio de carga da semana</small></div>
+          </li>
+          <li class="alert a-info">
+            <div class="ic" aria-hidden="true">+</div>
+            <div class="txt">Prorrogação do <b>2024/0119</b> homologada — novo prazo em 28/07.<small>Registrada há 2 horas</small></div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Atividades -->
+      <div class="panel card">
+        <h3>Últimas Atividades</h3>
+        <div class="sub">registro do dia</div>
+        <ul class="items">
+          <li class="act">
+            <span class="rail" aria-hidden="true"><i></i></span>
+            <span class="stamp">11:42</span>
+            <div class="body"><b>Parecer emitido</b> <span>no 2024/0341 — legalidade de aditivo contratual.</span></div>
+          </li>
+          <li class="act t-gold">
+            <span class="rail" aria-hidden="true"><i></i></span>
+            <span class="stamp">10:18</span>
+            <div class="body"><b>Prazo prorrogado</b> <span>do 2024/0119 para 28/07, a pedido do relator.</span></div>
+          </li>
+          <li class="act t-slate">
+            <span class="rail" aria-hidden="true"><i></i></span>
+            <span class="stamp">09:55</span>
+            <div class="body"><b>Processo distribuído</b> <span>2024/0468 ao procurador de plantão.</span></div>
+          </li>
+          <li class="act">
+            <span class="rail" aria-hidden="true"><i></i></span>
+            <span class="stamp">09:07</span>
+            <div class="body"><b>Parecer emitido</b> <span>no 2024/0310 — projeto de lei do Gabinete de Vereador.</span></div>
+          </li>
+          <li class="act t-slate">
+            <span class="rail" aria-hidden="true"><i></i></span>
+            <span class="stamp">Ontem</span>
+            <div class="body"><b>Documento anexado</b> <span>ao 2024/0301 — minuta revisada de contrato.</span></div>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <span>JurisControl · Procuradoria CMDC</span>
+    <span>Atualizado 14/07/2026 · 11:42</span>
+  </footer>
+</div>
+
+<script>
+  (function(){
+    var btn=document.getElementById('themeToggle');
+    var root=document.documentElement;
+    btn.addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme');
+      var next = cur==='dark' ? 'light' : (cur==='light' ? 'dark' :
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark'));
+      root.setAttribute('data-theme',next);
+    });
+  })();
+</script>
+</body>
+</html>
