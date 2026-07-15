@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "jusratio": {
+      "type": "http",
+      "url": "https://mcp.jusratio.com.br/mcp"
+    }
+  }
+}
