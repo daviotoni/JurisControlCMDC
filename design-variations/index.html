@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JurisControl — Variações de Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --abissal:#0a1628; --catedral:#0f2440; --ardosia:#16324f;
+    --latao:#c7a24b; --latao-claro:#e8c979;
+    --pergaminho:#e9eff7; --nevoa:#8ca3c0;
+    --linha:rgba(199,162,75,.18);
+    --card-brd:rgba(255,255,255,.08);
+    --vencido:#e5484d; --vencendo:#e0a82e; --prazo:#4c86d6;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:
+      radial-gradient(1200px 600px at 78% -10%, rgba(76,134,214,.10), transparent 60%),
+      radial-gradient(900px 500px at 10% 110%, rgba(199,162,75,.08), transparent 60%),
+      var(--abissal);
+    color:var(--pergaminho);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  a{color:inherit}
+  .wrap{max-width:1200px; margin:0 auto; padding:clamp(1.5rem,4vw,4rem) clamp(1.2rem,4vw,2.5rem)}
+
+  /* Masthead */
+  .masthead{border-bottom:1px solid var(--linha); padding-bottom:1.6rem; margin-bottom:2.6rem}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace; font-size:.72rem; letter-spacing:.28em;
+    text-transform:uppercase; color:var(--latao); margin:0 0 1rem;
+    display:flex; align-items:center; gap:.7rem;
+  }
+  .eyebrow::before{content:""; width:26px; height:1px; background:var(--latao); display:inline-block}
+  h1{
+    font-family:'Fraunces',serif; font-weight:600; font-optical-sizing:auto;
+    font-size:clamp(2.1rem,5.2vw,3.7rem); line-height:1.02; margin:0 0 .7rem; letter-spacing:-.01em;
+  }
+  h1 em{font-style:italic; color:var(--latao-claro)}
+  .lede{max-width:60ch; color:var(--nevoa); font-size:clamp(.98rem,1.5vw,1.1rem); margin:0}
+  .lede code{font-family:'IBM Plex Mono',monospace; color:var(--pergaminho); font-size:.85em}
+
+  /* Cards */
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1.4rem}
+  @media(max-width:920px){.grid{grid-template-columns:1fr}}
+  .card{
+    position:relative; display:flex; flex-direction:column;
+    background:linear-gradient(180deg,var(--catedral),var(--abissal));
+    border:1px solid var(--card-brd); border-radius:16px; overflow:hidden;
+    text-decoration:none; color:inherit;
+    transition:transform .35s cubic-bezier(.2,.7,.3,1), border-color .35s, box-shadow .35s;
+  }
+  .card:hover,.card:focus-visible{
+    transform:translateY(-6px); border-color:var(--linha);
+    box-shadow:0 24px 60px -28px rgba(0,0,0,.8), 0 0 0 1px var(--linha);
+    outline:none;
+  }
+  .card:focus-visible{box-shadow:0 0 0 3px var(--latao)}
+  .num{
+    font-family:'IBM Plex Mono',monospace; font-size:.72rem; letter-spacing:.2em;
+    color:var(--latao); padding:1.1rem 1.3rem .3rem;
+  }
+  /* Preview strips — a small painted mock of each direction */
+  .preview{height:170px; position:relative; overflow:hidden; border-bottom:1px solid var(--card-brd)}
+  .preview::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 55%,rgba(10,22,40,.55))}
+
+  /* Corporativo preview */
+  .pv-corp{background:linear-gradient(140deg,#0f2440,#0a1628)}
+  .pv-corp .kpi{position:absolute; top:22px; height:44px; border-radius:8px; border:1px solid rgba(199,162,75,.25); background:rgba(255,255,255,.03)}
+  .pv-corp .k1{left:18px; width:74px} .pv-corp .k2{left:100px; width:74px} .pv-corp .k3{left:182px; width:74px}
+  .pv-corp .k1{border-left:3px solid var(--vencido)} .pv-corp .k2{border-left:3px solid var(--vencendo)} .pv-corp .k3{border-left:3px solid #3fb984}
+  .pv-corp .bar{position:absolute; bottom:34px; left:18px; right:18px; height:56px; border-radius:8px; background:linear-gradient(90deg,rgba(76,134,214,.25),rgba(199,162,75,.25)); overflow:hidden}
+  .pv-corp .sweep{position:absolute; top:0; bottom:0; width:60px; background:linear-gradient(90deg,transparent,rgba(232,201,121,.5),transparent); animation:sweep 3.2s linear infinite}
+  @keyframes sweep{from{left:-60px}to{left:100%}}
+
+  /* Dossiê preview */
+  .pv-doss{background:#cfc9b8}
+  .pv-doss .sheet{position:absolute; top:16px; left:20px; right:20px; bottom:16px; background:#f4f1e8; border-left:4px solid #9e2b25; box-shadow:2px 3px 8px rgba(0,0,0,.18)}
+  .pv-doss .rule{position:absolute; left:34px; right:20px; height:1px; background:rgba(22,40,61,.16)}
+  .pv-doss .r1{top:44px}.pv-doss .r2{top:64px}.pv-doss .r3{top:84px}.pv-doss .r4{top:104px}
+  .pv-doss .stamp{position:absolute; right:34px; top:40px; transform:rotate(-9deg); border:2px solid #9e2b25; color:#9e2b25; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:.6rem; padding:2px 7px; border-radius:3px; letter-spacing:.1em; opacity:.85}
+  .pv-doss .fl{position:absolute; left:20px; top:22px; font-family:'IBM Plex Mono',monospace; font-size:.58rem; color:#16283d}
+  .pv-doss .hole{position:absolute; left:9px; width:9px; height:9px; border-radius:50%; background:#0a1628; opacity:.25}
+  .pv-doss .h1{top:52px}.pv-doss .h2{bottom:52px}
+
+  /* Sala de situação preview */
+  .pv-sala{background:radial-gradient(circle at 50% 60%,#0c1626,#05090f)}
+  .pv-sala .grid-bg{position:absolute; inset:0; background-image:linear-gradient(rgba(47,228,213,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(47,228,213,.06) 1px,transparent 1px); background-size:22px 22px}
+  .pv-sala .scope{position:absolute; top:50%; left:50%; width:118px; height:118px; margin:-59px 0 0 -59px; border-radius:50%; border:1px solid rgba(47,228,213,.35); box-shadow:0 0 30px rgba(47,228,213,.15) inset}
+  .pv-sala .scope::before{content:""; position:absolute; inset:26px; border-radius:50%; border:1px solid rgba(47,228,213,.22)}
+  .pv-sala .beam{position:absolute; top:50%; left:50%; width:59px; height:59px; transform-origin:top left; background:conic-gradient(from 0deg,rgba(47,228,213,.35),transparent 40%); animation:spin 3.4s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pv-sala .blip{position:absolute; width:7px; height:7px; border-radius:50%; box-shadow:0 0 8px currentColor}
+  .pv-sala .b1{top:38%; left:44%; background:var(--vencido); color:var(--vencido)}
+  .pv-sala .b2{top:58%; left:60%; background:var(--vencendo); color:var(--vencendo)}
+  .pv-sala .b3{top:62%; left:40%; background:var(--prazo); color:var(--prazo)}
+
+  .body{padding:1.2rem 1.3rem 1.5rem; display:flex; flex-direction:column; flex:1}
+  .card h2{font-family:'Fraunces',serif; font-weight:600; font-size:1.32rem; margin:0 0 .5rem; letter-spacing:-.01em}
+  .card p{color:var(--nevoa); font-size:.9rem; margin:0 0 1rem}
+  .tags{display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1.2rem}
+  .tag{font-family:'IBM Plex Mono',monospace; font-size:.66rem; letter-spacing:.06em; color:var(--nevoa); border:1px solid var(--card-brd); border-radius:20px; padding:.25rem .6rem}
+  .open{margin-top:auto; display:inline-flex; align-items:center; gap:.5rem; font-family:'IBM Plex Mono',monospace; font-size:.78rem; letter-spacing:.12em; text-transform:uppercase; color:var(--latao-claro); font-weight:500}
+  .open svg{transition:transform .3s}
+  .card:hover .open svg{transform:translateX(4px)}
+
+  .foot{margin-top:2.8rem; padding-top:1.4rem; border-top:1px solid var(--linha); color:var(--nevoa); font-size:.82rem; display:flex; flex-wrap:wrap; gap:.5rem 1.4rem; align-items:center}
+  .foot .badge{font-family:'IBM Plex Mono',monospace; font-size:.7rem; letter-spacing:.1em; color:var(--latao)}
+
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important; transition:none!important}
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">Procuradoria · Câmara Municipal de Duque de Caxias</p>
+    <h1>Três olhares para o <em>dashboard</em></h1>
+    <p class="lede">Variações de design do painel do JurisControl. Cada conceito abre em tela cheia com dados de exemplo — sem login, sem Firebase. Escolha um para levar ao <code>index.html</code> real.</p>
+  </header>
+
+  <div class="grid">
+
+    <a class="card" href="dashboard-corporativo.html">
+      <span class="num">01 — COMMAND CENTER</span>
+      <div class="preview pv-corp" aria-hidden="true">
+        <span class="kpi k1"></span><span class="kpi k2"></span><span class="kpi k3"></span>
+        <span class="bar"><span class="sweep"></span></span>
+      </div>
+      <div class="body">
+        <h2>Command Center Executivo</h2>
+        <p>Painel de comando de diretoria jurídica. Autoridade sóbria com animações orquestradas: KPIs que sobem, radar com varredura viva e relógio ao vivo.</p>
+        <div class="tags"><span class="tag">Fraunces + Plex Mono</span><span class="tag">Azul + Latão</span><span class="tag">Corporativo</span></div>
+        <span class="open">Abrir variação <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="dashboard-dossie.html">
+      <span class="num">02 — O DOSSIÊ</span>
+      <div class="preview pv-doss" aria-hidden="true">
+        <span class="sheet"></span>
+        <span class="fl">fl. 002</span>
+        <span class="hole h1"></span><span class="hole h2"></span>
+        <span class="rule r1"></span><span class="rule r2"></span><span class="rule r3"></span><span class="rule r4"></span>
+        <span class="stamp">ATRASADO</span>
+      </div>
+      <div class="body">
+        <h2>O Dossiê</h2>
+        <p>Arquivo jurídico vivo, inspirado no processo físico e no Diário Oficial. Cada bloco é uma folha: régua de margem, furos e status como carimbos de borracha.</p>
+        <div class="tags"><span class="tag">Zilla Slab + Newsreader</span><span class="tag">Oxblood + Navy</span><span class="tag">Editorial</span></div>
+        <span class="open">Abrir variação <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </div>
+    </a>
+
+    <a class="card" href="dashboard-sala-situacao.html">
+      <span class="num">03 — SALA DE SITUAÇÃO</span>
+      <div class="preview pv-sala" aria-hidden="true">
+        <span class="grid-bg"></span>
+        <span class="scope"></span>
+        <span class="beam"></span>
+        <span class="blip b1"></span><span class="blip b2"></span><span class="blip b3"></span>
+      </div>
+      <div class="body">
+        <h2>Sala de Situação</h2>
+        <p>Central de monitoramento em tempo real. O radar de prazos vira instrumento de verdade: distância do centro = urgência, feixe varrendo, blips que acendem.</p>
+        <div class="tags"><span class="tag">Space Grotesk + Plex</span><span class="tag">Ciano + Navy</span><span class="tag">Experimental</span></div>
+        <span class="open">Abrir variação <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </div>
+    </a>
+
+  </div>
+
+  <footer class="foot">
+    <span class="badge">3 VARIAÇÕES</span>
+    <span>Todas com tema claro/escuro, responsivas até mobile e com dados de exemplo.</span>
+  </footer>
+</div>
+</body>
+</html>
