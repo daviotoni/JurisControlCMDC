@@ -1,60 +1,58 @@
 :root {
-            --font-display: 'Bricolage Grotesque', system-ui, -apple-system, "Segoe UI", sans-serif;
-            --font-sans: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-            /* Cores da Marca — Aurora (indigo periwinkle ancorado no navy do brasão) */
-            --brand-50: #f0f3fe;
-            --brand-100: #e7ecfd;
-            --brand-200: #cbd5f5;
-            --brand-300: #9aacef;
-            --brand-500: #3d5ae0;
-            --brand-600: #3d5ae0;
-            --brand-700: #26356b;
+            /* Cores da Marca — Institucional Navy (azul do brasão CMDC) */
+            --brand-50: #eef4fb;
+            --brand-100: #e8f0fa;
+            --brand-200: #c7dbf0;
+            --brand-300: #9db8d8;
+            --brand-500: #1c5f9e;
+            --brand-600: #0a3d73;
+            --brand-700: #082f57;
 
-            /* Cores Semânticas — Aurora */
-            --success: #0e9e77; --success-bg: #dbf2eb;
-            --warning: #c77800; --warning-bg: #fbedd3;
-            --danger: #db3a45;  --danger-bg: #fbe2e4;
-            --info: #2277c4;    --info-bg: #deeefb;
-            --purple: #6b54d6;  --purple-bg: #eae6fb;
-            --gold: #ff7a66;    --gold-bg: #ffebe5;   /* acento coral "dawn" — assinatura Aurora */
-            --dawn: #ff7a66;    --dawn-ink: #c4432e;  --dawn-bg: #ffebe5;
+            /* Cores Semânticas */
+            --success: #2f855a; --success-bg: #e9f5ee;
+            --warning: #b25e09; --warning-bg: #fdf0e4;
+            --danger: #b42323;  --danger-bg: #fbe9e9;
+            --info: #0a3d73;    --info-bg: #e8f0fa;
+            --purple: #7c3aad;  --purple-bg: #f5eefa;
+            --gold: #c2a14d;    --gold-bg: #faf5e8;
 
-            /* Sidebar — navy institucional (brasão) */
-            --sidebar-navy: #26356b;
-            --sidebar-text: #aebce6;
+            /* Sidebar — navy fixo em ambos os temas */
+            --sidebar-navy: #0b2e55;
+            --sidebar-text: #a8c2df;
             --sidebar-text-active: #ffffff;
-            --sidebar-sub: #8fa0d6;
+            --sidebar-sub: #7fa3cd;
             --sidebar-hover-bg: rgba(255,255,255,0.08);
-            --sidebar-active-bg: rgba(255,255,255,0.15);
-            --sidebar-border: rgba(255,255,255,0.10);
+            --sidebar-active-bg: rgba(255,255,255,0.14);
+            --sidebar-border: rgba(255,255,255,0.09);
 
             /* Cores Claras */
-            --bg-light: #f1f4fa;
+            --bg-light: #f2f5f9;
             --sidebar-bg-light: var(--sidebar-navy);
             --card-bg-light: #ffffff;
             --header-bg-light: #ffffff;
-            --text-primary-light: #1b2340;
-            --text-secondary-light: #565f7d;
-            --text-muted-light: #8a93ac;
-            --border-light: #e4e9f4;
-            --shadow-color-light: rgba(27, 35, 64, 0.07);
+            --text-primary-light: #132a44;
+            --text-secondary-light: #5a6b82;
+            --text-muted-light: #8194ab;
+            --border-light: #e3e9f1;
+            --shadow-color-light: rgba(16, 42, 74, 0.06);
 
             /* Cores Escuras */
-            --bg-dark: #0d1322;
+            --bg-dark: #0f1826;
             --sidebar-bg-dark: var(--sidebar-navy);
-            --card-bg-dark: #161e33;
-            --header-bg-dark: #161e33;
-            --text-primary-dark: #eceff9;
-            --text-secondary-dark: #a6aec6;
-            --text-muted-dark: #6e7794;
-            --border-dark: rgba(255,255,255,0.09);
-            --shadow-color-dark: rgba(0, 0, 0, 0.36);
+            --card-bg-dark: #16233a;
+            --header-bg-dark: #16233a;
+            --text-primary-dark: #eef2f8;
+            --text-secondary-dark: #a7b6cc;
+            --text-muted-dark: #7c8ba3;
+            --border-dark: rgba(255,255,255,0.08);
+            --shadow-color-dark: rgba(0, 0, 0, 0.35);
 
             /* Transições e Bordas */
-            --radius: 16px;
-            --radius-sm: 11px;
-            --transition-speed: 0.18s;
+            --radius: 12px;
+            --radius-sm: 9px;
+            --transition-speed: 0.15s;
         }
 
         /* Aplicação das variáveis de tema */
@@ -68,8 +66,8 @@
             --text-secondary: var(--text-secondary-light);
             --text-muted: var(--text-muted-light);
             --border-color: var(--border-light);
-            --shadow: 0 1px 2px rgba(27, 35, 64, 0.05), 0 10px 26px -16px rgba(27, 35, 64, 0.12);
-            --shadow-float: 0 20px 50px rgba(27, 35, 64, 0.18);
+            --shadow: none;
+            --shadow-float: 0 20px 50px rgba(16, 42, 74, 0.18);
             --brand-bg-active: var(--brand-50);
             --brand-text-active: var(--brand-700);
         }
@@ -84,26 +82,10 @@
             --text-secondary: var(--text-secondary-dark);
             --text-muted: var(--text-muted-dark);
             --border-color: var(--border-dark);
-            --shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 12px 30px -18px rgba(0, 0, 0, 0.55);
+            --shadow: none;
             --shadow-float: 0 20px 50px rgba(0, 0, 0, 0.5);
-            --brand-bg-active: rgba(124, 147, 242, 0.18);
-            --brand-text-active: #aec0ff;
-
-            /* Rampa Aurora no escuro — marca e semânticos mais luminosos */
-            --brand-50: #1a2447;
-            --brand-100: #20305c;
-            --brand-200: #2b3b6b;
-            --brand-300: #5f74c8;
-            --brand-500: #7c93f2;
-            --brand-600: #7c93f2;
-            --brand-700: #aec0ff;
-            --success: #3ed0a5; --success-bg: #123329;
-            --warning: #e9a93c; --warning-bg: #332512;
-            --danger: #f26670;  --danger-bg: #361a1e;
-            --info: #5aacec;    --info-bg: #122a41;
-            --purple: #9a85f0;  --purple-bg: #221d44;
-            --gold: #ff9782;    --gold-bg: #3a2419;
-            --dawn: #ff9782;    --dawn-ink: #ffb6a5; --dawn-bg: #3a2419;
+            --brand-bg-active: rgba(10, 61, 115, 0.25);
+            --brand-text-active: #bcd3ee;
         }
 
         /* Reset Básico e Estilos Globais */
@@ -139,12 +121,6 @@
             font-size: 14px;
             line-height: 1.6;
             transition: background-color var(--transition-speed), color var(--transition-speed);
-        }
-
-        /* Aurora — títulos na display Bricolage (pareceres em Garamond têm precedência por ID) */
-        h1, h2, h3, h4, .page-title, .kpi .v {
-            font-family: var(--font-display);
-            letter-spacing: -0.02em;
         }
         
         h1, h2, h3, h4, h5, h6 {
@@ -410,7 +386,7 @@
             justify-content: center;
             gap: 0.5rem;
             padding: 0.5625rem 1.125rem;
-            border-radius: 12px;
+            border-radius: 9px;
             font-weight: 600;
             cursor: pointer;
             border: 1px solid transparent;
@@ -430,11 +406,11 @@
         .btn.danger:hover { background-color: var(--danger); color: #fff; }
         .input, .select, textarea {
             width: 100%; background-color: var(--card-bg); color: var(--text-primary); border: 1.5px solid var(--border-color);
-            border-radius: 11px; padding: 0.625rem 0.75rem; outline: none;
+            border-radius: 9px; padding: 0.625rem 0.75rem; outline: none;
             transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
         }
-        .input:focus, .select:focus, textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-500) 30%, transparent); }
-        body[data-theme="dark"] .input, body[data-theme="dark"] .select, body[data-theme="dark"] textarea { background-color: #111a30; }
+        .input:focus, .select:focus, textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(10, 61, 115, 0.16); }
+        body[data-theme="dark"] .input, body[data-theme="dark"] .select, body[data-theme="dark"] textarea { background-color: #101b2c; }
 
         .theme-switch-wrapper {
             position: relative;
@@ -534,7 +510,7 @@
         .login-forgot { cursor: pointer; }
         .login-forgot:hover, .login-forgot:focus-visible { text-decoration: underline; }
         .login-acoes { margin-top: 1.5rem; }
-        .login-acoes .btn { width: 100%; padding: 0.75rem 1rem; font-size: 0.9375rem; box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand-600) 55%, transparent); }
+        .login-acoes .btn { width: 100%; padding: 0.75rem 1rem; font-size: 0.9375rem; box-shadow: 0 4px 14px rgba(10, 61, 115, 0.35); }
         .login-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem; }
         .lembrar-me { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary-light); font-size: 0.84rem; justify-content: flex-start; }
         .login-forgot { font-size: 0.84rem; color: var(--brand-600); font-weight: 600; }
@@ -543,7 +519,7 @@
             background: #fafbfd; color: #132a44; border: 1.5px solid #d5dce6;
         }
         .login-panel .input::placeholder { color: #94a3b8; }
-        .login-panel .input:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-500) 28%, transparent); }
+        .login-panel .input:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(10, 61, 115, 0.15); }
         .login-mobile-brand { display: none; }
         @media (max-width: 800px) {
             .login-hero { display: none; }
@@ -564,38 +540,14 @@
         }
 
         .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 1.5rem; }
-
-        /* ===== Foco de hoje — banda-assinatura Aurora ===== */
-        .dash-foco { grid-column: 1 / -1; position: relative; overflow: hidden; background: var(--card-bg);
-            border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow);
-            padding: 1.35rem 1.6rem; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
-        .dash-foco::after { content: ""; position: absolute; inset: 0 0 0 auto; width: 46%;
-            background: radial-gradient(120% 140% at 100% 0, var(--dawn-bg), transparent 70%); pointer-events: none; }
-        .dash-foco .foco-main { position: relative; z-index: 1; flex: 1 1 320px; min-width: 0; }
-        .dash-foco .foco-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 0.7rem;
-            font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dawn-ink); }
-        .dash-foco .foco-eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%;
-            background: var(--dawn); box-shadow: 0 0 0 4px var(--dawn-bg); }
-        .dash-foco .foco-title { font-family: var(--font-display); font-weight: 700;
-            font-size: clamp(1.1rem, 2.1vw, 1.45rem); letter-spacing: -0.02em; color: var(--text-primary);
-            line-height: 1.16; margin: 0.5rem 0 0.4rem; }
-        .dash-foco .foco-title b { color: var(--brand-600); font-weight: 700; }
-        .dash-foco .foco-meta { font-size: 0.85rem; color: var(--text-secondary); }
-        .dash-foco .foco-meta strong { color: var(--text-primary); font-weight: 600; }
-        .dash-foco .foco-actions { position: relative; z-index: 1; display: flex; gap: 0.6rem; flex-wrap: wrap; }
-        .dash-foco.is-calm::after { background: radial-gradient(120% 140% at 100% 0, var(--success-bg), transparent 70%); }
-        .dash-foco.is-calm .foco-eyebrow { color: var(--success); }
-        .dash-foco.is-calm .foco-eyebrow::before { background: var(--success); box-shadow: 0 0 0 4px var(--success-bg); }
-
         .dash-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.5rem; }
         .kpi {
-            background: var(--card-bg); border: 1px solid var(--border-color); border-left-width: 3px; border-radius: var(--radius);
-            padding: 1.125rem 1.25rem; box-shadow: var(--shadow); cursor: pointer;
-            transition: box-shadow var(--transition-speed), border-color var(--transition-speed), transform var(--transition-speed);
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius);
+            padding: 1.125rem 1.25rem; box-shadow: var(--shadow); cursor: pointer; transition: box-shadow var(--transition-speed), border-color var(--transition-speed);
             display: flex; flex-direction: column; gap: 0.5625rem;
         }
-        .kpi:hover { transform: translateY(-3px); box-shadow: 0 14px 28px -16px var(--shadow-color-light); }
-        body[data-theme="dark"] .kpi:hover { box-shadow: 0 14px 28px -14px var(--shadow-color-dark); }
+        .kpi:hover { box-shadow: 0 2px 8px var(--shadow-color-light); border-color: var(--brand-200); }
+        body[data-theme="dark"] .kpi:hover { box-shadow: 0 2px 8px var(--shadow-color-dark); }
         .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0; }
         .kpi h4 { margin: 0; color: var(--text-secondary); font-weight: 600; font-size: 0.8125rem; }
         .kpi-icon {
@@ -628,9 +580,8 @@
         .radar-legend .dot { width: 8px; height: 8px; border-radius: 50%; }
         .radar-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.55rem; margin-top: 0.85rem; }
         .radar-week.has-overdue { grid-template-columns: 0.75fr repeat(7, 1fr); }
-        .radar-day { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0.6rem 0.25rem 0.7rem; border: 1px solid var(--border-color); border-radius: 14px; background: var(--card-bg); cursor: pointer; min-height: 104px; transition: box-shadow .18s, transform .18s, border-color .18s; text-align: center; font-family: inherit; }
-        .radar-day:hover { transform: translateY(-3px); box-shadow: 0 14px 28px -16px var(--shadow-color-light); border-color: var(--brand-200); }
-        .radar-day.is-weekend { background: color-mix(in srgb, var(--card-bg) 92%, var(--ink-faint, #8a93ac)); opacity: .82; }
+        .radar-day { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0.6rem 0.25rem 0.7rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); cursor: pointer; min-height: 104px; transition: box-shadow .15s, transform .15s, border-color .15s; text-align: center; font-family: inherit; }
+        .radar-day:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,42,74,.1); border-color: var(--brand-200); }
         .radar-dow { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-secondary); }
         .radar-num { font-size: 1.5rem; font-weight: 800; line-height: 1; color: var(--text-primary); }
         .radar-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 8px; max-width: 62px; align-items: center; }
@@ -640,14 +591,19 @@
         .dot.d-proc { background: var(--brand-500); } .dot.d-event { background: var(--purple); }
         .radar-count { font-size: 0.64rem; font-weight: 600; color: var(--text-secondary); margin-top: 1px; }
         .radar-day.is-empty { opacity: .5; } .radar-day.is-empty:hover { transform: none; }
-        .radar-day.lvl-danger { background: color-mix(in srgb, var(--danger) 9%, var(--card-bg)); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
-        .radar-day.lvl-warning { background: color-mix(in srgb, var(--warning) 10%, var(--card-bg)); border-color: color-mix(in srgb, var(--warning) 40%, transparent); }
-        .radar-overdue { background: color-mix(in srgb, var(--danger) 10%, var(--card-bg)); border-color: var(--danger); }
+        .radar-day.is-today { border-color: var(--brand-600); box-shadow: inset 0 0 0 1.5px var(--brand-600); }
+        .radar-day.is-today .radar-dow { color: var(--brand-600); }
+        .radar-day.lvl-danger { background: rgba(180,35,35,0.09); border-color: rgba(180,35,35,0.40); }
+        .radar-day.lvl-warning { background: rgba(178,94,9,0.10); border-color: rgba(178,94,9,0.40); }
+        .radar-overdue { background: rgba(180,35,35,0.12); border-color: var(--danger); }
         .radar-overdue .radar-num, .radar-overdue .radar-count { color: var(--danger); }
         .radar-overdue .radar-warn { font-size: 1.1rem; line-height: 1; color: var(--danger); }
-        /* HOJE — coral (dawn), por último para vencer sobre lvl-danger quando o dia tem prazos */
-        .radar-day.is-today { border-color: var(--dawn); box-shadow: 0 0 0 1px var(--dawn), 0 14px 28px -18px var(--dawn); background: color-mix(in srgb, var(--dawn) 8%, var(--card-bg)); }
-        .radar-day.is-today .radar-dow { color: var(--dawn-ink); }
+        body[data-theme="dark"] .radar-overdue .radar-num, body[data-theme="dark"] .radar-overdue .radar-warn { color: #ff7a7a; }
+        body[data-theme="dark"] .radar-overdue .radar-count { color: #ff9a9a; }
+        body[data-theme="dark"] .radar-day.lvl-danger { border-color: rgba(255,120,120,0.5); }
+        body[data-theme="dark"] .radar-day.lvl-warning { border-color: rgba(240,160,80,0.5); }
+        body[data-theme="dark"] .radar-day.is-today { border-color: var(--brand-500); box-shadow: inset 0 0 0 1.5px var(--brand-500); }
+        body[data-theme="dark"] .radar-day.is-today .radar-dow { color: #bcd3ee; }
         @media (max-width: 720px) {
             .radar-week, .radar-week.has-overdue { grid-template-columns: repeat(4, 1fr); }
             .radar-day { min-height: 90px; }
