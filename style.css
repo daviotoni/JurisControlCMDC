@@ -410,7 +410,7 @@
             justify-content: center;
             gap: 0.5rem;
             padding: 0.5625rem 1.125rem;
-            border-radius: 9px;
+            border-radius: 12px;
             font-weight: 600;
             cursor: pointer;
             border: 1px solid transparent;
@@ -430,11 +430,11 @@
         .btn.danger:hover { background-color: var(--danger); color: #fff; }
         .input, .select, textarea {
             width: 100%; background-color: var(--card-bg); color: var(--text-primary); border: 1.5px solid var(--border-color);
-            border-radius: 9px; padding: 0.625rem 0.75rem; outline: none;
+            border-radius: 11px; padding: 0.625rem 0.75rem; outline: none;
             transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
         }
-        .input:focus, .select:focus, textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(10, 61, 115, 0.16); }
-        body[data-theme="dark"] .input, body[data-theme="dark"] .select, body[data-theme="dark"] textarea { background-color: #101b2c; }
+        .input:focus, .select:focus, textarea:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-500) 30%, transparent); }
+        body[data-theme="dark"] .input, body[data-theme="dark"] .select, body[data-theme="dark"] textarea { background-color: #111a30; }
 
         .theme-switch-wrapper {
             position: relative;
@@ -534,7 +534,7 @@
         .login-forgot { cursor: pointer; }
         .login-forgot:hover, .login-forgot:focus-visible { text-decoration: underline; }
         .login-acoes { margin-top: 1.5rem; }
-        .login-acoes .btn { width: 100%; padding: 0.75rem 1rem; font-size: 0.9375rem; box-shadow: 0 4px 14px rgba(10, 61, 115, 0.35); }
+        .login-acoes .btn { width: 100%; padding: 0.75rem 1rem; font-size: 0.9375rem; box-shadow: 0 10px 22px -8px color-mix(in srgb, var(--brand-600) 55%, transparent); }
         .login-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem; }
         .lembrar-me { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary-light); font-size: 0.84rem; justify-content: flex-start; }
         .login-forgot { font-size: 0.84rem; color: var(--brand-600); font-weight: 600; }
@@ -543,7 +543,7 @@
             background: #fafbfd; color: #132a44; border: 1.5px solid #d5dce6;
         }
         .login-panel .input::placeholder { color: #94a3b8; }
-        .login-panel .input:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(10, 61, 115, 0.15); }
+        .login-panel .input:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-500) 28%, transparent); }
         .login-mobile-brand { display: none; }
         @media (max-width: 800px) {
             .login-hero { display: none; }
