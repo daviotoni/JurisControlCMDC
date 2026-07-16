@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JurisControl · Sala de Situação — Procuradoria CMDC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ============================================================
+   JurisControl — Sala de Situação
+   Central de operações jurídicas. Tema escuro por padrão,
+   tema claro coerente. Escopo do radar sempre "escuro"
+   (instrumento não muda), moldura reage ao tema.
+   ============================================================ */
+
+/* ---- Tokens: tema escuro (default) ---- */
+:root, :root[data-theme="dark"]{
+  --void:#05090F;
+  --casco:#0C1626;
+  --painel:rgba(18,32,54,.55);
+  --painel-solido:#101d33;
+  --borda:rgba(122,160,210,.14);
+  --borda-forte:rgba(122,160,210,.28);
+  --marinho:#0B2E55;
+  --ciano:#2FE4D5;
+  --ciano-suave:rgba(47,228,213,.14);
+  --ouro:#D6B15A;
+  --txt:#E7EEF8;
+  --txt-2:#9DB0CC;
+  --txt-3:#647896;
+  --sombra:0 18px 50px -20px rgba(0,0,0,.75);
+  --grade:rgba(122,160,210,.05);
+  --hud-bg:rgba(8,14,24,.72);
+  --chip:rgba(122,160,210,.10);
+  --scan:rgba(255,255,255,.015);
+}
+/* ---- Tokens: tema claro ---- */
+:root[data-theme="light"]{
+  --void:#E7EDF5;
+  --casco:#F5F8FC;
+  --painel:rgba(255,255,255,.72);
+  --painel-solido:#ffffff;
+  --borda:rgba(11,46,85,.12);
+  --borda-forte:rgba(11,46,85,.22);
+  --marinho:#0B2E55;
+  --ciano:#0C9E92;
+  --ciano-suave:rgba(12,158,146,.10);
+  --ouro:#9C7C2E;
+  --txt:#122036;
+  --txt-2:#4A5E7C;
+  --txt-3:#7E90AC;
+  --sombra:0 16px 40px -22px rgba(11,46,85,.30);
+  --grade:rgba(11,46,85,.045);
+  --hud-bg:rgba(245,248,252,.82);
+  --chip:rgba(11,46,85,.06);
+  --scan:rgba(11,46,85,.012);
+}
+/* Sinais — constantes nos dois temas (semântica de risco não muda) */
+:root{
+  --sig-vermelho:#FF5468;
+  --sig-ambar:#FFB13D;
+  --sig-azul:#4E9BFF;
+  --sig-violeta:#B18CFF;
+  --sig-verde:#54E0A0;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--void);
+  color:var(--txt);
+  font-family:"IBM Plex Sans",system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+}
+/* Atmosfera de fundo: brumas de instrumento + grade fina */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(120% 90% at 82% -10%, color-mix(in srgb, var(--ciano) 12%, transparent), transparent 55%),
+    radial-gradient(90% 80% at -5% 110%, color-mix(in srgb, var(--marinho) 45%, transparent), transparent 60%),
+    linear-gradient(var(--grade) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grade) 1px, transparent 1px);
+  background-size:auto, auto, 44px 44px, 44px 44px;
+}
+:root[data-theme="light"] body::before{opacity:.9}
+
+.wrap{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:0 22px 64px}
+
+/* ============ HUD superior ============ */
+.hud{
+  position:sticky;top:0;z-index:40;
+  margin:0 -22px 26px;padding:14px 22px;
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  background:var(--hud-bg);
+  backdrop-filter:blur(18px) saturate(1.2);
+  -webkit-backdrop-filter:blur(18px) saturate(1.2);
+  border-bottom:1px solid var(--borda);
+}
+.brasao{
+  width:40px;height:44px;flex:0 0 auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));
+}
+.hud-id{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.hud-id .t{
+  font-family:"Space Grotesk";font-weight:600;font-size:16px;letter-spacing:.3px;
+  display:flex;align-items:center;gap:9px;
+}
+.hud-id .t b{color:var(--ciano);font-weight:600}
+.hud-id .s{font-size:11.5px;color:var(--txt-2);letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-spacer{flex:1 1 auto}
+
+.live{display:flex;align-items:center;gap:8px;font-family:"IBM Plex Mono";font-size:11px;
+  letter-spacing:.14em;color:var(--txt-2);text-transform:uppercase;
+  padding:6px 12px;border:1px solid var(--borda);border-radius:999px;background:var(--chip)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--sig-verde);position:relative}
+.dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid var(--sig-verde);animation:ping 2.4s ease-out infinite}
+@keyframes ping{0%{transform:scale(.6);opacity:.9}100%{transform:scale(2.2);opacity:0}}
+
+.clock{font-family:"IBM Plex Mono";font-size:13px;color:var(--txt);letter-spacing:.06em;
+  display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.clock .d{font-size:10.5px;color:var(--txt-3);letter-spacing:.1em;text-transform:uppercase}
+
+.btn-tema{
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--txt-2);background:var(--chip);border:1px solid var(--borda);
+  border-radius:999px;padding:8px 13px;transition:border-color .2s, color .2s;
+}
+.btn-tema:hover{border-color:var(--borda-forte);color:var(--txt)}
+.btn-tema svg{width:15px;height:15px}
+.user{display:flex;align-items:center;gap:9px}
+.user .av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--marinho),var(--ciano));
+  display:grid;place-items:center;font-family:"Space Grotesk";font-weight:600;font-size:12px;color:#04121f}
+.user .un{font-size:12.5px;line-height:1.2}
+.user .un b{display:block;font-weight:600}
+.user .un span{color:var(--txt-3);font-size:11px}
+
+/* Foco de teclado visível em toda a tela */
+:focus-visible{outline:2px solid var(--ciano);outline-offset:3px;border-radius:6px}
+
+/* ============ Cabeçalho de seção ============ */
+.eyebrow{font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--txt-3);display:flex;align-items:center;gap:10px;margin:0 0 14px}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--ouro)}
+
+/* ============ KPIs — leituras de instrumento ============ */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:30px}
+.kpi{
+  position:relative;padding:16px 16px 14px;border-radius:14px;
+  background:var(--painel);border:1px solid var(--borda);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:var(--sombra);overflow:hidden;
+}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--k,var(--ciano));opacity:.85}
+.kpi .lab{font-size:11px;color:var(--txt-2);letter-spacing:.04em;display:flex;align-items:center;gap:6px;min-height:30px}
+.kpi .num{font-family:"Space Grotesk";font-weight:600;font-size:34px;line-height:1;margin:6px 0 8px;letter-spacing:-.5px}
+.kpi .foot{display:flex;align-items:center;justify-content:space-between;font-family:"IBM Plex Mono";font-size:10.5px;color:var(--txt-3);letter-spacing:.03em}
+.kpi .delta{display:inline-flex;align-items:center;gap:3px}
+.delta.up{color:var(--sig-verde)}.delta.down{color:var(--sig-vermelho)}.delta.warn{color:var(--sig-ambar)}
+.kpi .bar{height:3px;border-radius:2px;background:var(--chip);overflow:hidden;margin-top:9px}
+.kpi .bar i{display:block;height:100%;background:var(--k,var(--ciano));border-radius:2px;box-shadow:0 0 8px var(--k,var(--ciano))}
+
+/* ============ Layout de painéis ============ */
+.painel{
+  background:var(--painel);border:1px solid var(--borda);border-radius:16px;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:var(--sombra);padding:20px;position:relative;overflow:hidden;
+}
+.painel h3{margin:0;font-family:"Space Grotesk";font-weight:600;font-size:15.5px;letter-spacing:.2px;
+  display:flex;align-items:center;gap:9px}
+.painel .sub{font-size:11.5px;color:var(--txt-3);margin-top:2px}
+.painel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+
+/* ============ HERO: Radar de Prazos ============ */
+.hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:0;margin-bottom:26px;padding:0;
+  border:1px solid var(--borda-forte)}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent 0 3px,var(--scan) 3px 4px);z-index:2;mix-blend-mode:overlay}
+.radar-side{padding:20px 8px 20px 22px;display:flex;flex-direction:column;min-width:0}
+.radar-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px;z-index:3;position:relative}
+.radar-badge{font-family:"IBM Plex Mono";font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ciano);border:1px solid var(--ciano-suave);background:var(--ciano-suave);
+  padding:5px 9px;border-radius:7px;white-space:nowrap}
+.scope-wrap{position:relative;flex:1;min-height:340px;display:grid;place-items:center}
+.scope{width:100%;max-width:420px;aspect-ratio:1;display:block}
+.scope-tip{
+  position:absolute;pointer-events:none;z-index:6;opacity:0;transform:translateY(4px);
+  transition:opacity .12s;background:rgba(4,10,20,.94);border:1px solid var(--ciano-suave);
+  border-radius:9px;padding:9px 11px;min-width:180px;box-shadow:0 12px 30px rgba(0,0,0,.6);
+  font-size:12px;color:#dfe8f5;backdrop-filter:blur(6px)}
+.scope-tip.on{opacity:1;transform:translateY(0)}
+.scope-tip .p{font-family:"IBM Plex Mono";font-size:11.5px;color:var(--ciano);letter-spacing:.03em}
+.scope-tip .o{color:#c4d3e8;margin:3px 0 2px}
+.scope-tip .m{font-family:"IBM Plex Mono";font-size:10.5px}
+
+/* Legenda do radar */
+.radar-leg{display:flex;flex-wrap:wrap;gap:6px 16px;padding:2px 0 0;z-index:3;position:relative}
+.radar-leg span{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--txt-2);font-family:"IBM Plex Mono";letter-spacing:.02em}
+.radar-leg i{width:9px;height:9px;border-radius:50%;box-shadow:0 0 8px currentColor}
+
+/* Painel lateral: leitura 7 dias */
+.readout{padding:20px 22px 20px 8px;border-left:1px solid var(--borda);display:flex;flex-direction:column;min-width:0;z-index:3}
+.readout h4{margin:0 0 3px;font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--txt-3)}
+.readout .rt{font-family:"Space Grotesk";font-weight:600;font-size:15px;margin-bottom:14px}
+.days{display:flex;flex-direction:column;gap:7px;flex:1}
+.day{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:12px;
+  padding:9px 11px;border-radius:10px;background:var(--chip);border:1px solid transparent;transition:border-color .2s,background .2s}
+.day:hover{border-color:var(--borda-forte)}
+.day.hoje{background:color-mix(in srgb,var(--sig-vermelho) 12%, transparent);border-color:color-mix(in srgb,var(--sig-vermelho) 30%,transparent)}
+.day .dd{font-family:"IBM Plex Mono";font-size:11px;line-height:1.25;color:var(--txt-2)}
+.day .dd b{display:block;font-size:16px;color:var(--txt);font-weight:600}
+.day .marks{display:flex;gap:5px;flex-wrap:wrap}
+.mk{width:10px;height:10px;border-radius:3px;box-shadow:0 0 7px currentColor}
+.day .ct{font-family:"IBM Plex Mono";font-size:12px;color:var(--txt-2)}
+.day.hoje .ct{color:var(--sig-vermelho);font-weight:600}
+.day.empty .ct{color:var(--txt-3)}
+
+/* ============ Gráficos ============ */
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:26px}
+.chart-box{height:230px;position:relative;margin-top:6px}
+.legend-inline{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px}
+.legend-inline span{font-size:11px;color:var(--txt-2);display:inline-flex;align-items:center;gap:6px;font-family:"IBM Plex Mono"}
+.legend-inline i{width:9px;height:9px;border-radius:3px}
+
+/* ============ Listas ============ */
+.lists{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.pitem{display:flex;gap:12px;padding:11px 8px;border-radius:10px;transition:background .18s;cursor:default;align-items:flex-start}
+.pitem:hover{background:var(--chip)}
+.pitem+.pitem{border-top:1px solid var(--borda)}
+.tag{flex:0 0 auto;width:4px;align-self:stretch;border-radius:3px;background:var(--c,var(--ciano));box-shadow:0 0 8px var(--c,var(--ciano))}
+.pitem .body{min-width:0;flex:1}
+.pitem .proc{font-family:"IBM Plex Mono";font-size:12px;color:var(--ciano);letter-spacing:.02em}
+.pitem .obj{font-size:12.5px;color:var(--txt);margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pitem .meta{font-size:11px;color:var(--txt-3)}
+.pitem .when{flex:0 0 auto;text-align:right;font-family:"IBM Plex Mono";font-size:11px;color:var(--txt-2);white-space:nowrap}
+.pitem .when b{display:block;font-size:13px}
+.when.crit b{color:var(--sig-vermelho)}
+.when.warn b{color:var(--sig-ambar)}
+
+/* Alertas */
+.alerta{display:flex;gap:11px;padding:12px 10px;align-items:flex-start;border-radius:10px}
+.alerta+.alerta{border-top:1px solid var(--borda)}
+.alerta .ic{flex:0 0 auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+  background:var(--ic-bg,var(--ciano-suave));color:var(--ic,var(--ciano))}
+.alerta .ic svg{width:16px;height:16px}
+.alerta .txt strong{font-size:12.5px;font-weight:600;display:block}
+.alerta .txt p{margin:2px 0 0;font-size:11.5px;color:var(--txt-2);line-height:1.45}
+
+/* Atividades — timeline */
+.atv{position:relative;padding:0 0 0 20px;margin:0;list-style:none}
+.atv::before{content:"";position:absolute;left:5px;top:4px;bottom:4px;width:1px;background:var(--borda-forte)}
+.atv li{position:relative;padding:0 0 15px}
+.atv li::before{content:"";position:absolute;left:-19px;top:4px;width:9px;height:9px;border-radius:50%;
+  background:var(--casco);border:2px solid var(--ac,var(--ciano));box-shadow:0 0 8px var(--ac,var(--ciano))}
+.atv .aw{font-family:"IBM Plex Mono";font-size:10.5px;color:var(--txt-3);letter-spacing:.03em}
+.atv .at{font-size:12.5px;color:var(--txt);margin:1px 0}
+.atv .au{font-size:11px;color:var(--txt-2)}
+.atv .au b{color:var(--txt);font-weight:600}
+
+.foot-note{margin-top:34px;text-align:center;font-family:"IBM Plex Mono";font-size:10.5px;
+  color:var(--txt-3);letter-spacing:.08em}
+
+/* ============ Responsivo ============ */
+@media (max-width:1080px){
+  .kpis{grid-template-columns:repeat(3,1fr)}
+  .hero{grid-template-columns:1fr}
+  .readout{border-left:none;border-top:1px solid var(--borda)}
+  .grid-3,.lists{grid-template-columns:1fr 1fr}
+}
+@media (max-width:720px){
+  .wrap{padding:0 14px 48px}
+  .hud{margin:0 -14px 22px;padding:12px 14px;gap:12px}
+  .hud-id .s{display:none}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .grid-3,.lists{grid-template-columns:1fr}
+  .clock,.user .un{display:none}
+  .kpi .num{font-size:29px}
+}
+
+/* ============ Movimento reduzido ============ */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===================== HUD ===================== -->
+  <header class="hud">
+    <svg class="brasao" viewBox="0 0 40 44" aria-hidden="true">
+      <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#0B2E55"/><stop offset="1" stop-color="#0a3d73"/></linearGradient></defs>
+      <path d="M20 1 L37 7 V22 C37 33 29 40 20 43 C11 40 3 33 3 22 V7 Z" fill="url(#bg)" stroke="#D6B15A" stroke-width="1.4"/>
+      <line x1="20" y1="11" x2="20" y2="30" stroke="#D6B15A" stroke-width="1.3"/>
+      <line x1="11" y1="15" x2="29" y2="15" stroke="#D6B15A" stroke-width="1.3"/>
+      <circle cx="11" cy="15" r="2.4" fill="none" stroke="#D6B15A" stroke-width="1.1"/>
+      <circle cx="29" cy="15" r="2.4" fill="none" stroke="#D6B15A" stroke-width="1.1"/>
+      <path d="M14 30 h12" stroke="#D6B15A" stroke-width="1.3"/>
+    </svg>
+    <div class="hud-id">
+      <span class="t">JurisControl <b>· Sala de Situação</b></span>
+      <span class="s">Procuradoria — Câmara Municipal de Duque de Caxias</span>
+    </div>
+    <div class="hud-spacer"></div>
+    <div class="live"><span class="dot" aria-hidden="true"></span> Monitoramento ativo</div>
+    <div class="clock" aria-live="off"><span id="clk">--:--:--</span><span class="d" id="clkd">—</span></div>
+    <button class="btn-tema" id="temaBtn" aria-pressed="false" aria-label="Alternar tema claro e escuro">
+      <svg id="temaIco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+      <span id="temaLbl">Claro</span>
+    </button>
+    <div class="user">
+      <div class="av" aria-hidden="true">DV</div>
+      <div class="un"><b>Dr. Douglas Vasconcelos</b><span>Procurador-Chefe</span></div>
+    </div>
+  </header>
+
+  <!-- ===================== KPIs ===================== -->
+  <p class="eyebrow">Indicadores em tempo real</p>
+  <section class="kpis" aria-label="Indicadores gerais">
+    <article class="kpi" style="--k:var(--ciano)">
+      <div class="lab">Total de Processos</div>
+      <div class="num" data-count="1284">0</div>
+      <div class="foot"><span class="delta up">▲ 3,8%</span><span>vs. mês ant.</span></div>
+      <div class="bar"><i style="width:100%"></i></div>
+    </article>
+    <article class="kpi" style="--k:var(--sig-azul)">
+      <div class="lab">Pendentes</div>
+      <div class="num" data-count="143">0</div>
+      <div class="foot"><span class="delta warn">▲ 11</span><span>na fila</span></div>
+      <div class="bar"><i style="width:52%"></i></div>
+    </article>
+    <article class="kpi" style="--k:var(--sig-violeta)">
+      <div class="lab">Em Análise</div>
+      <div class="num" data-count="87">0</div>
+      <div class="foot"><span class="delta up">▼ 4</span><span>em curso</span></div>
+      <div class="bar"><i style="width:41%"></i></div>
+    </article>
+    <article class="kpi" style="--k:var(--sig-verde)">
+      <div class="lab">Finalizados</div>
+      <div class="num" data-count="612">0</div>
+      <div class="foot"><span class="delta up">▲ 27</span><span>no mês</span></div>
+      <div class="bar"><i style="width:100%"></i></div>
+    </article>
+    <article class="kpi" style="--k:var(--sig-ambar)">
+      <div class="lab">Vencendo <span style="color:var(--txt-3)">(≤5 dias)</span></div>
+      <div class="num" data-count="19">0</div>
+      <div class="foot"><span class="delta warn">⚠ atenção</span><span>prioridade</span></div>
+      <div class="bar"><i style="width:63%"></i></div>
+    </article>
+    <article class="kpi" style="--k:var(--sig-vermelho)">
+      <div class="lab">Vencidos</div>
+      <div class="num" data-count="6">0</div>
+      <div class="foot"><span class="delta down">▲ 2</span><span>ação urgente</span></div>
+      <div class="bar"><i style="width:22%"></i></div>
+    </article>
+  </section>
+
+  <!-- ===================== HERO: RADAR ===================== -->
+  <section class="painel hero" aria-label="Radar de Prazos dos próximos 7 dias">
+    <div class="radar-side">
+      <div class="radar-head">
+        <div>
+          <h3>Radar de Prazos</h3>
+          <div class="sub">Varredura contínua — próximos 7 dias · distância do centro = urgência</div>
+        </div>
+        <span class="radar-badge">● Varrendo</span>
+      </div>
+      <div class="scope-wrap">
+        <canvas class="scope" id="radar" role="img" aria-label="Radar circular com prazos processuais mapeados por urgência e categoria"></canvas>
+        <div class="scope-tip" id="tip" role="status" aria-live="polite"></div>
+      </div>
+      <div class="radar-leg" aria-hidden="true">
+        <span style="color:var(--sig-vermelho)"><i></i>Vence hoje / atrasado</span>
+        <span style="color:var(--sig-ambar)"><i></i>1–2 dias</span>
+        <span style="color:var(--sig-azul)"><i></i>Prazo processual</span>
+        <span style="color:var(--sig-violeta)"><i></i>Compromisso</span>
+      </div>
+    </div>
+    <div class="readout">
+      <h4>Faixa dos 7 dias</h4>
+      <div class="rt">Sinais por dia</div>
+      <div class="days" id="days"></div>
+    </div>
+  </section>
+
+  <!-- ===================== GRÁFICOS ===================== -->
+  <p class="eyebrow">Telemetria do acervo</p>
+  <section class="grid-3">
+    <div class="painel">
+      <div class="painel-head"><div><h3>Entradas por Mês</h3><div class="sub">Distribuições e petições recebidas</div></div></div>
+      <div class="chart-box"><canvas id="cEntradas"></canvas></div>
+    </div>
+    <div class="painel">
+      <div class="painel-head"><div><h3>Distribuição por Status</h3><div class="sub">Situação atual do acervo</div></div></div>
+      <div class="chart-box"><canvas id="cStatus"></canvas></div>
+      <div class="legend-inline" id="statusLeg"></div>
+    </div>
+    <div class="painel">
+      <div class="painel-head"><div><h3>Pareceres Emitidos por Mês</h3><div class="sub">Produção da procuradoria</div></div></div>
+      <div class="chart-box"><canvas id="cPareceres"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ===================== LISTAS ===================== -->
+  <p class="eyebrow">Fila operacional</p>
+  <section class="lists">
+    <div class="painel">
+      <div class="painel-head"><div><h3>Próximos Prazos</h3><div class="sub">Janela de 15 dias</div></div></div>
+      <ul class="plist" id="prazos"></ul>
+    </div>
+    <div class="painel">
+      <div class="painel-head"><div><h3>Alertas Inteligentes</h3><div class="sub">Riscos detectados pelo sistema</div></div></div>
+      <div id="alertas"></div>
+    </div>
+    <div class="painel">
+      <div class="painel-head"><div><h3>Últimas Atividades</h3><div class="sub">Registro de ações</div></div></div>
+      <ul class="atv" id="atividades"></ul>
+    </div>
+  </section>
+
+  <p class="foot-note">JurisControl · Procuradoria CMDC — dados de demonstração · sincronização simulada</p>
+</div>
+
+<script>
+"use strict";
+const RM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ============ DADOS MOCK ============ */
+// cat: 'critico'(vence hoje/atrasado) | 'urgente'(1-2d) | 'prazo'(processual) | 'compromisso'
+// dias: dias até o prazo (negativo = atrasado). ang: posição angular no radar (graus).
+const SINAIS = [
+  {proc:"CMDC-2026/0731", obj:"Manifestação em Mandado de Segurança", inter:"Sind. dos Servidores", cat:"critico", dias:-2, ang:200, tipo:"Manifestação"},
+  {proc:"CMDC-2026/0842", obj:"Contestação — Ação Ordinária", inter:"Município de Duque de Caxias", cat:"critico", dias:0, ang:18, tipo:"Contestação"},
+  {proc:"CMDC-2026/0915", obj:"Parecer — Consulta sobre gratificação", inter:"Secretaria de Administração", cat:"urgente", dias:1, ang:112, tipo:"Parecer"},
+  {proc:"CMDC-2026/0888", obj:"Recurso Inominado — JEC", inter:"Fornecedor Alfa Ltda.", cat:"urgente", dias:2, ang:150, tipo:"Recurso"},
+  {proc:"CMDC-2026/0801", obj:"Réplica — Ação de Cobrança", inter:"Construtora Boa Vista", cat:"prazo", dias:3, ang:262, tipo:"Prazo processual"},
+  {proc:"CMDC-2026/0620", obj:"Impugnação a Embargos", inter:"Ministério Público", cat:"prazo", dias:3, ang:300, tipo:"Impugnação"},
+  {proc:"CMDC-2026/0777", obj:"Audiência de conciliação — 14h", inter:"1ª Vara da Fazenda Pública", cat:"compromisso", dias:4, ang:75, tipo:"Audiência"},
+  {proc:"CMDC-2026/0843", obj:"Cumprimento de diligência", inter:"Controladoria Interna", cat:"prazo", dias:5, ang:335, tipo:"Diligência"},
+  {proc:"CMDC-2026/0699", obj:"Parecer sobre Pregão 019/2026", inter:"Comissão de Licitação", cat:"prazo", dias:5, ang:230, tipo:"Parecer"},
+  {proc:"CMDC-2026/0950", obj:"Reunião — Comissão de Ética", inter:"Mesa Diretora", cat:"compromisso", dias:6, ang:45, tipo:"Reunião"},
+  {proc:"CMDC-2026/0912", obj:"Sustentação oral — TJRJ", inter:"Câmara Municipal", cat:"compromisso", dias:7, ang:130, tipo:"Sustentação"}
+];
+const COR = {critico:"--sig-vermelho", urgente:"--sig-ambar", prazo:"--sig-azul", compromisso:"--sig-violeta"};
+
+/* ============ RELÓGIO ============ */
+const clk=document.getElementById("clk"), clkd=document.getElementById("clkd");
+const DIAS=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+function tick(){
+  const d=new Date();
+  const p=n=>String(n).padStart(2,"0");
+  clk.textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  clkd.textContent=`${DIAS[d.getDay()]}, ${p(d.getDate())} ${MES[d.getMonth()]} ${d.getFullYear()}`;
+}
+tick(); if(!RM) setInterval(tick,1000);
+
+/* ============ RADAR (elemento-assinatura) ============ */
+const cv=document.getElementById("radar"), ctx=cv.getContext("2d");
+const tip=document.getElementById("tip");
+let W=0,H=0,CX=0,CY=0,R=0, sweep=-Math.PI/2, hoverIdx=-1;
+
+function daysToRadius(d){
+  const dd=Math.max(0,Math.min(7,d));
+  const minR=R*0.14, maxR=R*0.94;
+  return minR+(dd/7)*(maxR-minR);
+}
+function blipXY(s){
+  const r=daysToRadius(s.dias), a=s.ang*Math.PI/180;
+  return {x:CX+Math.cos(a)*r, y:CY+Math.sin(a)*r, r};
+}
+function resize(){
+  const rect=cv.getBoundingClientRect();
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  W=rect.width; H=rect.height;
+  cv.width=W*dpr; cv.height=H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  CX=W/2; CY=H/2; R=Math.min(W,H)/2-6;
+  if(RM) drawRadar();
+}
+function drawRadar(){
+  ctx.clearRect(0,0,W,H);
+  // fundo do escopo (sempre escuro — instrumento)
+  const bg=ctx.createRadialGradient(CX,CY,R*0.05,CX,CY,R);
+  bg.addColorStop(0,"rgba(20,60,70,.55)");
+  bg.addColorStop(.55,"rgba(6,20,32,.85)");
+  bg.addColorStop(1,"rgba(3,9,16,.98)");
+  ctx.beginPath();ctx.arc(CX,CY,R,0,7);ctx.fillStyle=bg;ctx.fill();
+
+  const cyan=css("--ciano")||"#2FE4D5";
+  // anéis de urgência
+  const bands=[{d:0,l:"HOJE"},{d:2,l:"+2d"},{d:4,l:"+4d"},{d:7,l:"+7d"}];
+  ctx.font='10px "IBM Plex Mono", monospace';
+  bands.forEach((b)=>{
+    const rr=daysToRadius(b.d);
+    ctx.beginPath();ctx.arc(CX,CY,rr,0,7);
+    ctx.strokeStyle="rgba(122,200,210,.18)";ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle="rgba(150,200,215,.45)";
+    ctx.fillText(b.l, CX+4, CY-rr-3);
+  });
+  // retículo
+  ctx.strokeStyle="rgba(122,200,210,.12)";ctx.lineWidth=1;
+  for(let i=0;i<12;i++){
+    const a=i*Math.PI/6;
+    ctx.beginPath();ctx.moveTo(CX,CY);
+    ctx.lineTo(CX+Math.cos(a)*R,CY+Math.sin(a)*R);ctx.stroke();
+  }
+  // feixe de varredura + rastro
+  if(!RM || true){
+    const trail=1.1; // radianos
+    for(let i=0;i<26;i++){
+      const a=sweep-(i/26)*trail;
+      const alpha=(1-i/26)*0.16;
+      ctx.beginPath();ctx.moveTo(CX,CY);
+      ctx.arc(CX,CY,R,a-0.02,a+0.02);
+      ctx.closePath();
+      ctx.fillStyle=`rgba(47,228,213,${alpha})`;ctx.fill();
+    }
+    // linha de feixe
+    ctx.beginPath();ctx.moveTo(CX,CY);
+    ctx.lineTo(CX+Math.cos(sweep)*R,CY+Math.sin(sweep)*R);
+    ctx.strokeStyle="rgba(90,240,225,.75)";ctx.lineWidth=1.5;
+    ctx.shadowColor=cyan;ctx.shadowBlur=12;ctx.stroke();ctx.shadowBlur=0;
+  }
+  // blips
+  SINAIS.forEach((s,idx)=>{
+    const {x,y}=blipXY(s);
+    const col=css(COR[s.cat]);
+    // brilho de passagem do feixe (afterglow)
+    let a=s.ang*Math.PI/180;
+    let delta=(sweep-a)%(2*Math.PI); if(delta<0)delta+=2*Math.PI;
+    const glow=delta<1.1?(1-delta/1.1):0;
+    const base=0.55, inten=Math.min(1,base+glow*0.9);
+    const size=(idx===hoverIdx?5.5:3.8)+glow*2.4;
+    ctx.beginPath();ctx.arc(x,y,size,0,7);
+    ctx.fillStyle=col;ctx.globalAlpha=inten;
+    ctx.shadowColor=col;ctx.shadowBlur=10+glow*16;ctx.fill();
+    ctx.shadowBlur=0;ctx.globalAlpha=1;
+    if(glow>0.15||idx===hoverIdx){
+      ctx.beginPath();ctx.arc(x,y,size+3+glow*4,0,7);
+      ctx.strokeStyle=col;ctx.globalAlpha=0.3*inten;ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1;
+    }
+  });
+  // hub central
+  ctx.beginPath();ctx.arc(CX,CY,3,0,7);ctx.fillStyle=cyan;
+  ctx.shadowColor=cyan;ctx.shadowBlur=10;ctx.fill();ctx.shadowBlur=0;
+}
+function loop(){ sweep+=0.012; if(sweep>Math.PI)sweep-=2*Math.PI; drawRadar(); requestAnimationFrame(loop); }
+
+// interação: tooltip por proximidade
+cv.addEventListener("mousemove",e=>{
+  const rect=cv.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  let best=-1,bd=16;
+  SINAIS.forEach((s,i)=>{const {x,y}=blipXY(s);const d=Math.hypot(mx-x,my-y);if(d<bd){bd=d;best=i;}});
+  hoverIdx=best;
+  if(best>=0){
+    const s=SINAIS[best];
+    const rotulo=s.dias<0?`ATRASADO ${Math.abs(s.dias)}d`:s.dias===0?"VENCE HOJE":`EM ${s.dias} DIA${s.dias>1?"S":""}`;
+    tip.innerHTML=`<div class="p">${s.proc}</div><div class="o">${s.obj}</div><div class="m" style="color:${css(COR[s.cat])}">${rotulo} · ${s.tipo}</div>`;
+    let tx=mx+16, ty=my+10;
+    if(tx>rect.width-190)tx=mx-196;
+    tip.style.left=tx+"px";tip.style.top=ty+"px";tip.classList.add("on");
+    cv.style.cursor="pointer";
+    if(RM)drawRadar();
+  }else{tip.classList.remove("on");cv.style.cursor="default";if(RM)drawRadar();}
+});
+cv.addEventListener("mouseleave",()=>{hoverIdx=-1;tip.classList.remove("on");if(RM)drawRadar();});
+
+window.addEventListener("resize",resize);
+resize();
+if(!RM) loop(); else drawRadar();
+
+/* ============ FAIXA 7 DIAS ============ */
+const days=document.getElementById("days");
+const base=new Date();
+for(let i=0;i<7;i++){
+  const d=new Date(base);d.setDate(base.getDate()+i);
+  const its=SINAIS.filter(s=>s.dias===i);
+  const marks=its.map(s=>`<span class="mk" style="color:${css(COR[s.cat])}"></span>`).join("");
+  const rotDia=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d.getDay()];
+  const el=document.createElement("div");
+  el.className="day"+(i===0?" hoje":"")+(its.length===0?" empty":"");
+  el.innerHTML=`<div class="dd">${i===0?"HOJE":rotDia}<b>${String(d.getDate()).padStart(2,"0")}</b></div>
+    <div class="marks">${marks||'<span style="font-size:11px;color:var(--txt-3);font-family:IBM Plex Mono">sem sinais</span>'}</div>
+    <div class="ct">${its.length}</div>`;
+  days.appendChild(el);
+}
+
+/* ============ CONTAGEM DOS KPIs ============ */
+document.querySelectorAll(".num[data-count]").forEach(el=>{
+  const target=+el.dataset.count;
+  if(RM){el.textContent=target.toLocaleString("pt-BR");return;}
+  let cur=0;const step=Math.max(1,Math.round(target/45));
+  const iv=setInterval(()=>{cur+=step;if(cur>=target){cur=target;clearInterval(iv);}el.textContent=cur.toLocaleString("pt-BR");},22);
+});
+
+/* ============ LISTAS ============ */
+const prazos=[
+  {proc:"CMDC-2026/0731",obj:"Manifestação em MS",inter:"Sind. dos Servidores",dias:-2,cat:"critico"},
+  {proc:"CMDC-2026/0842",obj:"Contestação — Ação Ordinária",inter:"Município de D. de Caxias",dias:0,cat:"critico"},
+  {proc:"CMDC-2026/0915",obj:"Parecer sobre gratificação",inter:"Sec. de Administração",dias:1,cat:"urgente"},
+  {proc:"CMDC-2026/0888",obj:"Recurso Inominado — JEC",inter:"Fornecedor Alfa Ltda.",dias:2,cat:"urgente"},
+  {proc:"CMDC-2026/0801",obj:"Réplica — Ação de Cobrança",inter:"Construtora Boa Vista",dias:3,cat:"prazo"},
+  {proc:"CMDC-2026/0699",obj:"Parecer — Pregão 019/2026",inter:"Comissão de Licitação",dias:5,cat:"prazo"},
+  {proc:"CMDC-2026/0655",obj:"Contrarrazões de Apelação",inter:"Ministério Público",dias:9,cat:"prazo"},
+  {proc:"CMDC-2026/0512",obj:"Informações em MS coletivo",inter:"Assoc. dos Procuradores",dias:12,cat:"prazo"}
+];
+document.getElementById("prazos").innerHTML=prazos.map(p=>{
+  const cls=p.dias<=0?"crit":p.dias<=2?"warn":"";
+  const rot=p.dias<0?`${Math.abs(p.dias)}d atraso`:p.dias===0?"hoje":`${p.dias} dias`;
+  return `<li class="pitem"><span class="tag" style="--c:${css(COR[p.cat])}"></span>
+    <div class="body"><div class="proc">${p.proc}</div><div class="obj">${p.obj}</div>
+    <div class="meta">${p.inter}</div></div>
+    <div class="when ${cls}"><b>${rot}</b></div></li>`;
+}).join("");
+
+const alertas=[
+  {ic:"crit",cor:"--sig-vermelho",t:"2 prazos vencidos sem manifestação",p:"CMDC-2026/0731 e CMDC-2026/0518 exigem petição de urgência."},
+  {ic:"warn",cor:"--sig-ambar",t:"Contestação vence hoje",p:"CMDC-2026/0842 sem minuta anexada — risco de revelia."},
+  {ic:"info",cor:"--sig-azul",t:"3 processos parados há +30 dias",p:"Sem movimentação desde a distribuição. Sugerida triagem."},
+  {ic:"ok",cor:"--sig-verde",t:"Meta mensal de pareceres atingida",p:"41 pareceres emitidos — 108% da meta de julho."}
+];
+const ICO={
+  crit:'<path d="M12 2 1 21h22L12 2z"/><path d="M12 9v5M12 17.5v.01" stroke-linecap="round"/>',
+  warn:'<circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16v.01" stroke-linecap="round"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01" stroke-linecap="round"/>',
+  ok:'<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round"/>'
+};
+document.getElementById("alertas").innerHTML=alertas.map(a=>`
+  <div class="alerta">
+    <span class="ic" style="--ic:${css(a.cor)};--ic-bg:color-mix(in srgb, ${css(a.cor)} 16%, transparent)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${ICO[a.ic]}</svg></span>
+    <div class="txt"><strong>${a.t}</strong><p>${a.p}</p></div>
+  </div>`).join("");
+
+const atividades=[
+  {w:"há 8 min",t:"Parecer emitido — Pregão 018/2026",u:"Dra. Marina Antunes",cor:"--sig-verde"},
+  {w:"há 34 min",t:"Contestação protocolada — CMDC-2026/0827",u:"Dr. Douglas Vasconcelos",cor:"--ciano"},
+  {w:"há 1 h",t:"Processo distribuído — CMDC-2026/0951",u:"Secretaria da Procuradoria",cor:"--sig-azul"},
+  {w:"há 2 h",t:"Prazo prorrogado — CMDC-2026/0688",u:"Dr. Ricardo Salles",cor:"--sig-ambar"},
+  {w:"há 3 h",t:"Parecer reaberto para ajustes — CMDC-2026/0715",u:"Dra. Helena Prado",cor:"--sig-violeta"}
+];
+document.getElementById("atividades").innerHTML=atividades.map(a=>`
+  <li style="--ac:${css(a.cor)}"><div class="aw">${a.w}</div><div class="at">${a.t}</div>
+  <div class="au">por <b>${a.u}</b></div></li>`).join("");
+
+/* ============ GRÁFICOS ============ */
+let charts=[];
+function txt(){return css("--txt-2")||"#9db0cc";}
+function grid(){return css("--borda")||"rgba(120,150,190,.14)";}
+function buildCharts(){
+  charts.forEach(c=>c.destroy());charts=[];
+  Chart.defaults.font.family="'IBM Plex Mono', monospace";
+  Chart.defaults.font.size=11;
+  Chart.defaults.color=txt();
+  const meses=["Fev","Mar","Abr","Mai","Jun","Jul"];
+  const cyan=css("--ciano"), azul=css("--sig-azul"), ouro=css("--ouro");
+
+  // Entradas por mês (barras)
+  const g=document.getElementById("cEntradas").getContext("2d");
+  const grad=g.createLinearGradient(0,0,0,220);
+  grad.addColorStop(0,cyan);grad.addColorStop(1,"rgba(47,228,213,.15)");
+  charts.push(new Chart(g,{type:"bar",data:{labels:meses,
+    datasets:[{data:[64,71,58,83,76,92],backgroundColor:grad,borderRadius:6,barPercentage:.62}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},border:{display:false}},
+        y:{grid:{color:grid()},border:{display:false},ticks:{maxTicksLimit:5}}}}}));
+
+  // Distribuição por status (rosca)
+  const s=document.getElementById("cStatus").getContext("2d");
+  const stLab=["Pendentes","Em Análise","Aguard. Doc.","Em Diligência","Finalizados","Arquivados"];
+  const stCol=[css("--sig-azul"),css("--sig-violeta"),css("--sig-ambar"),css("--ciano"),css("--sig-verde"),css("--txt-3")];
+  const stVal=[143,87,54,38,612,350];
+  charts.push(new Chart(s,{type:"doughnut",data:{labels:stLab,
+    datasets:[{data:stVal,backgroundColor:stCol,borderColor:css("--casco"),borderWidth:2,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"64%",plugins:{legend:{display:false}}}}));
+  document.getElementById("statusLeg").innerHTML=stLab.map((l,i)=>
+    `<span><i style="background:${stCol[i]}"></i>${l} · ${stVal[i]}</span>`).join("");
+
+  // Pareceres por mês (linha)
+  const p=document.getElementById("cPareceres").getContext("2d");
+  const pg=p.createLinearGradient(0,0,0,220);
+  pg.addColorStop(0,"rgba(214,177,90,.34)");pg.addColorStop(1,"rgba(214,177,90,0)");
+  charts.push(new Chart(p,{type:"line",data:{labels:meses,
+    datasets:[{data:[28,33,30,37,35,41],borderColor:ouro,backgroundColor:pg,fill:true,
+      tension:.4,borderWidth:2.5,pointBackgroundColor:ouro,pointRadius:3,pointHoverRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},border:{display:false}},
+        y:{grid:{color:grid()},border:{display:false},ticks:{maxTicksLimit:5}}}}}));
+}
+buildCharts();
+
+/* ============ TEMA ============ */
+const root=document.documentElement, tbtn=document.getElementById("temaBtn");
+const tlbl=document.getElementById("temaLbl"), tico=document.getElementById("temaIco");
+const SUN='<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>';
+const MOON='<path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8z"/>';
+function setTheme(t){
+  root.setAttribute("data-theme",t);
+  const dark=t==="dark";
+  tlbl.textContent=dark?"Claro":"Escuro";
+  tico.innerHTML=dark?SUN:MOON;
+  tbtn.setAttribute("aria-pressed",String(!dark));
+  requestAnimationFrame(()=>{buildCharts(); if(RM)drawRadar();});
+}
+tbtn.addEventListener("click",()=>setTheme(root.getAttribute("data-theme")==="dark"?"light":"dark"));
+// tema inicial coerente com a preferência do sistema
+if(window.matchMedia("(prefers-color-scheme: light)").matches) setTheme("light");
+</script>
+</body>
+</html>

@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JurisControl — Dossiê Geral · Procuradoria CMDC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* ============================================================
+   O DOSSIÊ — arquivo jurídico vivo
+   Paleta e tipografia rooted no processo físico brasileiro
+   ============================================================ */
+:root{
+  /* Tinta e papel */
+  --tinta:        #16283d;   /* navy-ink, texto e marca */
+  --tinta-2:      #33475c;   /* ink diluída */
+  --tinta-fraca:  #6a7683;   /* legendas */
+  --mesa:         #cfc9b8;   /* superfície da mesa / fundo da página */
+  --mesa-2:       #c4bdaa;   /* sombra da mesa */
+  --folha:        #f4f1e8;   /* papel da folha (quase branco de ofício) */
+  --folha-borda:  #d9d2bf;   /* rasgo da folha */
+  --linha:        #dcd6c6;   /* pautas internas */
+  /* Carimbos e selos */
+  --carimbo:      #9e2b25;   /* oxblood — margem, alertas, atrasos */
+  --carimbo-2:    #7e211c;
+  --selo:         #9a7d33;   /* latão institucional, uso mínimo */
+  /* Semânticos do radar */
+  --st-hoje:      #9e2b25;   /* vence hoje / atrasado */
+  --st-curto:     #b07414;   /* 1–2 dias */
+  --st-prazo:     #2c5578;   /* prazo de processo */
+  --st-comp:      #5e6b32;   /* compromisso */
+  --st-ok:        #3f6b4a;
+
+  --sombra: 0 1px 0 var(--mesa-2), 0 10px 26px -18px rgba(22,40,61,.55);
+  --radius: 3px;
+}
+[data-theme="dark"]{
+  --tinta:        #e7e1d1;
+  --tinta-2:      #c4bda9;
+  --tinta-fraca:  #8f9585;
+  --mesa:         #0f1620;
+  --mesa-2:       #0a0f16;
+  --folha:        #18222e;
+  --folha-borda:  #2a3542;
+  --linha:        #26313d;
+  --carimbo:      #d15a52;
+  --carimbo-2:    #b8443c;
+  --selo:         #c3a24f;
+  --st-hoje:      #d15a52;
+  --st-curto:     #d59a3a;
+  --st-prazo:     #6f9dc4;
+  --st-comp:      #9aa96a;
+  --st-ok:        #7fb08c;
+  --sombra: 0 1px 0 #05080c, 0 14px 30px -20px #000;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:
+    radial-gradient(1200px 500px at 78% -10%, rgba(255,255,255,.06), transparent 60%),
+    var(--mesa);
+  color:var(--tinta);
+  font-family:"Newsreader",Georgia,serif;
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* Utilitários tipográficos ------------------------------------ */
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.slab{font-family:"Zilla Slab",Georgia,serif}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--tinta-fraca);
+}
+
+/* Foco de teclado visível ------------------------------------- */
+a,button,[tabindex]{outline:none}
+:focus-visible{
+  outline:2.5px solid var(--carimbo);
+  outline-offset:2px;
+  border-radius:2px;
+}
+
+/* Layout base ------------------------------------------------- */
+.wrap{max-width:1220px;margin:0 auto;padding:0 22px 72px}
+
+/* ===================== MASTHEAD (Diário) ===================== */
+.masthead{
+  border-bottom:2px solid var(--tinta);
+  padding:20px 0 12px;
+  margin-bottom:2px;
+}
+.masthead-top{
+  display:flex;align-items:center;gap:20px;
+}
+.brasao{flex:0 0 auto;width:66px;height:66px}
+.brasao circle,.brasao path,.brasao line,.brasao rect{vector-effect:non-scaling-stroke}
+.masthead-title{flex:1 1 auto;min-width:0}
+.masthead-title h1{
+  font-family:"Zilla Slab",serif;
+  font-weight:700;
+  font-size:clamp(30px,5vw,52px);
+  letter-spacing:-.01em;
+  line-height:.98;
+  margin:0;
+  color:var(--tinta);
+}
+.masthead-title h1 span{color:var(--carimbo)}
+.masthead-title .org{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--tinta-2);margin-top:6px;
+}
+.masthead-tools{flex:0 0 auto;display:flex;align-items:center;gap:10px}
+
+.chip{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 12px;border:1px solid var(--folha-borda);
+  background:var(--folha);color:var(--tinta);
+  border-radius:var(--radius);cursor:pointer;
+  transition:border-color .15s,transform .05s;
+}
+.chip:hover{border-color:var(--tinta-2)}
+.chip:active{transform:translateY(1px)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--st-ok)}
+.chip-user{cursor:default}
+.chip-user .who{color:var(--tinta-fraca)}
+
+/* Expediente strip -------------------------------------------- */
+.expediente{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;
+  padding:9px 0;margin-bottom:26px;
+  border-bottom:1px solid var(--linha);
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  color:var(--tinta-fraca);letter-spacing:.06em;
+}
+.expediente b{color:var(--tinta-2);font-weight:500}
+.expediente .sep{opacity:.4}
+
+/* ===================== FOLHA (bloco = folha) ================= */
+.folha{
+  position:relative;
+  background:var(--folha);
+  border:1px solid var(--folha-borda);
+  border-radius:var(--radius);
+  box-shadow:var(--sombra);
+  padding:20px 22px 20px 46px;   /* margem esquerda para a régua vermelha */
+}
+/* margem vermelha (a "pauta" do papel almaço) */
+.folha::before{
+  content:"";position:absolute;top:0;bottom:0;left:30px;
+  width:1.5px;background:var(--carimbo);opacity:.85;
+}
+/* furos do colchete / encadernação */
+.folha::after{
+  content:"";position:absolute;left:12px;top:26px;
+  width:9px;height:9px;border-radius:50%;
+  background:var(--mesa);
+  box-shadow:0 34px 0 var(--mesa), inset 0 1px 2px rgba(0,0,0,.35);
+  border:1px solid var(--folha-borda);
+}
+[data-theme="dark"] .folha::after{background:var(--mesa-2);box-shadow:0 34px 0 var(--mesa-2), inset 0 1px 2px rgba(0,0,0,.6)}
+
+.folha-cab{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  margin-bottom:16px;
+}
+.folha-cab h2{
+  font-family:"Zilla Slab",serif;font-weight:600;
+  font-size:19px;letter-spacing:-.01em;line-height:1.1;margin:0;
+  color:var(--tinta);
+}
+.folha-cab .sub{
+  font-family:"Newsreader",serif;font-style:italic;
+  font-size:13.5px;color:var(--tinta-fraca);margin-top:3px;
+}
+.fl-num{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.1em;color:var(--tinta-fraca);white-space:nowrap;
+  border:1px solid var(--linha);padding:3px 7px;border-radius:2px;
+}
+
+/* Grid geral -------------------------------------------------- */
+.grid{display:grid;gap:20px}
+.mt{margin-top:20px}
+
+/* ===================== KPIs (verbetes) ====================== */
+.kpis{grid-template-columns:repeat(6,1fr)}
+.kpi{
+  position:relative;background:var(--folha);
+  border:1px solid var(--folha-borda);border-radius:var(--radius);
+  box-shadow:var(--sombra);
+  padding:16px 16px 14px 20px;
+  display:flex;flex-direction:column;gap:2px;min-height:118px;
+}
+.kpi::before{content:"";position:absolute;top:10px;bottom:10px;left:9px;width:1.5px;background:var(--linha)}
+.kpi.crit::before{background:var(--carimbo)}
+.kpi .idx{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;color:var(--tinta-fraca)}
+.kpi .lbl{font-family:"Zilla Slab",serif;font-weight:500;font-size:13px;line-height:1.15;color:var(--tinta-2);text-transform:uppercase;letter-spacing:.02em;margin-top:2px}
+.kpi .num{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:34px;line-height:1;letter-spacing:-.02em;margin-top:auto;color:var(--tinta)}
+.kpi .delta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--tinta-fraca);margin-top:5px}
+.kpi .delta.up{color:var(--st-ok)}
+.kpi .delta.down{color:var(--carimbo)}
+.kpi.crit .num{color:var(--carimbo)}
+
+/* Carimbo (rubber stamp) -------------------------------------- */
+.carimbo{
+  position:absolute;top:12px;right:12px;
+  font-family:"IBM Plex Mono",monospace;font-weight:600;
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--carimbo);
+  border:2px solid var(--carimbo);border-radius:3px;
+  padding:3px 6px;transform:rotate(-7deg);opacity:.9;
+  box-shadow:inset 0 0 0 1px rgba(158,43,37,.25);
+}
+
+/* ===================== RADAR DE PRAZOS ====================== */
+.radar-regua{
+  display:flex;justify-content:space-between;
+  font-family:"IBM Plex Mono",monospace;font-size:9px;color:var(--tinta-fraca);
+  border-top:1px solid var(--linha);margin-bottom:2px;padding-top:4px;
+}
+.radar{display:grid;grid-template-columns:repeat(7,1fr);gap:0}
+.radar-dia{
+  border-left:1px dotted var(--linha);
+  padding:8px 8px 12px;min-height:180px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.radar-dia:first-child{border-left:0}
+.radar-dia.hoje{background:linear-gradient(var(--folha),var(--folha)) padding-box;position:relative}
+.radar-dia.hoje::before{content:"";position:absolute;inset:0;background:var(--carimbo);opacity:.05}
+.radar-dia h3{margin:0;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;color:var(--tinta-2);text-transform:uppercase}
+.radar-dia .data{font-family:"IBM Plex Mono",monospace;font-size:20px;font-weight:600;line-height:1;color:var(--tinta)}
+.radar-dia.hoje .data{color:var(--carimbo)}
+.radar-dia .tag-hoje{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.14em;color:var(--carimbo)}
+.marc{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:1.25;
+  border-left:3px solid var(--st-prazo);
+  background:rgba(44,85,120,.08);
+  padding:5px 6px 5px 8px;border-radius:2px;color:var(--tinta-2);
+}
+.marc b{display:block;color:var(--tinta);font-weight:600}
+.marc.m-hoje{border-color:var(--st-hoje);background:rgba(158,43,37,.09)}
+.marc.m-curto{border-color:var(--st-curto);background:rgba(176,116,20,.10)}
+.marc.m-prazo{border-color:var(--st-prazo);background:rgba(44,85,120,.08)}
+.marc.m-comp{border-color:var(--st-comp);background:rgba(94,107,50,.10)}
+.legenda{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;padding-top:12px;border-top:1px solid var(--linha)}
+.legenda span{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--tinta-fraca);display:inline-flex;align-items:center;gap:7px}
+.legenda i{width:11px;height:11px;border-radius:2px;display:inline-block}
+
+/* ===================== GRÁFICOS ============================= */
+.charts{grid-template-columns:1.35fr 1fr 1.35fr}
+.chart-box{position:relative;height:230px;margin-top:4px}
+
+/* ===================== LISTAS ============================== */
+.lists{grid-template-columns:1.5fr 1fr 1.15fr}
+
+/* Tabela de prazos */
+.autos{width:100%;border-collapse:collapse;font-size:13.5px}
+.autos th{
+  text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:500;
+  font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-fraca);
+  padding:0 10px 8px 0;border-bottom:1.5px solid var(--tinta);
+}
+.autos td{padding:11px 10px 11px 0;border-bottom:1px solid var(--linha);vertical-align:top}
+.autos tr:last-child td{border-bottom:0}
+.autos .n{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--tinta);white-space:nowrap}
+.autos .obj{font-family:"Newsreader",serif}
+.autos .obj small{display:block;color:var(--tinta-fraca);font-style:italic;font-size:12px}
+.tarja{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:500;
+  letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;
+  padding:3px 7px;border-radius:2px;border:1px solid;display:inline-block;
+}
+.tarja.t-hoje{color:var(--st-hoje);border-color:var(--st-hoje);background:rgba(158,43,37,.07)}
+.tarja.t-curto{color:var(--st-curto);border-color:var(--st-curto);background:rgba(176,116,20,.08)}
+.tarja.t-prazo{color:var(--st-prazo);border-color:var(--st-prazo);background:rgba(44,85,120,.07)}
+
+/* Alertas inteligentes */
+.alerta{
+  position:relative;padding:12px 12px 12px 16px;border:1px solid var(--folha-borda);
+  border-radius:2px;margin-bottom:12px;background:linear-gradient(var(--folha),var(--folha));
+}
+.alerta:last-child{margin-bottom:0}
+.alerta::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px}
+.alerta.a-alta::before{background:var(--carimbo)}
+.alerta.a-media::before{background:var(--st-curto)}
+.alerta.a-info::before{background:var(--st-prazo)}
+.alerta .kicker{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta-fraca);margin-bottom:3px}
+.alerta .msg{font-family:"Newsreader",serif;font-size:14px;line-height:1.35}
+.alerta .msg b{font-weight:600}
+.alerta.a-alta .kicker{color:var(--carimbo)}
+
+/* Últimas atividades — andamentos */
+.andamentos{list-style:none;margin:0;padding:0}
+.andamentos li{position:relative;padding:0 0 15px 22px}
+.andamentos li::before{content:"";position:absolute;left:4px;top:5px;width:7px;height:7px;border-radius:50%;background:var(--tinta-2);border:1.5px solid var(--folha)}
+.andamentos li::after{content:"";position:absolute;left:7px;top:12px;bottom:0;width:1px;background:var(--linha)}
+.andamentos li:last-child{padding-bottom:0}
+.andamentos li:last-child::after{display:none}
+.andamentos .quando{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--tinta-fraca);letter-spacing:.04em}
+.andamentos .oque{font-family:"Newsreader",serif;font-size:13.5px;line-height:1.35;margin-top:1px}
+.andamentos .oque b{font-weight:600}
+.andamentos .fl{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--carimbo)}
+
+/* Rodapé */
+.rodape{margin-top:34px;padding-top:14px;border-top:2px solid var(--tinta);
+  font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--tinta-fraca);
+  display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;letter-spacing:.05em}
+
+/* ===================== RESPONSIVO ========================== */
+@media(max-width:1080px){
+  .kpis{grid-template-columns:repeat(3,1fr)}
+  .charts{grid-template-columns:1fr 1fr}
+  .lists{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  .wrap{padding:0 14px 56px}
+  .masthead-top{flex-wrap:wrap;gap:14px}
+  .masthead-tools{width:100%;justify-content:space-between}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .charts{grid-template-columns:1fr}
+  .radar{grid-template-columns:1fr;gap:0}
+  .radar-dia{border-left:0;border-top:1px dotted var(--linha);min-height:0;flex-direction:row;flex-wrap:wrap;align-items:baseline}
+  .radar-dia .data{margin-right:6px}
+  .radar-regua{display:none}
+  .folha{padding-left:40px}
+  .autos .hide-sm{display:none}
+}
+
+@media(prefers-reduced-motion:no-preference){
+  .kpi.crit .carimbo{animation:selar .5s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes selar{0%{opacity:0;transform:rotate(-7deg) scale(1.8)}60%{opacity:1;transform:rotate(-7deg) scale(.94)}100%{transform:rotate(-7deg) scale(1)}}
+  .folha,.kpi{animation:subir .45s ease both}
+  @keyframes subir{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===================== MASTHEAD ===================== -->
+  <header class="masthead">
+    <div class="masthead-top">
+      <svg class="brasao" viewBox="0 0 100 100" role="img" aria-label="Brasão da Procuradoria da CMDC">
+        <defs><path id="arcTop" d="M50,50 m-38,0 a38,38 0 1,1 76,0"/>
+          <path id="arcBot" d="M50,50 m38,0 a38,38 0 1,1 -76,0"/></defs>
+        <circle cx="50" cy="50" r="46" fill="none" stroke="var(--tinta)" stroke-width="1.5"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="var(--carimbo)" stroke-width="1"/>
+        <text font-family="IBM Plex Mono, monospace" font-size="7.4" letter-spacing="1.2" fill="var(--tinta)">
+          <textPath href="#arcTop" startOffset="50%" text-anchor="middle">PROCURADORIA-GERAL</textPath></text>
+        <text font-family="IBM Plex Mono, monospace" font-size="6.2" letter-spacing="1" fill="var(--tinta-2)">
+          <textPath href="#arcBot" startOffset="50%" text-anchor="middle">CÂMARA MUNICIPAL · DUQUE DE CAXIAS</textPath></text>
+        <!-- coluna clássica -->
+        <g stroke="var(--tinta)" stroke-width="1.6" fill="none">
+          <line x1="41" y1="38" x2="59" y2="38"/>
+          <line x1="43" y1="42" x2="43" y2="60"/>
+          <line x1="47.5" y1="42" x2="47.5" y2="60"/>
+          <line x1="52.5" y1="42" x2="52.5" y2="60"/>
+          <line x1="57" y1="42" x2="57" y2="60"/>
+          <line x1="39" y1="63" x2="61" y2="63"/>
+        </g>
+        <line x1="30" y1="70" x2="70" y2="70" stroke="var(--selo)" stroke-width="1.4"/>
+      </svg>
+      <div class="masthead-title">
+        <h1 class="slab">Juris<span>Control</span></h1>
+        <div class="org">Procuradoria-Geral · Câmara Municipal de Duque de Caxias — RJ</div>
+      </div>
+      <div class="masthead-tools">
+        <button class="chip" id="tema" aria-pressed="false" title="Alternar tema">
+          <span class="dot" id="tema-dot"></span><span id="tema-txt">Arquivo diurno</span>
+        </button>
+        <span class="chip chip-user"><span class="who">Procurador</span>&nbsp;D. Leite</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== EXPEDIENTE ===================== -->
+  <div class="expediente" role="note">
+    <span><b>DOSSIÊ GERAL</b> — Painel de controle processual</span>
+    <span class="sep">•</span>
+    <span>Ano IX</span><span class="sep">•</span>
+    <span>Edição nº <b>0842</b></span><span class="sep">•</span>
+    <span id="hoje-linha">Duque de Caxias, quinta-feira, 16 de julho de 2026</span>
+    <span class="sep">•</span>
+    <span>Última sincronização <b id="sync">08h12</b></span>
+  </div>
+
+  <!-- ===================== KPIs ===================== -->
+  <section class="grid kpis" aria-label="Indicadores gerais">
+    <div class="kpi"><span class="idx mono">Verbete 01</span><span class="lbl">Total de Processos</span><span class="num">1.284</span><span class="delta up">▲ 3,4% no mês</span></div>
+    <div class="kpi"><span class="idx mono">Verbete 02</span><span class="lbl">Pendentes</span><span class="num">213</span><span class="delta">em fila de distribuição</span></div>
+    <div class="kpi"><span class="idx mono">Verbete 03</span><span class="lbl">Em Análise</span><span class="num">96</span><span class="delta">com relator designado</span></div>
+    <div class="kpi"><span class="idx mono">Verbete 04</span><span class="lbl">Finalizados</span><span class="num">918</span><span class="delta up">▲ 41 no mês</span></div>
+    <div class="kpi crit"><span class="carimbo">Prioritário</span><span class="idx mono">Verbete 05</span><span class="lbl">Vencendo ≤ 5 dias</span><span class="num">27</span><span class="delta down">exigem despacho</span></div>
+    <div class="kpi crit"><span class="carimbo">Atrasado</span><span class="idx mono">Verbete 06</span><span class="lbl">Vencidos</span><span class="num">14</span><span class="delta down">▲ 2 desde ontem</span></div>
+  </section>
+
+  <!-- ===================== RADAR DE PRAZOS ===================== -->
+  <section class="folha mt" aria-label="Radar de prazos dos próximos 7 dias">
+    <div class="folha-cab">
+      <div>
+        <h2 class="slab">Radar de Prazos</h2>
+        <div class="sub">Próximos 7 dias — vencimentos, prazos processuais e compromissos</div>
+      </div>
+      <span class="fl-num">fl. 002</span>
+    </div>
+    <div class="radar-regua" aria-hidden="true"><span>│</span><span>│</span><span>│</span><span>│</span><span>│</span><span>│</span><span>│</span></div>
+    <div class="radar">
+      <div class="radar-dia hoje">
+        <h3>Qui</h3><span class="data">16</span><span class="tag-hoje">HOJE</span>
+        <div class="marc m-hoje"><b>CMDC-2026/0842</b>Contrarrazões · vence hoje</div>
+        <div class="marc m-hoje"><b>CMDC-2026/0731</b>Parecer · vence hoje</div>
+      </div>
+      <div class="radar-dia">
+        <h3>Sex</h3><span class="data">17</span>
+        <div class="marc m-curto"><b>CMDC-2026/0790</b>Manifestação · 1 dia</div>
+        <div class="marc m-comp"><b>10h</b>Reunião — Comissão de Finanças</div>
+      </div>
+      <div class="radar-dia">
+        <h3>Sáb</h3><span class="data">18</span>
+        <div class="marc m-curto"><b>CMDC-2026/0688</b>Recurso · 2 dias</div>
+      </div>
+      <div class="radar-dia">
+        <h3>Dom</h3><span class="data">19</span>
+      </div>
+      <div class="radar-dia">
+        <h3>Seg</h3><span class="data">20</span>
+        <div class="marc m-prazo"><b>CMDC-2026/0801</b>Impugnação · prazo</div>
+        <div class="marc m-comp"><b>14h</b>Audiência — TJRJ 3ª Vara</div>
+      </div>
+      <div class="radar-dia">
+        <h3>Ter</h3><span class="data">21</span>
+        <div class="marc m-prazo"><b>CMDC-2026/0755</b>Parecer · prazo</div>
+      </div>
+      <div class="radar-dia">
+        <h3>Qua</h3><span class="data">22</span>
+        <div class="marc m-prazo"><b>CMDC-2026/0699</b>Consulta · prazo</div>
+        <div class="marc m-prazo"><b>CMDC-2026/0812</b>Minuta · prazo</div>
+      </div>
+    </div>
+    <div class="legenda" role="list">
+      <span role="listitem"><i style="background:var(--st-hoje)"></i>Vence hoje / atrasado</span>
+      <span role="listitem"><i style="background:var(--st-curto)"></i>1–2 dias</span>
+      <span role="listitem"><i style="background:var(--st-prazo)"></i>Prazo de processo</span>
+      <span role="listitem"><i style="background:var(--st-comp)"></i>Compromisso</span>
+    </div>
+  </section>
+
+  <!-- ===================== GRÁFICOS ===================== -->
+  <section class="grid charts mt" aria-label="Gráficos analíticos">
+    <div class="folha">
+      <div class="folha-cab"><div><h2 class="slab">Entradas por Mês</h2><div class="sub">Autuações no exercício de 2026</div></div><span class="fl-num">fl. 003</span></div>
+      <div class="chart-box"><canvas id="cEntradas" aria-label="Gráfico de entradas por mês"></canvas></div>
+    </div>
+    <div class="folha">
+      <div class="folha-cab"><div><h2 class="slab">Distribuição por Status</h2><div class="sub">Acervo vigente</div></div><span class="fl-num">fl. 004</span></div>
+      <div class="chart-box"><canvas id="cStatus" aria-label="Distribuição de processos por status"></canvas></div>
+    </div>
+    <div class="folha">
+      <div class="folha-cab"><div><h2 class="slab">Pareceres Emitidos</h2><div class="sub">Por mês — 2026</div></div><span class="fl-num">fl. 005</span></div>
+      <div class="chart-box"><canvas id="cPareceres" aria-label="Pareceres emitidos por mês"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ===================== LISTAS ===================== -->
+  <section class="grid lists mt" aria-label="Listas operacionais">
+
+    <!-- Próximos Prazos -->
+    <div class="folha">
+      <div class="folha-cab"><div><h2 class="slab">Próximos Prazos</h2><div class="sub">Vencimentos nos próximos 15 dias</div></div><span class="fl-num">fl. 006</span></div>
+      <table class="autos">
+        <thead><tr><th>Autos</th><th>Objeto / Interessado</th><th class="hide-sm">Prazo</th><th>Situação</th></tr></thead>
+        <tbody>
+          <tr><td class="n">CMDC-2026/0842</td><td class="obj">Contrarrazões — Pregão 017/2026<small>Mesa Diretora</small></td><td class="mono hide-sm">16/07</td><td><span class="tarja t-hoje">Hoje</span></td></tr>
+          <tr><td class="n">CMDC-2026/0731</td><td class="obj">Parecer sobre contrato de locação<small>Diretoria-Geral</small></td><td class="mono hide-sm">16/07</td><td><span class="tarja t-hoje">Hoje</span></td></tr>
+          <tr><td class="n">CMDC-2026/0790</td><td class="obj">Manifestação em recurso administrativo<small>Servidor — mat. 4471</small></td><td class="mono hide-sm">17/07</td><td><span class="tarja t-curto">1 dia</span></td></tr>
+          <tr><td class="n">CMDC-2026/0688</td><td class="obj">Recurso — sindicância disciplinar<small>Controladoria Interna</small></td><td class="mono hide-sm">18/07</td><td><span class="tarja t-curto">2 dias</span></td></tr>
+          <tr><td class="n">CMDC-2026/0801</td><td class="obj">Impugnação a edital de credenciamento<small>Comissão de Licitação</small></td><td class="mono hide-sm">20/07</td><td><span class="tarja t-prazo">4 dias</span></td></tr>
+          <tr><td class="n">CMDC-2026/0755</td><td class="obj">Parecer em minuta de projeto de lei<small>Ver. J. R. Nogueira</small></td><td class="mono hide-sm">21/07</td><td><span class="tarja t-prazo">5 dias</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Alertas Inteligentes -->
+    <div class="folha">
+      <div class="folha-cab"><div><h2 class="slab">Alertas Inteligentes</h2><div class="sub">Leitura automática do acervo</div></div><span class="fl-num">fl. 007</span></div>
+      <div class="alerta a-alta"><div class="kicker">Vencimento imediato</div><div class="msg"><b>2 autos</b> vencem hoje sem despacho registrado — CMDC-2026/0842 e /0731.</div></div>
+      <div class="alerta a-alta"><div class="kicker">Sem relator</div><div class="msg">CMDC-2026/0731 está <b>há 8 dias</b> sem procurador designado.</div></div>
+      <div class="alerta a-media"><div class="kicker">Gargalo</div><div class="msg">Fila de <b>distribuição</b> acima da média: 213 pendentes (+18%).</div></div>
+      <div class="alerta a-info"><div class="kicker">Tendência</div><div class="msg">Entradas de julho <b>+22%</b> ante junho — reforçar triagem.</div></div>
+    </div>
+
+    <!-- Últimas Atividades -->
+    <div class="folha">
+      <div class="folha-cab"><div><h2 class="slab">Últimas Atividades</h2><div class="sub">Andamentos recentes</div></div><span class="fl-num">fl. 008</span></div>
+      <ul class="andamentos">
+        <li><div class="quando">Hoje · 08h07</div><div class="oque"><b>Parecer juntado</b> aos autos CMDC-2026/0719 <span class="fl">fl. 214</span></div></li>
+        <li><div class="quando">Hoje · 07h51</div><div class="oque"><b>Despacho</b> de distribuição — CMDC-2026/0838 → Proc. A. Farias</div></li>
+        <li><div class="quando">Ontem · 17h33</div><div class="oque"><b>Prazo prorrogado</b> em 5 dias — CMDC-2026/0688 <span class="fl">fl. 090</span></div></li>
+        <li><div class="quando">Ontem · 16h10</div><div class="oque"><b>Autuação</b> — CMDC-2026/0842, interessado Mesa Diretora</div></li>
+        <li><div class="quando">Ontem · 14h48</div><div class="oque"><b>Processo arquivado</b> — CMDC-2026/0512, com resolução</div></li>
+        <li><div class="quando">14/07 · 11h22</div><div class="oque"><b>Vista</b> concedida à Controladoria — CMDC-2026/0688</div></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="rodape">
+    <span>JurisControl · Procuradoria-Geral da CMDC</span>
+    <span>Dados fictícios — protótipo de painel</span>
+    <span>Confere com o original · fl. 001–008</span>
+  </footer>
+</div>
+
+<script>
+/* ---------- Tema (arquivo diurno / noturno) ---------- */
+(function(){
+  const root=document.documentElement, btn=document.getElementById('tema');
+  const txt=document.getElementById('tema-txt');
+  const saved=localStorage.getItem('jc-tema');
+  const prefDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  let dark = saved ? saved==='dark' : prefDark;
+  function apply(){
+    root.setAttribute('data-theme', dark?'dark':'light');
+    btn.setAttribute('aria-pressed', dark);
+    txt.textContent = dark ? 'Arquivo noturno' : 'Arquivo diurno';
+    if(window.__charts) buildCharts();
+  }
+  btn.addEventListener('click',()=>{dark=!dark;localStorage.setItem('jc-tema',dark?'dark':'light');apply();});
+  apply();
+  window.__applyTema=apply;
+})();
+
+/* ---------- Gráficos ---------- */
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function buildCharts(){
+  if(window.__charts) window.__charts.forEach(c=>c.destroy());
+  window.__charts=[];
+  const tinta=css('--tinta'), fraca=css('--tinta-fraca'), linha=css('--linha');
+  const font={family:"'IBM Plex Mono', monospace", size:11};
+  Chart.defaults.color=fraca; Chart.defaults.font.family="'IBM Plex Mono', monospace";
+  const grid={color:linha, drawBorder:false};
+  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul'];
+
+  window.__charts.push(new Chart(document.getElementById('cEntradas'),{
+    type:'bar',
+    data:{labels:meses,datasets:[{data:[88,102,95,121,110,134,97],
+      backgroundColor:css('--st-prazo'),borderRadius:2,barPercentage:.66}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{titleFont:font,bodyFont:font}},
+      scales:{x:{grid:{display:false},ticks:{font}},y:{grid,ticks:{font},beginAtZero:true}}}
+  }));
+
+  window.__charts.push(new Chart(document.getElementById('cStatus'),{
+    type:'doughnut',
+    data:{labels:['Finalizados','Pendentes','Em análise','Sobrestados','Vencidos'],
+      datasets:[{data:[918,213,96,43,14],
+        backgroundColor:[css('--st-ok'),css('--st-curto'),css('--st-prazo'),css('--tinta-fraca'),css('--carimbo')],
+        borderColor:css('--folha'),borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'bottom',labels:{font,boxWidth:10,padding:10}},
+        tooltip:{titleFont:font,bodyFont:font}}}
+  }));
+
+  window.__charts.push(new Chart(document.getElementById('cPareceres'),{
+    type:'line',
+    data:{labels:meses,datasets:[{data:[41,52,47,63,58,71,49],
+      borderColor:css('--carimbo'),backgroundColor:'rgba(158,43,37,.10)',
+      fill:true,tension:.32,pointRadius:3,pointBackgroundColor:css('--carimbo'),borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{titleFont:font,bodyFont:font}},
+      scales:{x:{grid:{display:false},ticks:{font}},y:{grid,ticks:{font},beginAtZero:true}}}
+  }));
+}
+buildCharts();
+</script>
+</body>
+</html>
