@@ -68,8 +68,8 @@
             --text-secondary: var(--text-secondary-light);
             --text-muted: var(--text-muted-light);
             --border-color: var(--border-light);
-            --shadow: none;
-            --shadow-float: 0 20px 50px rgba(16, 42, 74, 0.18);
+            --shadow: 0 1px 2px rgba(27, 35, 64, 0.05), 0 10px 26px -16px rgba(27, 35, 64, 0.12);
+            --shadow-float: 0 20px 50px rgba(27, 35, 64, 0.18);
             --brand-bg-active: var(--brand-50);
             --brand-text-active: var(--brand-700);
         }
@@ -84,7 +84,7 @@
             --text-secondary: var(--text-secondary-dark);
             --text-muted: var(--text-muted-dark);
             --border-color: var(--border-dark);
-            --shadow: none;
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 12px 30px -18px rgba(0, 0, 0, 0.55);
             --shadow-float: 0 20px 50px rgba(0, 0, 0, 0.5);
             --brand-bg-active: rgba(124, 147, 242, 0.18);
             --brand-text-active: #aec0ff;
@@ -564,14 +564,38 @@
         }
 
         .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 1.5rem; }
+
+        /* ===== Foco de hoje — banda-assinatura Aurora ===== */
+        .dash-foco { grid-column: 1 / -1; position: relative; overflow: hidden; background: var(--card-bg);
+            border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow);
+            padding: 1.35rem 1.6rem; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+        .dash-foco::after { content: ""; position: absolute; inset: 0 0 0 auto; width: 46%;
+            background: radial-gradient(120% 140% at 100% 0, var(--dawn-bg), transparent 70%); pointer-events: none; }
+        .dash-foco .foco-main { position: relative; z-index: 1; flex: 1 1 320px; min-width: 0; }
+        .dash-foco .foco-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 0.7rem;
+            font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dawn-ink); }
+        .dash-foco .foco-eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%;
+            background: var(--dawn); box-shadow: 0 0 0 4px var(--dawn-bg); }
+        .dash-foco .foco-title { font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(1.1rem, 2.1vw, 1.45rem); letter-spacing: -0.02em; color: var(--text-primary);
+            line-height: 1.16; margin: 0.5rem 0 0.4rem; }
+        .dash-foco .foco-title b { color: var(--brand-600); font-weight: 700; }
+        .dash-foco .foco-meta { font-size: 0.85rem; color: var(--text-secondary); }
+        .dash-foco .foco-meta strong { color: var(--text-primary); font-weight: 600; }
+        .dash-foco .foco-actions { position: relative; z-index: 1; display: flex; gap: 0.6rem; flex-wrap: wrap; }
+        .dash-foco.is-calm::after { background: radial-gradient(120% 140% at 100% 0, var(--success-bg), transparent 70%); }
+        .dash-foco.is-calm .foco-eyebrow { color: var(--success); }
+        .dash-foco.is-calm .foco-eyebrow::before { background: var(--success); box-shadow: 0 0 0 4px var(--success-bg); }
+
         .dash-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.5rem; }
         .kpi {
-            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius);
-            padding: 1.125rem 1.25rem; box-shadow: var(--shadow); cursor: pointer; transition: box-shadow var(--transition-speed), border-color var(--transition-speed);
+            background: var(--card-bg); border: 1px solid var(--border-color); border-left-width: 3px; border-radius: var(--radius);
+            padding: 1.125rem 1.25rem; box-shadow: var(--shadow); cursor: pointer;
+            transition: box-shadow var(--transition-speed), border-color var(--transition-speed), transform var(--transition-speed);
             display: flex; flex-direction: column; gap: 0.5625rem;
         }
-        .kpi:hover { box-shadow: 0 2px 8px var(--shadow-color-light); border-color: var(--brand-200); }
-        body[data-theme="dark"] .kpi:hover { box-shadow: 0 2px 8px var(--shadow-color-dark); }
+        .kpi:hover { transform: translateY(-3px); box-shadow: 0 14px 28px -16px var(--shadow-color-light); }
+        body[data-theme="dark"] .kpi:hover { box-shadow: 0 14px 28px -14px var(--shadow-color-dark); }
         .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0; }
         .kpi h4 { margin: 0; color: var(--text-secondary); font-weight: 600; font-size: 0.8125rem; }
         .kpi-icon {
@@ -604,8 +628,9 @@
         .radar-legend .dot { width: 8px; height: 8px; border-radius: 50%; }
         .radar-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.55rem; margin-top: 0.85rem; }
         .radar-week.has-overdue { grid-template-columns: 0.75fr repeat(7, 1fr); }
-        .radar-day { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0.6rem 0.25rem 0.7rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); cursor: pointer; min-height: 104px; transition: box-shadow .15s, transform .15s, border-color .15s; text-align: center; font-family: inherit; }
-        .radar-day:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,42,74,.1); border-color: var(--brand-200); }
+        .radar-day { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0.6rem 0.25rem 0.7rem; border: 1px solid var(--border-color); border-radius: 14px; background: var(--card-bg); cursor: pointer; min-height: 104px; transition: box-shadow .18s, transform .18s, border-color .18s; text-align: center; font-family: inherit; }
+        .radar-day:hover { transform: translateY(-3px); box-shadow: 0 14px 28px -16px var(--shadow-color-light); border-color: var(--brand-200); }
+        .radar-day.is-weekend { background: color-mix(in srgb, var(--card-bg) 92%, var(--ink-faint, #8a93ac)); opacity: .82; }
         .radar-dow { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-secondary); }
         .radar-num { font-size: 1.5rem; font-weight: 800; line-height: 1; color: var(--text-primary); }
         .radar-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 8px; max-width: 62px; align-items: center; }
@@ -615,19 +640,14 @@
         .dot.d-proc { background: var(--brand-500); } .dot.d-event { background: var(--purple); }
         .radar-count { font-size: 0.64rem; font-weight: 600; color: var(--text-secondary); margin-top: 1px; }
         .radar-day.is-empty { opacity: .5; } .radar-day.is-empty:hover { transform: none; }
-        .radar-day.is-today { border-color: var(--brand-600); box-shadow: inset 0 0 0 1.5px var(--brand-600); }
-        .radar-day.is-today .radar-dow { color: var(--brand-600); }
-        .radar-day.lvl-danger { background: rgba(180,35,35,0.09); border-color: rgba(180,35,35,0.40); }
-        .radar-day.lvl-warning { background: rgba(178,94,9,0.10); border-color: rgba(178,94,9,0.40); }
-        .radar-overdue { background: rgba(180,35,35,0.12); border-color: var(--danger); }
+        .radar-day.lvl-danger { background: color-mix(in srgb, var(--danger) 9%, var(--card-bg)); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+        .radar-day.lvl-warning { background: color-mix(in srgb, var(--warning) 10%, var(--card-bg)); border-color: color-mix(in srgb, var(--warning) 40%, transparent); }
+        .radar-overdue { background: color-mix(in srgb, var(--danger) 10%, var(--card-bg)); border-color: var(--danger); }
         .radar-overdue .radar-num, .radar-overdue .radar-count { color: var(--danger); }
         .radar-overdue .radar-warn { font-size: 1.1rem; line-height: 1; color: var(--danger); }
-        body[data-theme="dark"] .radar-overdue .radar-num, body[data-theme="dark"] .radar-overdue .radar-warn { color: #ff7a7a; }
-        body[data-theme="dark"] .radar-overdue .radar-count { color: #ff9a9a; }
-        body[data-theme="dark"] .radar-day.lvl-danger { border-color: rgba(255,120,120,0.5); }
-        body[data-theme="dark"] .radar-day.lvl-warning { border-color: rgba(240,160,80,0.5); }
-        body[data-theme="dark"] .radar-day.is-today { border-color: var(--brand-500); box-shadow: inset 0 0 0 1.5px var(--brand-500); }
-        body[data-theme="dark"] .radar-day.is-today .radar-dow { color: #bcd3ee; }
+        /* HOJE — coral (dawn), por último para vencer sobre lvl-danger quando o dia tem prazos */
+        .radar-day.is-today { border-color: var(--dawn); box-shadow: 0 0 0 1px var(--dawn), 0 14px 28px -18px var(--dawn); background: color-mix(in srgb, var(--dawn) 8%, var(--card-bg)); }
+        .radar-day.is-today .radar-dow { color: var(--dawn-ink); }
         @media (max-width: 720px) {
             .radar-week, .radar-week.has-overdue { grid-template-columns: repeat(4, 1fr); }
             .radar-day { min-height: 90px; }
