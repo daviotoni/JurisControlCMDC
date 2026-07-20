@@ -290,7 +290,7 @@ if (typeof module !== 'undefined' && module.exports) {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
     base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
-    normalizarConsultaJuris, expandirConsultaJuris, filtrarOrdenarResultadosJuris,
+    normalizarConsultaJuris, jurisSemAcento, expandirConsultaJuris, filtrarOrdenarResultadosJuris,
     VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,
   };
 }

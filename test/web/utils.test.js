@@ -3,7 +3,7 @@
 // `module.exports` guardado para ambientes de teste (ver o fim do arquivo).
 import utils from '../../js/utils.js';
 
-const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, normalizarConsultaJuris, expandirConsultaJuris, filtrarOrdenarResultadosJuris, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
+const { fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, normalizarConsultaJuris, jurisSemAcento, expandirConsultaJuris, filtrarOrdenarResultadosJuris, VALID_STATS, VALID_ACAO, VALID_CAT } = utils;
 
 describe('datas (UTC-safe)', () => {
   describe('parse', () => {
@@ -153,6 +153,23 @@ describe('getChanges (diff do histórico de processos)', () => {
   it('ignora campos fora da lista rastreada (ex.: id, anotacoes)', () => {
     const changes = getChanges({ ...base, id: 1 }, { ...base, id: 999 });
     expect(changes).toEqual([]);
+  });
+});
+
+describe('jurisSemAcento (URL do SCON/STJ, legado ISO-8859-1)', () => {
+  it('remove diacríticos de termos jurídicos comuns', () => {
+    expect(jurisSemAcento('licitação')).toBe('licitacao');
+    expect(jurisSemAcento('improbidade administrativa é sanção')).toBe('improbidade administrativa e sancao');
+    expect(jurisSemAcento('câmara municipal — prescrição')).toBe('camara municipal — prescricao');
+  });
+
+  it('preserva texto sem acento, maiúsculas e pontuação', () => {
+    expect(jurisSemAcento('Lei 14.133/2021, art. 75')).toBe('Lei 14.133/2021, art. 75');
+  });
+
+  it('não quebra com entrada não-string (coerção via String)', () => {
+    expect(jurisSemAcento(null)).toBe('null');
+    expect(jurisSemAcento(123)).toBe('123');
   });
 });
 
