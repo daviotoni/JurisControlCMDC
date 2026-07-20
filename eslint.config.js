@@ -53,10 +53,10 @@ module.exports = [
     },
   },
   {
-    // utils.js e assets.js definem globais CONSUMIDOS por app.js (outro arquivo).
-    // O ESLint, analisando arquivo a arquivo, não enxerga esse uso — então o
-    // no-unused-vars daria falso-positivo aqui.
-    files: ['js/utils.js', 'js/assets.js'],
+    // utils.js, assets.js e parecer-modelos.js definem globais CONSUMIDOS por
+    // app.js (outro arquivo). O ESLint, analisando arquivo a arquivo, não
+    // enxerga esse uso — então o no-unused-vars daria falso-positivo aqui.
+    files: ['js/utils.js', 'js/assets.js', 'js/parecer-modelos.js'],
     rules: { 'no-unused-vars': 'off' },
   },
   {
@@ -106,6 +106,12 @@ module.exports = [
         BRASAO_DUQUE_DE_CAXIAS_B64: 'readonly',
         // Definido em js/fonts-garamond.js
         EBGARAMOND_B64: 'readonly',
+        // Definidos em js/parecer-modelos.js (carregado antes do app.js)
+        PARECER_TEMPLATES: 'readonly',
+        getParecerTemplate: 'readonly',
+        buildParecerDelta: 'readonly',
+        buildParecerSeedDelta: 'readonly',
+        separarTituloEmbutido: 'readonly',
       },
     },
   },
