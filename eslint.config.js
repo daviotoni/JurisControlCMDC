@@ -95,6 +95,7 @@ module.exports = [
         versaoAtual: 'readonly',
         versoesDoParecer: 'readonly',
         inferirParecerInfo: 'readonly',
+        jurisSemAcento: 'readonly',
         normalizarConsultaJuris: 'readonly',
         expandirConsultaJuris: 'readonly',
         filtrarOrdenarResultadosJuris: 'readonly',
