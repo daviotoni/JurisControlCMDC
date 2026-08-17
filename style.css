@@ -1361,7 +1361,6 @@
         @keyframes jc-fade-down  { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes jc-fade-right { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes jc-pop-in     { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-        @keyframes jc-slide-in-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
         @keyframes jc-spin       { to { transform: rotate(360deg); } }
         @keyframes jc-shake {
             0%, 100% { transform: translateX(0); }
@@ -1414,7 +1413,7 @@
         }
 
         /* ---------- Tela de login: coreografia de entrada ---------- */
-        .login-overlay { animation: jc-fade-in 0.35s ease-out both; }
+        .login-overlay { animation: jc-fade-in 0.35s ease-out backwards; }
 
         /* Painel institucional com "aurora" navy em movimento lento. */
         .login-hero { position: relative; overflow: hidden; }
@@ -1434,13 +1433,13 @@
         }
         .login-hero > * { position: relative; z-index: 1; }
         .login-hero-shield {
-            animation: jc-pop-in 0.7s var(--ease-spring) 0.1s both,
+            animation: jc-pop-in 0.7s var(--ease-spring) 0.1s backwards,
                        jc-float 7s ease-in-out 0.9s infinite;
         }
-        .login-hero-eyebrow { animation: jc-fade-up 0.6s var(--ease-out-soft) 0.24s both; }
-        .login-hero-title   { animation: jc-fade-up 0.6s var(--ease-out-soft) 0.34s both; }
+        .login-hero-eyebrow { animation: jc-fade-up 0.6s var(--ease-out-soft) 0.24s backwards; }
+        .login-hero-title   { animation: jc-fade-up 0.6s var(--ease-out-soft) 0.34s backwards; }
 
-        .login-panel > * { animation: jc-fade-up 0.5s var(--ease-out-soft) both; }
+        .login-panel > * { animation: jc-fade-up 0.5s var(--ease-out-soft) backwards; }
         .login-panel > *:nth-child(1) { animation-delay: 0.16s; }
         .login-panel > *:nth-child(2) { animation-delay: 0.22s; }
         .login-panel > *:nth-child(3) { animation-delay: 0.28s; }
@@ -1461,13 +1460,13 @@
         .login-overlay.jc-leaving .login-panel { transform: translateY(-8px); transition: transform 0.42s var(--ease-in-out-soft); }
 
         /* ---------- Entrada do app (sidebar + header + conteúdo) ---------- */
-        @media (min-width: 901px) {
-            /* Só no desktop: no mobile a `.sidebar` usa `transform` para o
-               drawer, e uma animação de entrada brigaria com ele. */
-            .app-layout .sidebar { animation: jc-slide-in-left 0.45s var(--ease-out-soft) both; }
-        }
-        .app-header { animation: jc-fade-down 0.45s var(--ease-out-soft) 0.08s both; }
-        .sidebar-nav li { animation: jc-fade-right 0.4s var(--ease-out-soft) both; }
+        /* NÃO animar `transform` na própria `.sidebar`: abaixo de 992px ela usa
+           `transform` para abrir/fechar o menu-gaveta, e a animação venceria no
+           cascade, deixando a barra travada aberta por cima do conteúdo.
+           Animamos o conteúdo dela — mesmo efeito, sem depender de breakpoint. */
+        .sidebar-header { animation: jc-fade-right 0.45s var(--ease-out-soft) backwards; }
+        .app-header { animation: jc-fade-down 0.45s var(--ease-out-soft) 0.08s backwards; }
+        .sidebar-nav li { animation: jc-fade-right 0.4s var(--ease-out-soft) backwards; }
         .sidebar-nav li:nth-child(1) { animation-delay: 0.16s; }
         .sidebar-nav li:nth-child(2) { animation-delay: 0.21s; }
         .sidebar-nav li:nth-child(3) { animation-delay: 0.26s; }
@@ -1517,7 +1516,7 @@
         .dash-kpis .kpi {
             position: relative; overflow: hidden;
             transition: transform 0.3s var(--ease-out-soft), box-shadow 0.3s ease, border-color 0.3s ease;
-            animation: jc-fade-up 0.45s var(--ease-out-soft) both;
+            animation: jc-fade-up 0.45s var(--ease-out-soft) backwards;
         }
         .dash-kpis .kpi:nth-child(1) { animation-delay: 0.02s; }
         .dash-kpis .kpi:nth-child(2) { animation-delay: 0.08s; }
@@ -1543,7 +1542,7 @@
         /* ---------- Cartões, seções e listas ---------- */
         .card { transition: transform 0.28s var(--ease-out-soft), box-shadow 0.28s ease, background-color var(--transition-speed), border-color var(--transition-speed); }
         .section-enter .card {
-            animation: jc-fade-up 0.44s var(--ease-out-soft) both;
+            animation: jc-fade-up 0.44s var(--ease-out-soft) backwards;
             animation-delay: calc(var(--jc-i, 0) * var(--stagger-step));
         }
         .radar-day { transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease, border-color 0.25s ease; }
@@ -1558,25 +1557,25 @@
         /* Linhas de tabela entram em cascata (o JS numera com --jc-i e
            pula a animação em re-render rápido, tipo busca ao digitar). */
         tbody tr.jc-row-in {
-            animation: jc-fade-up 0.3s var(--ease-out-soft) both;
+            animation: jc-fade-up 0.3s var(--ease-out-soft) backwards;
             animation-delay: calc(var(--jc-i, 0) * 24ms);
         }
         tbody tr { transition: background-color 0.18s ease; }
 
         /* ---------- Modais ---------- */
-        .modal { animation: jc-fade-in 0.22s ease-out both; }
+        .modal { animation: jc-fade-in 0.22s ease-out backwards; }
         @supports (backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px)) {
             .modal { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
         }
-        .modal .dialog { animation: jc-dialog-in 0.36s var(--ease-spring) both; }
+        .modal .dialog { animation: jc-dialog-in 0.36s var(--ease-spring) backwards; }
 
         /* ---------- Cabeçalho: título da aba e sino de notificações ---------- */
         .page-title.jc-swap { animation: jc-fade-up 0.28s var(--ease-out-soft); }
         .notification-bell svg { transition: transform 0.25s var(--ease-spring); }
         .notification-bell:hover svg { transform: scale(1.1); }
         .notification-bell.jc-unread svg { animation: jc-bell-ring 1.6s var(--ease-in-out-soft) 2; }
-        .notification-count { animation: jc-badge-pop 0.42s var(--ease-spring) both; }
-        .notification-item { animation: jc-fade-up 0.28s var(--ease-out-soft) both; animation-delay: calc(var(--jc-i, 0) * 40ms); }
+        .notification-count { animation: jc-badge-pop 0.42s var(--ease-spring) backwards; }
+        .notification-item { animation: jc-fade-up 0.28s var(--ease-out-soft) backwards; animation-delay: calc(var(--jc-i, 0) * 40ms); }
 
         /* ---------- Campos de formulário ---------- */
         .input, .select, textarea { transition: border-color var(--transition-speed), box-shadow var(--transition-speed), transform 0.2s var(--ease-out-soft); }
