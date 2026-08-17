@@ -214,7 +214,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const welcomeMsg = $('#welcomeMsg');
 
   function showApp(user) {
-    loginOverlay.style.display = 'none';
+    // A camada de movimento dissolve a tela de login por cima do app já
+    // montado. Sem js/motion.js, o corte seco continua valendo.
+    if (window.JCMotion?.hideLogin) window.JCMotion.hideLogin(loginOverlay);
+    else loginOverlay.style.display = 'none';
     appLayout.style.display = 'flex';
     welcomeMsg.textContent = `Bem-vindo, ${sanitizeHTML(user.name)}`;
     applyRoleUI(user.role);

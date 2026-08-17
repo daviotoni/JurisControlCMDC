@@ -28,3 +28,19 @@ do array quando o site for excluído.
 
 App estático (HTML/CSS/JS puro) + Firebase (Auth, Firestore, Storage).
 Arquivos principais: `index.html`, `style.css`, `js/app.js`.
+
+### Camada de movimento (animações)
+
+As animações vivem em dois lugares e são **opcionais** — se falharem, o app
+continua funcionando igual:
+
+- `style.css`, bloco final "CAMADA DE MOVIMENTO" — keyframes, hover, entradas.
+- `js/motion.js` — o que depende de *quando* algo mudou (cascata de linhas de
+  tabela, contador dos KPIs, ripple, shake no erro de login, sino tocando).
+  Só observa o DOM via `MutationObserver`; não conhece o estado do app.
+
+Regras: animar só `transform`/`opacity`; todo elemento que anima termina
+visível (`both`/`forwards`), nunca preso em `opacity: 0`; e
+`prefers-reduced-motion: reduce` desliga tudo.
+
+`js/motion.js` também entra no cache-busting automático (`.github/workflows/cache-bust.yml`).
