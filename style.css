@@ -49,6 +49,21 @@
             --border-dark: rgba(255,255,255,0.08);
             --shadow-color-dark: rgba(0, 0, 0, 0.35);
 
+            /* Elevação em repouso — um fio de sombra, não um cartão flutuando */
+            --shadow-rest-light: 0 1px 2px rgba(16, 42, 74, 0.05);
+            --shadow-rest-dark:  0 1px 2px rgba(0, 0, 0, 0.28);
+
+            /* Superfícies de tabela — cinza neutro, para não competir com o
+               trilho de urgência (vermelho/âmbar) nem com as pílulas de status */
+            --row-alt-light: rgba(19, 42, 68, 0.025);
+            --row-alt-dark:  rgba(255, 255, 255, 0.025);
+            --thead-bg-light: #f8fafc;
+            --thead-bg-dark:  rgba(255, 255, 255, 0.04);
+
+            /* Anel de foco do teclado */
+            --focus-ring-light: #1c5f9e;
+            --focus-ring-dark:  #9db8d8;
+
             /* Transições e Bordas */
             --radius: 12px;
             --radius-sm: 9px;
@@ -66,7 +81,10 @@
             --text-secondary: var(--text-secondary-light);
             --text-muted: var(--text-muted-light);
             --border-color: var(--border-light);
-            --shadow: none;
+            --shadow: var(--shadow-rest-light);
+            --row-alt: var(--row-alt-light);
+            --thead-bg: var(--thead-bg-light);
+            --focus-ring: var(--focus-ring-light);
             --shadow-float: 0 20px 50px rgba(16, 42, 74, 0.18);
             --brand-bg-active: var(--brand-50);
             --brand-text-active: var(--brand-700);
@@ -82,7 +100,10 @@
             --text-secondary: var(--text-secondary-dark);
             --text-muted: var(--text-muted-dark);
             --border-color: var(--border-dark);
-            --shadow: none;
+            --shadow: var(--shadow-rest-dark);
+            --row-alt: var(--row-alt-dark);
+            --thead-bg: var(--thead-bg-dark);
+            --focus-ring: var(--focus-ring-dark);
             --shadow-float: 0 20px 50px rgba(0, 0, 0, 0.5);
             --brand-bg-active: rgba(10, 61, 115, 0.25);
             --brand-text-active: #bcd3ee;
@@ -700,13 +721,11 @@
         
         .table-wrap { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
-        thead th { position: sticky; top: 0; background-color: #f8fafc; color: var(--text-muted); text-align: left; font-weight: 700; font-size: 0.719rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); text-transform: uppercase; letter-spacing: 0.5px; }
-        body[data-theme="dark"] thead th { background-color: rgba(255,255,255,0.04); }
+        thead th { position: sticky; top: 0; background-color: var(--thead-bg); color: var(--text-muted); text-align: left; font-weight: 700; font-size: 0.719rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); text-transform: uppercase; letter-spacing: 0.5px; }
         tbody td { padding: 1rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; color: var(--text-secondary); }
         tbody tr:last-child td { border-bottom: none; }
-        tbody tr:nth-child(even) { background-color: var(--brand-50); }
+        tbody tr:nth-child(even) { background-color: var(--row-alt); }
         tbody tr:hover { background-color: var(--brand-100); }
-        body[data-theme="dark"] tbody tr:nth-child(even) { background-color: rgba(255,255,255,0.03); }
         body[data-theme="dark"] tbody tr:hover { background-color: rgba(255,255,255,0.07); }
         .status { display: inline-block; padding: 0.1875rem 0.625rem; border-radius: 999px; font-weight: 700; font-size: 0.6875rem; }
         .status.em-analise{background:var(--warning-bg);color:var(--warning);} .status.pendente{background:var(--danger-bg);color:var(--danger);} .status.finalizado{background:var(--success-bg);color:var(--success);}
@@ -714,7 +733,7 @@
         .status.rascunho{background:var(--warning-bg);color:var(--warning);} .status.emitido{background:var(--success-bg);color:var(--success);}
         .status.em-revisao{background:var(--info-bg);color:var(--info);}
         .parecer-materia-picker label{font-weight:600;}
-        .parecer-checklist{margin-top:0.75rem;border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;background:var(--info-bg);}
+        .parecer-checklist{margin-top:0.75rem;border:1px solid var(--border-color);border-radius:8px;padding:0.75rem 1rem;background:var(--info-bg);}
         .parecer-checklist-titulo{font-weight:700;font-size:0.85rem;color:var(--info);margin-bottom:0.4rem;}
         .parecer-checklist-lista{margin:0;padding-left:1.2rem;font-size:0.85rem;color:var(--text-secondary);}
         .parecer-checklist-lista li{margin-bottom:0.25rem;}
@@ -1326,3 +1345,111 @@
         .atividade-content { flex: 1; min-width: 0; }
         .atividade-desc { font-size: 0.82rem; color: var(--text-primary); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .atividade-meta { font-size: 0.74rem; color: var(--text-muted); }
+
+        /* =====================================================================
+           Refinamento de interface — foco, algarismos e impressão
+           ===================================================================== */
+
+        /* ----- Foco visível de teclado -----------------------------------
+           Antes, só os botões do cabeçalho tinham anel de foco. Quem navega
+           por Tab (ou por leitor de tela) perdia o rastro na tabela de
+           processos, na paginação e nos menus. */
+        a:focus-visible,
+        button:focus-visible,
+        summary:focus-visible,
+        .btn:focus-visible,
+        .page-link:focus-visible,
+        .kpi:focus-visible,
+        .kanban-card:focus-visible,
+        [tabindex]:focus-visible {
+            outline: 2px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+        /* Na barra lateral navy o anil da marca some no fundo: usa branco. */
+        .sidebar a:focus-visible,
+        .sidebar button:focus-visible {
+            outline-color: #fff;
+        }
+        /* O summary do menu Exportar é um .btn; sem isto o anel fica oval. */
+        summary.btn:focus-visible { border-radius: 9px; }
+        /* Grupos com overflow:hidden recortariam o anel para fora; traz pra dentro. */
+        .view-toggle-group .btn:focus-visible { outline-offset: -2px; }
+
+        /* ----- Algarismos tabulares --------------------------------------
+           Números de processo, datas e contagens empilhados precisam alinhar
+           coluna a coluna. A IBM Plex Sans traz a variante tabular; aqui ela
+           é ligada só onde há dado numérico, não no texto corrido. */
+        table,
+        .kpi .v,
+        .status,
+        .prazo-cell,
+        .prazo-date,
+        .page-link,
+        .radar-num,
+        .radar-count,
+        .cal-body,
+        .kanban-card-num,
+        .kanban-prazo,
+        .kanban-col-count,
+        .lei-numero,
+        .proc-card-header .num,
+        .notification-count,
+        .bulk-count,
+        .items-per-page .select {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum" 1;
+        }
+
+        /* ----- Impressão --------------------------------------------------
+           Ctrl+P na lista de processos levava junto a barra lateral, o
+           cabeçalho e todos os botões. Agora sai só o conteúdo, em preto
+           sobre branco, com a tabela inteira e sem cortar linhas ao meio. */
+        @media print {
+            html, body { overflow: visible; height: auto; background: #fff; }
+            body, body[data-theme="dark"] {
+                --bg: #fff; --card-bg: #fff; --header-bg: #fff;
+                --text-primary: #000; --text-secondary: #1a1a1a; --text-muted: #4a4a4a;
+                --border-color: #b8c2cf; --shadow: none; --row-alt: transparent;
+                --thead-bg: #eef1f5;
+                color: #000;
+            }
+            .app-layout { position: static; display: block; }
+            .app-body, .main-content { overflow: visible; display: block; }
+
+            .sidebar, .sidebar-overlay, .app-header, .proc-toolbar, .filtros-panel,
+            .bulk-bar, .pagination-bar, .pagination-container, .view-toggle-group, .notification-panel,
+            .theme-menu, .ia-panel, .btn, .icon-btn,
+            .mobile-cards-container, #kanban-container {
+                display: none !important;
+            }
+
+            /* Com um processo ou parecer aberto na tela, Ctrl+P imprime esse
+               documento — e não a lista que ficou atrás dele. O modal aberto
+               recebe display:flex inline pelo app; é por aí que o reconhecemos. */
+            body:has(.modal[style*="flex"]) .app-layout { display: none !important; }
+            .modal[style*="flex"] {
+                position: static; display: block !important;
+                background: none; padding: 0; overflow: visible;
+            }
+            .modal[style*="flex"] .dialog {
+                max-width: none; width: 100%; box-shadow: none; margin: 0; border-radius: 0;
+            }
+            .modal .dialog-footer { display: none !important; }
+            .modal .dialog-body { padding: 0; }
+
+            main { padding: 0 !important; }
+            .card, .table-wrap {
+                border: 1px solid #b8c2cf; box-shadow: none;
+                break-inside: avoid; page-break-inside: avoid;
+            }
+            table { width: 100%; font-size: 10pt; }
+            thead { display: table-header-group; }
+            tr, .proc-card { break-inside: avoid; page-break-inside: avoid; }
+            thead th { position: static; }
+            tbody tr.row-vencido, tbody tr.row-alerta { box-shadow: none; }
+            tbody tr.row-vencido td:first-child { border-left: 3px solid #000; }
+            tbody tr.row-alerta  td:first-child { border-left: 3px solid #777; }
+            .status { border: 1px solid currentColor; }
+            /* Endereços externos só fazem sentido no papel se vierem escritos. */
+            a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 8pt; color: #4a4a4a; }
+        }
