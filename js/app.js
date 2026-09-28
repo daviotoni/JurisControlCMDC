@@ -214,7 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const welcomeMsg = $('#welcomeMsg');
 
   function showApp(user) {
-    loginOverlay.style.display = 'none';
+    if (window.JCMotion) window.JCMotion.hideLogin(loginOverlay);
+    else loginOverlay.style.display = 'none';
     appLayout.style.display = 'flex';
     welcomeMsg.textContent = `Bem-vindo, ${sanitizeHTML(user.name)}`;
     applyRoleUI(user.role);
@@ -4225,7 +4226,10 @@ ${corpo}
     $$('.theme-menu-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const themeValue = btn.dataset.themeValue;
-            setTheme(themeValue);
+            // Revelação circular (js/motion.js); sem ela, troca direto.
+            const trocar = () => { setTheme(themeValue); };
+            if (window.JCMotion) window.JCMotion.themeTransition(btn, trocar);
+            else trocar();
             themeMenu.classList.remove('active');
             themeToggleButton.setAttribute('aria-expanded', 'false');
         });
