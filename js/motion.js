@@ -455,16 +455,16 @@
     }
 
     /* ---------------------------------------------------------------
-     * Visual novo (prévia) — não é movimento, mas mora aqui porque é a
-     * mesma camada opcional de interface: liga html.ui-v3 por navegador.
+     * Visual clássico × visual novo (html.ui-v3). Não é movimento, mas
+     * mora aqui por ser a mesma camada opcional de interface.
      * ------------------------------------------------------------- */
-    function ligarVisualNovo() {
-        var chk = $('#cfgVisualNovo');
+    function ligarVisualClassico() {
+        var chk = $('#cfgVisualClassico');
         if (!chk) return;
-        chk.checked = root.classList.contains('ui-v3');
+        chk.checked = !root.classList.contains('ui-v3');
         chk.addEventListener('change', function () {
-            try { localStorage.setItem('jc-ui', chk.checked ? 'v3' : 'padrao'); } catch { /* vale só nesta visita */ }
-            root.classList.toggle('ui-v3', chk.checked);
+            try { localStorage.setItem('jc-ui', chk.checked ? 'classico' : 'v3'); } catch { /* vale só nesta visita */ }
+            root.classList.toggle('ui-v3', !chk.checked);
         });
     }
 
@@ -478,7 +478,7 @@
         try { configurarGraficos(); } catch { /* segue com a animação padrão */ }
         try { observarLogin(); } catch { /* segue sem indicador */ }
         try { ligarPreferencia(); } catch { /* segue sem a opção */ }
-        try { ligarVisualNovo(); } catch { /* segue no visual padrão */ }
+        try { ligarVisualClassico(); } catch { /* segue no visual atual */ }
     }
 
     window.JCMotion = { hideLogin: hideLogin, loginPronto: loginPronto, themeTransition: themeTransition, ativo: ativo };

@@ -31,13 +31,15 @@ pousa o brasão em `.login-hero-shield`); formulário com título em EB
 Garamond. Em telas largas porém em pé (celular em "site para computador")
 o layout empilha: brasão em cima, formulário embaixo.
 
-## Visual novo (prévia) — `html.ui-v3`
+## Visual das páginas internas — `html.ui-v3` ("tinta")
 
-Camada opcional das páginas internas (Configurações → Aparência →
-"Visual novo (prévia)", `localStorage['jc-ui'] = 'v3'`, por navegador).
-Bloco "VISUAL NOVO (PRÉVIA)" no fim do `style.css`, tudo atrás de `.ui-v3`:
-barra lateral clara, superfície única, KPIs e radar em régua contínua,
-status com ponto, saudação com resumo do dia no Dashboard (`#dashHello`).
+Padrão desde o redesenho inspirado no Harvey/Mercury. Bloco "VISUAL NOVO"
+no fim do `style.css`, tudo atrás de `.ui-v3` (ligada no `<head>`, a menos
+que `localStorage['jc-ui'] === 'classico'` — opção "Usar o visual clássico"
+em Configurações → Aparência). Princípios: títulos de página e números
+grandes em EB Garamond; barra lateral azul-tinta com grupos e usuário no
+rodapé (`#sidebarUser`); quase nenhuma cor (só vencidos/vencendo); sem
+emojis na interface; gráficos com a paleta `statusColorMapV3`.
 
 ## Stack
 
