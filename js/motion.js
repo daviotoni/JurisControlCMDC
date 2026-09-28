@@ -178,6 +178,16 @@
     /* Gráficos: barras crescem em sequência, da esquerda para a direita. */
     function configurarGraficos() {
         if (!window.Chart || !Chart.defaults) return;
+        // Visual novo: tipografia do app e grade mais discreta nos gráficos.
+        if (root.classList.contains('ui-v3')) {
+            Chart.defaults.font.family = "'IBM Plex Sans', system-ui, sans-serif";
+            Chart.defaults.color = '#667085';
+            Chart.defaults.borderColor = 'rgba(16, 42, 74, 0.06)';
+            Chart.defaults.elements.bar.borderRadius = 4;
+            Chart.defaults.plugins.legend.labels.usePointStyle = true;
+            Chart.defaults.plugins.legend.labels.boxWidth = 7;
+            Chart.defaults.plugins.legend.labels.boxHeight = 7;
+        }
         if (!ativo()) { Chart.defaults.animation = false; return; }
         Chart.defaults.animation = Object.assign({}, Chart.defaults.animation, {
             duration: 800,
@@ -444,6 +454,20 @@
         });
     }
 
+    /* ---------------------------------------------------------------
+     * Visual novo (prévia) — não é movimento, mas mora aqui porque é a
+     * mesma camada opcional de interface: liga html.ui-v3 por navegador.
+     * ------------------------------------------------------------- */
+    function ligarVisualNovo() {
+        var chk = $('#cfgVisualNovo');
+        if (!chk) return;
+        chk.checked = root.classList.contains('ui-v3');
+        chk.addEventListener('change', function () {
+            try { localStorage.setItem('jc-ui', chk.checked ? 'v3' : 'padrao'); } catch { /* vale só nesta visita */ }
+            root.classList.toggle('ui-v3', chk.checked);
+        });
+    }
+
     /* ------------------------------------------------------------- */
     function iniciar() {
         try { iniciarIntro(); } catch { removerIntro(); }
@@ -454,6 +478,7 @@
         try { configurarGraficos(); } catch { /* segue com a animação padrão */ }
         try { observarLogin(); } catch { /* segue sem indicador */ }
         try { ligarPreferencia(); } catch { /* segue sem a opção */ }
+        try { ligarVisualNovo(); } catch { /* segue no visual padrão */ }
     }
 
     window.JCMotion = { hideLogin: hideLogin, loginPronto: loginPronto, themeTransition: themeTransition, ativo: ativo };

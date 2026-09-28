@@ -31,8 +31,12 @@
                 }
             }
         } catch (e) { /* sem animação */ }
+        // Visual novo (prévia): opcional, por navegador, em Configurações → Aparência.
+        try {
+            if (localStorage.getItem('jc-ui') === 'v3') document.documentElement.classList.add('ui-v3');
+        } catch (e) { /* visual padrão */ }
     </script>
-        <link rel="stylesheet" href="style.css?v=5ed4833e22">
+        <link rel="stylesheet" href="style.css?v=57100fd47a">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -208,6 +212,7 @@
         <div class="main-content">
             <main>
                 <section id="secDashboard" style="display:block;">
+                    <div id="dashHello" class="dash-hello" aria-live="polite"></div>
                     <div class="dash-grid">
                         <div id="dashboard-kpis" class="dash-kpis"></div>
                         <div class="card dash-radar-card" style="grid-column: 1 / -1;">
@@ -479,6 +484,11 @@
                         </label>
                         <p class="cfg-note" style="margin-top:0.5rem;">Transições ao trocar de aba, ao abrir janelas e ao mudar o tema. Vale só para este navegador.</p>
                         <p id="cfgAnimacoesNota" class="cfg-note"></p>
+                        <label class="cfg-switch" for="cfgVisualNovo" style="margin-top:1rem;">
+                            <input type="checkbox" id="cfgVisualNovo">
+                            Visual novo (prévia)
+                        </label>
+                        <p class="cfg-note" style="margin-top:0.5rem;">Experimente o novo acabamento das páginas internas. Vale só para este navegador; desmarque para voltar ao visual atual.</p>
                     </div>
                      <div class="card">
                         <h3>Gerenciamento de Emissores</h3>
@@ -817,8 +827,8 @@
     <script src="js/utils.js?v=7d58b23e0d"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
     <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
-    <script src="js/motion.js?v=14445868f7"></script>
-    <script src="js/app.js?v=ed382d4fc3"></script>
+    <script src="js/motion.js?v=3f44e72c2b"></script>
+    <script src="js/app.js?v=35a16d5d37"></script>
 
 </body>
 </html>

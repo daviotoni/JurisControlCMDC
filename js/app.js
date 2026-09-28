@@ -4084,7 +4084,26 @@ ${corpo}
           if (filter === 'alerta' || filter === 'vencido') { filterBy.prazo = filter; } else { filterBy.status = filter; }
           showTab('proc', { filterBy });
       };
+      renderSaudacao(kpiData);
       const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderRadarPrazos(); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
+  }
+
+  // Saudação com o resumo do dia no topo do Dashboard (exibida no visual novo).
+  function renderSaudacao(kpiData) {
+      const el = $('#dashHello'); if (!el) return;
+      let nome = '';
+      try { nome = (JSON.parse(sessionStorage.getItem('loggedInUser')) || {}).name || ''; } catch { nome = ''; }
+      nome = nome.split(/[\s.@_]/)[0];
+      nome = nome ? nome.charAt(0).toUpperCase() + nome.slice(1) : '';
+      const hora = new Date().getHours();
+      const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+      const data = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const partes = [];
+      if (kpiData.venc) partes.push(`<strong class="is-danger">${kpiData.venc} ${kpiData.venc === 1 ? 'vencido' : 'vencidos'}</strong>`);
+      if (kpiData.alert) partes.push(`<strong class="is-warning">${kpiData.alert} ${kpiData.alert === 1 ? 'vence' : 'vencem'} em até 5 dias</strong>`);
+      const resumo = partes.length ? partes.join(' · ') : 'Nenhum prazo vencido ou vencendo nos próximos 5 dias.';
+      el.innerHTML = `<h2>${saudacao}${nome ? ', ' + sanitizeHTML(nome) : ''}</h2>
+          <p><span class="dash-hello-date">${sanitizeHTML(data)}</span> · ${resumo}</p>`;
   }
 
   async function renderUltimasAtividades() {

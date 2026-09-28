@@ -24,6 +24,14 @@ firebase deploy --only hosting --token "<TOKEN>" --project juriscontrolcmdc
 `firebase.json` é multi-site (array). Obs: `procuradoriacmdc` deve ser removido
 do array quando o site for excluído.
 
+## Visual novo (prévia) — `html.ui-v3`
+
+Camada opcional das páginas internas (Configurações → Aparência →
+"Visual novo (prévia)", `localStorage['jc-ui'] = 'v3'`, por navegador).
+Bloco "VISUAL NOVO (PRÉVIA)" no fim do `style.css`, tudo atrás de `.ui-v3`:
+barra lateral clara, superfície única, KPIs e radar em régua contínua,
+status com ponto, saudação com resumo do dia no Dashboard (`#dashHello`).
+
 ## Stack
 
 App estático (HTML/CSS/JS puro) + Firebase (Auth, Firestore, Storage).
