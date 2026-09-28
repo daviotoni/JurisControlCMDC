@@ -24,6 +24,13 @@ firebase deploy --only hosting --token "<TOKEN>" --project juriscontrolcmdc
 `firebase.json` é multi-site (array). Obs: `procuradoriacmdc` deve ser removido
 do array quando o site for excluído.
 
+## Login
+
+Painel azul com a marca no topo e o brasão grande ao centro (a abertura
+pousa o brasão em `.login-hero-shield`); formulário com título em EB
+Garamond. Em telas largas porém em pé (celular em "site para computador")
+o layout empilha: brasão em cima, formulário embaixo.
+
 ## Visual novo (prévia) — `html.ui-v3`
 
 Camada opcional das páginas internas (Configurações → Aparência →
