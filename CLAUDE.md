@@ -37,6 +37,10 @@ Opcional e desligável — se falhar ou for desligada, o app fica igual ao de an
   aba, contador dos KPIs, revelação circular do tema, carregamento do login.
 - `style.css`, bloco final "CAMADA DE MOVIMENTO (v2)" — todo atrás de
   `html.jc-motion`, que só o motion.js (e o script inline do `<head>`) liga.
+- Abertura com o brasão (`#jcIntro` no `index.html`, SVG vetorizado de
+  `img/brasao-shield.png`): uma vez por sessão (`sessionStorage['jc-intro-visto']`),
+  some sozinha em 5s se o JS falhar; o js/app.js avisa o destino via
+  `JCMotion.loginPronto()` / `JCMotion.hideLogin()`.
 - Desliga com `prefers-reduced-motion` ou em Configurações → Aparência
   (`localStorage['jc-motion'] = 'off'`, por navegador).
 - **Nunca** animar `transform` na `.sidebar`: abaixo de 992px ela usa

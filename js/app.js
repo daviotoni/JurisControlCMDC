@@ -316,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!firebaseUser) {
           sessionStorage.removeItem('loggedInUser');
           showLogin();
+          if (window.JCMotion) window.JCMotion.loginPronto();
           return;
       }
       const loggedInUser = {
