@@ -16,11 +16,11 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 // Cores dos pills de tipo (handoff: Lei azul, Decreto roxo, Resolução verde).
 const TIPO_PILL: Record<string, { color: string; bg: string }> = {
-  'Lei Federal': { color: '#0a3d73', bg: '#e8f0fa' },
-  'Lei Estadual': { color: '#0a3d73', bg: '#e8f0fa' },
-  'Lei Municipal': { color: '#0a3d73', bg: '#e8f0fa' },
-  Decreto: { color: '#7c3aad', bg: '#f5eefa' },
-  Portaria: { color: '#2f855a', bg: '#e9f5ee' },
+  'Lei Federal': { color: '#0b2e55', bg: '#f1efea' },
+  'Lei Estadual': { color: '#0b2e55', bg: '#f1efea' },
+  'Lei Municipal': { color: '#0b2e55', bg: '#f1efea' },
+  Decreto: { color: '#8a74a3', bg: '#f5eefa' },
+  Portaria: { color: '#5b8a68', bg: '#e9f5ee' },
   Outro: { color: '#5a6b82', bg: '#eef1f6' },
 };
 
@@ -112,7 +112,7 @@ export function LeisScreen() {
                 <View style={{ marginTop: 9 }}>
                   <Pill
                     label={l.tipo}
-                    color={isDark ? '#bcd3ee' : pill.color}
+                    color={isDark ? '#dcd9d2' : pill.color}
                     bg={isDark ? 'rgba(255,255,255,.07)' : pill.bg}
                   />
                 </View>
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { flex: 1, textAlign: 'center', fontFamily: fonts.bold, fontSize: 19, color: '#fff', letterSpacing: -0.3 },
+  title: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 26, color: '#fff', letterSpacing: -0.2 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',

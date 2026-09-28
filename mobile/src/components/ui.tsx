@@ -14,15 +14,16 @@ import { fonts, shadow, statusByKey } from '../theme/tokens';
 
 export type FeatherName = keyof typeof Feather.glyphMap;
 
-/** Pill de status de processo (cores do web). */
+/** Etiqueta de status: ponto na cor do status, texto em tinta sobre papel (como no web). */
 export function StatusPill({ stat, short }: { stat: string; short?: boolean }) {
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
   const def = statusByKey(stat);
   const color = isDark ? def.colorDark : def.color;
   const bg = isDark ? def.pillBgDark : def.pillBg;
   return (
-    <View style={[styles.pill, { backgroundColor: bg }]}>
-      <Text style={[styles.pillText, { color }]} numberOfLines={1}>
+    <View style={[styles.pill, styles.statusPill, { backgroundColor: bg }]}>
+      <View style={[styles.statusDot, { backgroundColor: color }]} />
+      <Text style={[styles.pillText, { color: colors.textSecondary }]} numberOfLines={1}>
         {short ? def.short : def.label}
       </Text>
     </View>
@@ -66,7 +67,7 @@ export function Segmented<T extends string>({
               style={{
                 fontFamily: active ? fonts.bold : fonts.semibold,
                 fontSize: 13,
-                color: active ? '#0a3d73' : onNavy ? 'rgba(255,255,255,.75)' : colors.muted,
+                color: active ? '#16191d' : onNavy ? 'rgba(255,255,255,.72)' : colors.muted,
               }}
             >
               {o.label}
@@ -84,7 +85,7 @@ export function Fab({ onPress, icon = 'plus' }: { onPress: () => void; icon?: Fe
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.fab, shadow.fab, { backgroundColor: isDark ? '#1c5f9e' : '#0a3d73' }]}
+      style={[styles.fab, shadow.fab, { backgroundColor: isDark ? '#2b3a4d' : '#0b2e55' }]}
     >
       <Feather name={icon} size={26} color="#fff" />
     </Pressable>
@@ -116,7 +117,7 @@ export function SectionTitle({
   const { colors } = useTheme();
   return (
     <View style={[styles.sectionRow, style]}>
-      <Text style={{ fontFamily: fonts.bold, fontSize: 15, color: colors.text, letterSpacing: -0.2 }}>
+      <Text style={{ fontFamily: fonts.semibold, fontSize: 15.5, color: colors.text, letterSpacing: -0.2 }}>
         {title}
       </Text>
       {action ? (
@@ -134,7 +135,7 @@ export function GroupLabel({ label, style }: { label: string; style?: TextStyle 
   return (
     <Text
       style={[
-        { fontFamily: fonts.semibold, fontSize: 11, color: colors.muted, letterSpacing: 0.8, textTransform: 'uppercase' },
+        { fontFamily: fonts.medium, fontSize: 11, color: colors.muted, letterSpacing: 0.9, textTransform: 'uppercase' },
         style,
       ]}
     >
@@ -212,7 +213,7 @@ export function PrimaryButton({
       disabled={disabled || loading}
       style={[
         styles.btn,
-        { backgroundColor: isDark ? '#1c5f9e' : '#0a3d73', opacity: disabled || loading ? 0.6 : 1 },
+        { backgroundColor: isDark ? '#2b3a4d' : '#0b2e55', opacity: disabled || loading ? 0.6 : 1 },
         style,
       ]}
     >
@@ -264,12 +265,12 @@ export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: 'rgba(157,184,216,.35)',
+        backgroundColor: '#1d2a3b',
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Text style={{ fontFamily: fonts.bold, fontSize: size * 0.36, color: '#e8f0fa' }}>{initials || '?'}</Text>
+      <Text style={{ fontFamily: fonts.serif, fontSize: size * 0.44, color: '#e6d9b8' }}>{initials || '?'}</Text>
     </View>
   );
 }
@@ -282,7 +283,9 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     maxWidth: 150,
   },
-  pillText: { fontFamily: fonts.semibold, fontSize: 10.5 },
+  pillText: { fontFamily: fonts.medium, fontSize: 11 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 6, paddingHorizontal: 7 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
   segTrack: {
     flexDirection: 'row',
     borderRadius: 12,
@@ -305,7 +308,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    borderRadius: 15,
+    borderRadius: 14,
     borderWidth: 1,
     padding: 14,
   },
@@ -321,7 +324,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   btn: {
-    borderRadius: 14,
+    borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',

@@ -80,7 +80,7 @@ export function LoginScreen() {
           </View>
 
           <View style={[styles.sheet, { paddingBottom: insets.bottom + 28 }]}>
-            <Text style={styles.formTitle}>Acessar o sistema</Text>
+            <Text style={styles.formTitle}>Acessar o sistema.</Text>
             <Text style={styles.formSub}>Use suas credenciais institucionais</Text>
 
             <Text style={styles.label}>E-mail</Text>
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 28,
   },
-  formTitle: { fontFamily: fonts.bold, fontSize: 18, color: C.text, letterSpacing: -0.2 },
+  formTitle: { fontFamily: fonts.serif, fontSize: 27, color: C.text, letterSpacing: -0.3 },
   formSub: { fontFamily: fonts.regular, fontSize: 13, color: C.muted, marginTop: 3, marginBottom: 20 },
   label: { fontFamily: fonts.semibold, fontSize: 12, color: C.textSecondary, marginBottom: 6 },
   inputRow: {
@@ -210,9 +210,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxOn: { backgroundColor: '#0a3d73', borderColor: '#0a3d73' },
+  checkboxOn: { backgroundColor: '#0b2e55', borderColor: '#0b2e55' },
   lembrarText: { fontFamily: fonts.medium, fontSize: 13, color: C.textSecondary },
-  esqueci: { fontFamily: fonts.semibold, fontSize: 13, color: '#0a3d73' },
-  erro: { fontFamily: fonts.semibold, fontSize: 13, color: '#b42323', marginBottom: 10 },
-  info: { fontFamily: fonts.semibold, fontSize: 13, color: '#2f855a', marginBottom: 10 },
+  esqueci: { fontFamily: fonts.semibold, fontSize: 13, color: '#0b2e55' },
+  erro: { fontFamily: fonts.semibold, fontSize: 13, color: '#a33a2a', marginBottom: 10 },
+  info: { fontFamily: fonts.semibold, fontSize: 13, color: '#5b8a68', marginBottom: 10 },
 });

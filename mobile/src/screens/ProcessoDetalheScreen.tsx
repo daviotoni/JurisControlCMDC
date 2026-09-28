@@ -202,21 +202,21 @@ export function ProcessoDetalheScreen() {
               {
                 backgroundColor: bannerVermelho
                   ? (isDark ? 'rgba(180,35,35,.18)' : '#fbe9e9')
-                  : (isDark ? 'rgba(28,95,158,.2)' : '#e8f0fa'),
+                  : (isDark ? 'rgba(28,95,158,.2)' : '#f1efea'),
               },
             ]}
           >
             <Feather
               name="clock"
               size={19}
-              color={bannerVermelho ? (isDark ? '#e88b8b' : '#b42323') : colors.primary}
+              color={bannerVermelho ? (isDark ? '#e0826f' : '#a33a2a') : colors.primary}
             />
             <View>
               <Text
                 style={{
                   fontFamily: fonts.bold,
                   fontSize: 14.5,
-                  color: bannerVermelho ? (isDark ? '#e88b8b' : '#b42323') : colors.primary,
+                  color: bannerVermelho ? (isDark ? '#e0826f' : '#a33a2a') : colors.primary,
                 }}
               >
                 {info.vencido
@@ -307,7 +307,7 @@ export function ProcessoDetalheScreen() {
               disabled={!novaAnotacao.trim() || salvandoAnotacao}
               style={[
                 styles.anotSendBtn,
-                { backgroundColor: isDark ? '#1c5f9e' : '#0a3d73', opacity: !novaAnotacao.trim() || salvandoAnotacao ? 0.5 : 1 },
+                { backgroundColor: isDark ? '#2b3a4d' : '#0b2e55', opacity: !novaAnotacao.trim() || salvandoAnotacao ? 0.5 : 1 },
               ]}
             >
               <Feather name="send" size={17} color="#fff" />
@@ -424,7 +424,7 @@ export function ProcessoDetalheScreen() {
           <View style={{ paddingBottom: 6 }}>
             <Pill
               label={parecer.status === 'emitido' ? 'Emitido' : 'Rascunho'}
-              color={parecer.status === 'emitido' ? '#2f855a' : '#b25e09'}
+              color={parecer.status === 'emitido' ? '#5b8a68' : '#9a6415'}
               bg={parecer.status === 'emitido' ? '#e9f5ee' : '#fdf0e4'}
             />
             {parecer.ementa ? (
@@ -519,8 +519,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  kicker: { fontFamily: fonts.medium, fontSize: 12, color: '#a8c2df' },
-  num: { fontFamily: fonts.bold, fontSize: 23, color: '#fff', letterSpacing: -0.4, marginTop: 3 },
+  kicker: { fontFamily: fonts.medium, fontSize: 12, color: '#9aa6b6' },
+  num: { fontFamily: fonts.serif, fontSize: 30, color: '#fff', letterSpacing: -0.2, marginTop: 3 },
   prazoBanner: {
     flexDirection: 'row',
     alignItems: 'center',

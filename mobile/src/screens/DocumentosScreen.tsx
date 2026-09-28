@@ -153,7 +153,7 @@ export function DocumentosScreen() {
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                           <IconSquare
                             icon="file-text"
-                            color={emitido ? (isDark ? '#5cbe86' : '#2f855a') : (isDark ? '#e6a24a' : '#b25e09')}
+                            color={emitido ? (isDark ? '#5cbe86' : '#5b8a68') : (isDark ? '#d9a45a' : '#9a6415')}
                             bg={emitido ? (isDark ? 'rgba(47,133,90,.2)' : '#e9f5ee') : colors.warnBg}
                           />
                           <View style={{ flex: 1 }}>
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { flex: 1, textAlign: 'center', fontFamily: fonts.bold, fontSize: 19, color: '#fff', letterSpacing: -0.3 },
+  title: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 26, color: '#fff', letterSpacing: -0.2 },
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',

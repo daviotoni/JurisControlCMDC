@@ -56,7 +56,7 @@ export function RootNavigator() {
 
   if (!authReady) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#082f57' }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0c1724' }}>
         <ActivityIndicator color="#fff" />
       </View>
     );

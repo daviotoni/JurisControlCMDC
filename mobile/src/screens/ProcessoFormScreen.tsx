@@ -113,7 +113,7 @@ export function ProcessoFormScreen() {
                   style={[
                     styles.tipoBtn,
                     {
-                      backgroundColor: active ? (isDark ? '#1c5f9e' : '#0a3d73') : colors.card,
+                      backgroundColor: active ? (isDark ? '#2b3a4d' : '#0b2e55') : colors.card,
                       borderColor: active ? 'transparent' : colors.border,
                     },
                   ]}
@@ -190,8 +190,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontFamily: fonts.bold, fontSize: 22, color: '#fff', letterSpacing: -0.4 },
-  sub: { fontFamily: fonts.regular, fontSize: 12.5, color: '#a8c2df', marginTop: 3 },
+  title: { fontFamily: fonts.serif, fontSize: 29, color: '#fff', letterSpacing: -0.2 },
+  sub: { fontFamily: fonts.regular, fontSize: 12.5, color: '#9aa6b6', marginTop: 3 },
   tipoRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   tipoBtn: {
     flex: 1,

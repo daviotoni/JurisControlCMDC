@@ -299,7 +299,7 @@ export function ConfirmSheet({
         </Pressable>
         <Pressable
           onPress={() => { onClose(); onConfirm(); }}
-          style={[styles.confirmBtn, { backgroundColor: '#b42323' }]}
+          style={[styles.confirmBtn, { backgroundColor: '#a33a2a' }]}
         >
           <Text style={{ fontFamily: fonts.bold, fontSize: 14.5, color: '#fff' }}>{confirmLabel}</Text>
         </Pressable>

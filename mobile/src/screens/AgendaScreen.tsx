@@ -152,7 +152,7 @@ export function AgendaScreen() {
                     <View
                       style={[
                         styles.dayInner,
-                        selected && { backgroundColor: isDark ? '#1c5f9e' : '#0a3d73' },
+                        selected && { backgroundColor: isDark ? '#2b3a4d' : '#0b2e55' },
                         !selected && isToday && { borderWidth: 1.5, borderColor: colors.primary },
                       ]}
                     >
@@ -236,7 +236,7 @@ export function AgendaScreen() {
                   <View
                     style={[
                       { marginTop: 3, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-                      isToday && { backgroundColor: isDark ? '#1c5f9e' : '#0a3d73' },
+                      isToday && { backgroundColor: isDark ? '#2b3a4d' : '#0b2e55' },
                     ]}
                   >
                     <Text style={{ fontFamily: fonts.bold, fontSize: 12, color: isToday ? '#fff' : colors.text }}>
@@ -366,7 +366,7 @@ export function AgendaScreen() {
             style={styles.novoBtn}
             onPress={() => setForm({ data: ymd(cursor), hora: '', desc: '', cat: 'g' })}
           >
-            <Text style={{ fontFamily: fonts.bold, fontSize: 12.5, color: '#0a3d73' }}>+ Novo</Text>
+            <Text style={{ fontFamily: fonts.bold, fontSize: 12.5, color: '#0b2e55' }}>+ Novo</Text>
           </Pressable>
         </View>
         {view === 'day' ? (
@@ -375,7 +375,7 @@ export function AgendaScreen() {
               const selected = ymd(d) === ymd(cursor);
               return (
                 <Pressable key={ymd(d)} style={{ alignItems: 'center', flex: 1 }} onPress={() => setCursor(d)}>
-                  <Text style={{ fontFamily: fonts.semibold, fontSize: 9, color: '#a8c2df', letterSpacing: 0.5 }}>
+                  <Text style={{ fontFamily: fonts.semibold, fontSize: 9, color: '#9aa6b6', letterSpacing: 0.5 }}>
                     {DIAS_CURTO[d.getUTCDay()]}
                   </Text>
                   <View
@@ -384,7 +384,7 @@ export function AgendaScreen() {
                       selected && { backgroundColor: '#fff' },
                     ]}
                   >
-                    <Text style={{ fontFamily: fonts.bold, fontSize: 13.5, color: selected ? '#0a3d73' : '#fff' }}>
+                    <Text style={{ fontFamily: fonts.bold, fontSize: 13.5, color: selected ? '#0b2e55' : '#fff' }}>
                       {String(d.getUTCDate()).padStart(2, '0')}
                     </Text>
                   </View>
@@ -449,7 +449,7 @@ export function AgendaScreen() {
           <SecondaryButton label="Cancelar" onPress={() => setConfirmDel(false)} style={{ flex: 1 }} />
           <Pressable
             onPress={() => { setConfirmDel(false); excluirEvt(); }}
-            style={{ flex: 1, borderRadius: 13, paddingVertical: 14, alignItems: 'center', backgroundColor: '#b42323' }}
+            style={{ flex: 1, borderRadius: 13, paddingVertical: 14, alignItems: 'center', backgroundColor: '#a33a2a' }}
           >
             <Text style={{ fontFamily: fonts.bold, fontSize: 14.5, color: '#fff' }}>Excluir</Text>
           </Pressable>
@@ -461,7 +461,7 @@ export function AgendaScreen() {
 
 const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  title: { fontFamily: fonts.bold, fontSize: 20, color: '#fff', letterSpacing: -0.3, flexShrink: 1 },
+  title: { fontFamily: fonts.serif, fontSize: 27, color: '#fff', letterSpacing: -0.2, flexShrink: 1 },
   navBtn: {
     width: 30,
     height: 30,

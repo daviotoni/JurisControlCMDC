@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { flex: 1, textAlign: 'center', fontFamily: fonts.bold, fontSize: 19, color: '#fff', letterSpacing: -0.3 },
+  title: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 26, color: '#fff', letterSpacing: -0.2 },
   cardHead: {
     flexDirection: 'row',
     alignItems: 'center',

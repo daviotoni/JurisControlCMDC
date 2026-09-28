@@ -5,6 +5,9 @@ import {
   IBMPlexSans_700Bold,
   useFonts,
 } from '@expo-google-fonts/ibm-plex-sans';
+// Só os dois pesos usados (importar o pacote inteiro levaria os 16 arquivos ao build).
+import { EBGaramond_400Regular } from '@expo-google-fonts/eb-garamond/400Regular';
+import { EBGaramond_500Medium } from '@expo-google-fonts/eb-garamond/500Medium';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect } from 'react';
@@ -34,6 +37,8 @@ export default function App() {
     IBMPlexSans_500Medium,
     IBMPlexSans_600SemiBold,
     IBMPlexSans_700Bold,
+    EBGaramond_400Regular,
+    EBGaramond_500Medium,
   });
 
   useEffect(() => {
@@ -58,7 +63,7 @@ export default function App() {
   // e centraliza — em telas grandes o app não fica esticado.
   if (Platform.OS === 'web') {
     return (
-      <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#071f3c' }}>
+      <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#0c1724' }}>
         <View style={{ flex: 1, width: '100%', maxWidth: 480 }}>{app}</View>
       </View>
     );

@@ -29,8 +29,8 @@ export function prazoInfo(p: Processo): PrazoInfo {
 
 /** Cor do texto de prazo conforme urgência. */
 export function prazoColor(info: PrazoInfo, fallback: string): string {
-  if (info.vencido) return '#b42323';
-  if (info.alerta) return '#b25e09';
+  if (info.vencido) return '#a33a2a';
+  if (info.alerta) return '#9a6415';
   return fallback;
 }
 
@@ -64,10 +64,11 @@ export function computeKpis(procs: Processo[]): KpiData {
 }
 
 export const KPI_COLORS = {
-  pendentes: '#b42323',
-  emAnalise: '#b25e09',
+  // Números em tinta; só o que pede atenção ganha cor (como no web).
+  pendentes: '#16191d',
+  emAnalise: '#16191d',
   vencendo: KPI_VENCENDO_COLOR,
-  finalizados: '#2f855a',
+  finalizados: '#16191d',
 };
 
 export interface AlertaInteligente {

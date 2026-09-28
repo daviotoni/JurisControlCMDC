@@ -267,8 +267,8 @@ export function ProcessosScreen() {
             const def = statusByKey(p.stat);
             const urg = urgenciaLista(p);
             const urgCor =
-              urg.cor === 'vencido' ? (isDark ? '#e88b8b' : '#b42323')
-              : urg.cor === 'alerta' ? (isDark ? '#e6a24a' : '#b25e09')
+              urg.cor === 'vencido' ? (isDark ? '#e0826f' : '#a33a2a')
+              : urg.cor === 'alerta' ? (isDark ? '#d9a45a' : '#9a6415')
               : colors.muted;
             const marcado = selecionados.has(String(p.id));
             return (
@@ -290,7 +290,7 @@ export function ProcessosScreen() {
                         />
                       </View>
                     ) : null}
-                    <View style={{ width: 4, backgroundColor: isDark ? def.colorDark : def.color, marginLeft: selecaoAtiva ? 12 : 0 }} />
+                    <View style={{ width: 3, backgroundColor: isDark ? def.colorDark : def.color, marginLeft: selecaoAtiva ? 12 : 0 }} />
                     <View style={{ flex: 1, padding: 13 }}>
                       <View style={styles.cardTop}>
                         <Text style={{ fontFamily: fonts.bold, fontSize: 13, color: colors.primary }}>{p.num}</Text>
@@ -364,8 +364,8 @@ export function ProcessosScreen() {
                           ? null
                           : dias < 0 ? 'Vencido' : `${dias} dia${dias === 1 ? '' : 's'}`;
                       const urgCor =
-                        urg.cor === 'vencido' ? (isDark ? '#e88b8b' : '#b42323')
-                        : dias !== null && dias <= 5 ? (isDark ? '#e6a24a' : '#b25e09')
+                        urg.cor === 'vencido' ? (isDark ? '#e0826f' : '#a33a2a')
+                        : dias !== null && dias <= 5 ? (isDark ? '#d9a45a' : '#9a6415')
                         : colors.muted;
                       return (
                         <Pressable
@@ -497,7 +497,7 @@ export function ProcessosScreen() {
           {filtros.prazo ? (
             <Pill
               label={filtros.prazo === 'vencido' ? 'Filtro: prazos vencidos' : 'Filtro: vencendo em ≤5 dias'}
-              color={isDark ? '#e88b8b' : '#b42323'}
+              color={isDark ? '#e0826f' : '#a33a2a'}
               bg={isDark ? 'rgba(180,35,35,.2)' : '#fbe9e9'}
             />
           ) : null}
@@ -505,7 +505,7 @@ export function ProcessosScreen() {
             <SecondaryButton label="Limpar" onPress={() => { setFiltros(FILTROS_VAZIOS); setFiltrosOpen(false); }} style={{ flex: 1 }} />
             <Pressable
               onPress={() => setFiltrosOpen(false)}
-              style={{ flex: 1, borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: isDark ? '#1c5f9e' : '#0a3d73' }}
+              style={{ flex: 1, borderRadius: 14, paddingVertical: 15, alignItems: 'center', backgroundColor: isDark ? '#2b3a4d' : '#0b2e55' }}
             >
               <Text style={{ fontFamily: fonts.bold, fontSize: 15, color: '#fff' }}>Aplicar</Text>
             </Pressable>
@@ -540,7 +540,7 @@ export function ProcessosScreen() {
 
 const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  title: { fontFamily: fonts.bold, fontSize: 22, color: '#fff', letterSpacing: -0.4 },
+  title: { fontFamily: fonts.serif, fontSize: 29, color: '#fff', letterSpacing: -0.2 },
   countPill: {
     backgroundColor: 'rgba(255,255,255,.14)',
     borderRadius: 999,
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#e0574f',
+    backgroundColor: '#c2513f',
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kanbanHead: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 9, paddingHorizontal: 2 },
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    backgroundColor: '#b42323',
+    backgroundColor: '#a33a2a',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 11,

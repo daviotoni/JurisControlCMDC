@@ -22,9 +22,9 @@ const CHIPS: { key: Filtro; label: string }[] = [
 ];
 
 const TYPE_STYLE: Record<NotifType, { icon: 'clock' | 'calendar' | 'alert-triangle'; color: string; bg: string; colorDark: string; bgDark: string }> = {
-  prazo: { icon: 'clock', color: '#b42323', bg: '#fbe9e9', colorDark: '#e88b8b', bgDark: 'rgba(180,35,35,.2)' },
-  evento: { icon: 'calendar', color: '#1c5f9e', bg: '#e8f0fa', colorDark: '#bcd3ee', bgDark: 'rgba(28,95,158,.25)' },
-  alerta: { icon: 'alert-triangle', color: '#b25e09', bg: '#fdf0e4', colorDark: '#e6a24a', bgDark: 'rgba(178,94,9,.2)' },
+  prazo: { icon: 'clock', color: '#a33a2a', bg: '#fbe9e9', colorDark: '#e0826f', bgDark: 'rgba(180,35,35,.2)' },
+  evento: { icon: 'calendar', color: '#2b3a4d', bg: '#f1efea', colorDark: '#dcd9d2', bgDark: 'rgba(28,95,158,.25)' },
+  alerta: { icon: 'alert-triangle', color: '#9a6415', bg: '#fdf0e4', colorDark: '#d9a45a', bgDark: 'rgba(178,94,9,.2)' },
 };
 
 export function NotificacoesScreen() {
@@ -81,7 +81,7 @@ export function NotificacoesScreen() {
                 onPress={() => setFiltro(c.key)}
                 style={[styles.chip, { backgroundColor: active ? '#fff' : 'rgba(255,255,255,.14)' }]}
               >
-                <Text style={{ fontFamily: fonts.bold, fontSize: 12, color: active ? '#0a3d73' : 'rgba(255,255,255,.85)' }}>
+                <Text style={{ fontFamily: fonts.bold, fontSize: 12, color: active ? '#0b2e55' : 'rgba(255,255,255,.85)' }}>
                   {c.label}
                 </Text>
               </Pressable>
@@ -135,8 +135,8 @@ export function NotificacoesScreen() {
 
 const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  title: { fontFamily: fonts.bold, fontSize: 22, color: '#fff', letterSpacing: -0.4 },
-  marcar: { fontFamily: fonts.semibold, fontSize: 13, color: '#a8c2df' },
+  title: { fontFamily: fonts.serif, fontSize: 29, color: '#fff', letterSpacing: -0.2 },
+  marcar: { fontFamily: fonts.semibold, fontSize: 13, color: '#9aa6b6' },
   chipsRow: { flexDirection: 'row', gap: 8 },
   chip: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   unreadDot: { width: 8, height: 8, borderRadius: 4 },

@@ -69,14 +69,14 @@ export function PerfilScreen() {
             <Switch
               value={isDark}
               onValueChange={toggleDark}
-              trackColor={{ false: '#d3dce8', true: '#1c5f9e' }}
+              trackColor={{ false: '#d3dce8', true: '#2b3a4d' }}
               thumbColor="#fff"
             />
           </View>
           <Pressable style={styles.row} onPress={() => setConfirmSair(true)}>
             <IconSquare
               icon="log-out"
-              color={isDark ? '#e88b8b' : '#b42323'}
+              color={isDark ? '#e0826f' : '#a33a2a'}
               bg={isDark ? 'rgba(180,35,35,.2)' : '#fbe9e9'}
             />
             <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.danger, flex: 1 }}>Sair</Text>
@@ -97,8 +97,8 @@ export function PerfilScreen() {
 }
 
 const styles = StyleSheet.create({
-  nome: { fontFamily: fonts.bold, fontSize: 19, color: '#fff', letterSpacing: -0.3, marginTop: 12 },
-  cargo: { fontFamily: fonts.medium, fontSize: 12.5, color: '#a8c2df', marginTop: 3 },
+  nome: { fontFamily: fonts.serif, fontSize: 26, color: '#fff', letterSpacing: -0.2, marginTop: 12 },
+  cargo: { fontFamily: fonts.medium, fontSize: 12.5, color: '#9aa6b6', marginTop: 3 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

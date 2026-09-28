@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 
 /**
- * Cabeçalho "Navy Hero": gradiente navy 165°, cantos inferiores
- * arredondados 28px, respeitando a status bar nativa.
+ * Cabeçalho em azul-tinta liso (a cor da barra lateral do web), cantos
+ * inferiores levemente arredondados, respeitando a status bar nativa.
  */
 export function NavyHeader({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
   const insets = useSafeAreaInsets();
@@ -25,8 +25,8 @@ export function NavyHeader({ children, style }: { children: React.ReactNode; sty
 
 const styles = StyleSheet.create({
   header: {
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     paddingHorizontal: 20,
     paddingBottom: 18,
   },

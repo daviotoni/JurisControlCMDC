@@ -77,8 +77,8 @@ describe('prazoInfo', () => {
 
 describe('prazoColor', () => {
   it('vermelho para vencido, laranja para alerta, fallback caso contrário', () => {
-    expect(prazoColor(prazoInfo(proc({ prazo: dia(-1) })), '#000')).toBe('#b42323');
-    expect(prazoColor(prazoInfo(proc({ prazo: dia(2) })), '#000')).toBe('#b25e09');
+    expect(prazoColor(prazoInfo(proc({ prazo: dia(-1) })), '#000')).toBe('#a33a2a');
+    expect(prazoColor(prazoInfo(proc({ prazo: dia(2) })), '#000')).toBe('#9a6415');
     expect(prazoColor(prazoInfo(proc({ prazo: dia(30) })), '#000')).toBe('#000');
   });
 });

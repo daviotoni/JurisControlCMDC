@@ -89,18 +89,18 @@ export function DashboardScreen() {
         <View style={styles.kpiGrid}>
           {kpiCards.map((k) => (
             <Pressable key={k.label} style={{ width: '48.2%' }} onPress={k.onPress}>
-              <Card style={{ padding: 0, overflow: 'hidden' }}>
-                <View style={{ flexDirection: 'row' }}>
-                  <View style={{ width: 3, backgroundColor: k.color }} />
-                  <View style={{ padding: 13, flex: 1 }}>
-                    <Text style={{ fontFamily: fonts.medium, fontSize: 11.5, color: colors.muted }} numberOfLines={1}>
-                      {k.label}
-                    </Text>
-                    <Text style={{ fontFamily: fonts.bold, fontSize: 27, color: k.color, marginTop: 2, letterSpacing: -0.4 }}>
-                      {k.value}
-                    </Text>
-                  </View>
-                </View>
+              <Card style={{ paddingVertical: 14, paddingHorizontal: 15 }}>
+                <Text
+                  style={{
+                    fontFamily: fonts.serifRegular, fontSize: 38, lineHeight: 42, letterSpacing: -0.5,
+                    color: k.color === KPI_COLORS.vencendo ? k.color : colors.text,
+                  }}
+                >
+                  {k.value}
+                </Text>
+                <Text style={{ fontFamily: fonts.regular, fontSize: 12.5, color: colors.muted, marginTop: 2 }} numberOfLines={1}>
+                  {k.label}
+                </Text>
               </Card>
             </Pressable>
           ))}
@@ -119,7 +119,9 @@ export function DashboardScreen() {
             </Text>
           ) : (
             proximos.map(({ p, info }, i) => {
-              const cor = prazoColor(info, colors.primary);
+              const cor = isDark && info.vencido ? '#e0826f'
+                : isDark && info.alerta ? '#d9a45a'
+                : prazoColor(info, colors.primary);
               return (
                 <Pressable
                   key={p.id}
@@ -130,7 +132,7 @@ export function DashboardScreen() {
                   ]}
                 >
                   <View style={styles.diasCol}>
-                    <Text style={{ fontFamily: fonts.bold, fontSize: 22, color: cor, letterSpacing: -0.4 }}>
+                    <Text style={{ fontFamily: fonts.serif, fontSize: 27, lineHeight: 30, color: cor }}>
                       {info.vencido ? Math.abs(info.dias!) : info.dias}
                     </Text>
                     <Text style={{ fontFamily: fonts.semibold, fontSize: 9, color: colors.muted, letterSpacing: 0.5 }}>
@@ -165,7 +167,7 @@ export function DashboardScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <IconSquare
                   icon={a.tipo === 'vencido' ? 'alert-triangle' : 'clock'}
-                  color={a.tipo === 'vencido' ? (isDark ? '#e88b8b' : '#b42323') : (isDark ? '#e6a24a' : '#b25e09')}
+                  color={a.tipo === 'vencido' ? (isDark ? '#e0826f' : '#a33a2a') : (isDark ? '#d9a45a' : '#9a6415')}
                   bg={a.tipo === 'vencido' ? (isDark ? 'rgba(180,35,35,.2)' : '#fbe9e9') : colors.warnBg}
                 />
                 <View style={{ flex: 1 }}>
@@ -185,8 +187,8 @@ export function DashboardScreen() {
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  saudacao: { fontFamily: fonts.regular, fontSize: 13, color: '#a8c2df' },
-  nome: { fontFamily: fonts.bold, fontSize: 23, color: '#fff', letterSpacing: -0.4, marginTop: 2 },
+  saudacao: { fontFamily: fonts.regular, fontSize: 13, color: '#9aa6b6' },
+  nome: { fontFamily: fonts.serif, fontSize: 30, color: '#fff', letterSpacing: -0.2, marginTop: 2 },
   bellBtn: {
     width: 44,
     height: 44,
@@ -202,7 +204,7 @@ const styles = StyleSheet.create({
     minWidth: 17,
     height: 17,
     borderRadius: 9,
-    backgroundColor: '#e0574f',
+    backgroundColor: '#c2513f',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
@@ -212,8 +214,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,.1)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,.07)',
+    borderRadius: 14,
     padding: 12,
   },
   bannerIcon: {
@@ -225,7 +227,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bannerTitle: { fontFamily: fonts.semibold, fontSize: 13.5, color: '#fff' },
-  bannerSub: { fontFamily: fonts.regular, fontSize: 11.5, color: '#a8c2df', marginTop: 1 },
+  bannerSub: { fontFamily: fonts.regular, fontSize: 11.5, color: '#9aa6b6', marginTop: 1 },
   body: { padding: 20, paddingBottom: 110 },
   kpiGrid: {
     flexDirection: 'row',

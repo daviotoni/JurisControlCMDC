@@ -41,6 +41,14 @@ grandes em EB Garamond; barra lateral azul-tinta com grupos e usuário no
 rodapé (`#sidebarUser`); quase nenhuma cor (só vencidos/vencendo); sem
 emojis na interface; gráficos com a paleta `statusColorMapV3`.
 
+## App de celular (`mobile/` → `/app`)
+
+Mesma linguagem "tinta": paleta em `mobile/src/theme/tokens.ts` (sincronizar
+com o web), cabeçalho azul-tinta liso (`NavyHeader`), títulos e números em
+EB Garamond (`fonts.serif` / `fonts.serifRegular`, só os pesos 400 e 500 são
+importados em `App.tsx`). Depois de mudar o `mobile/`, rodar
+`cd mobile && npm run build:site` e commitar a pasta `/app`.
+
 ## Stack
 
 App estático (HTML/CSS/JS puro) + Firebase (Auth, Firestore, Storage).
