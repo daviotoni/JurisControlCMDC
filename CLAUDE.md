@@ -28,3 +28,16 @@ do array quando o site for excluído.
 
 App estático (HTML/CSS/JS puro) + Firebase (Auth, Firestore, Storage).
 Arquivos principais: `index.html`, `style.css`, `js/app.js`.
+
+### Camada de movimento (animações)
+
+Opcional e desligável — se falhar ou for desligada, o app fica igual ao de antes:
+
+- `js/motion.js` — marcador deslizante da barra lateral, cascata na troca de
+  aba, contador dos KPIs, revelação circular do tema, carregamento do login.
+- `style.css`, bloco final "CAMADA DE MOVIMENTO (v2)" — todo atrás de
+  `html.jc-motion`, que só o motion.js (e o script inline do `<head>`) liga.
+- Desliga com `prefers-reduced-motion` ou em Configurações → Aparência
+  (`localStorage['jc-motion'] = 'off'`, por navegador).
+- **Nunca** animar `transform` na `.sidebar`: abaixo de 992px ela usa
+  `transform` para o menu-gaveta (foi o bug da primeira versão, revertida).

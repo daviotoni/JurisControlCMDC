@@ -17,7 +17,18 @@
             } catch (e) { /* segue para o desktop */ }
         })();
     </script>
-        <link rel="stylesheet" href="style.css?v=7888a1506a">
+    <script>
+        // Liga a camada de movimento antes do primeiro paint (evita o login
+        // aparecer e depois "pular" para o início da animação). O resto
+        // vive em js/motion.js.
+        try {
+            if (localStorage.getItem('jc-motion') !== 'off' &&
+                !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.documentElement.classList.add('jc-motion');
+            }
+        } catch (e) { /* sem animação */ }
+    </script>
+        <link rel="stylesheet" href="style.css?v=a1e07696ee">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -425,6 +436,15 @@
                         <div id="userList" class="list"></div>
                     </div>
                      <div class="card">
+                        <h3>Aparência</h3>
+                        <label class="cfg-switch" for="cfgAnimacoes">
+                            <input type="checkbox" id="cfgAnimacoes" checked>
+                            Animações da interface
+                        </label>
+                        <p class="cfg-note" style="margin-top:0.5rem;">Transições ao trocar de aba, ao abrir janelas e ao mudar o tema. Vale só para este navegador.</p>
+                        <p id="cfgAnimacoesNota" class="cfg-note"></p>
+                    </div>
+                     <div class="card">
                         <h3>Gerenciamento de Emissores</h3>
                         <div id="emissorList" class="list"></div>
                         <div style="margin-top: 1rem;"><button id="btnAddEmissor" class="btn primary">Adicionar Emissor</button></div>
@@ -761,7 +781,8 @@
     <script src="js/utils.js?v=7d58b23e0d"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
     <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
-    <script src="js/app.js?v=42524a7e6b"></script>
+    <script src="js/motion.js?v=55c5104b06"></script>
+    <script src="js/app.js?v=f46b19fbf2"></script>
 
 </body>
 </html>

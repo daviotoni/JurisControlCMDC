@@ -1453,3 +1453,188 @@
             /* Endereços externos só fazem sentido no papel se vierem escritos. */
             a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 8pt; color: #4a4a4a; }
         }
+
+        /* =====================================================================
+           CAMADA DE MOVIMENTO (v2)
+           ---------------------------------------------------------------------
+           Tudo aqui fica atrás de `.jc-motion` no <html>, classe que só o
+           js/motion.js liga (e desliga com prefers-reduced-motion ou pela
+           opção em Configurações → Aparência). Sem o JS, nada daqui vale.
+
+           Regras da casa:
+           - Só `transform` e `opacity` (compostos na GPU).
+           - Entradas usam keyframes só com `from` e fill `backwards`: terminam
+             no estado natural do elemento e não deixam transform grudado.
+           - Nunca animar `transform` na `.sidebar` (é o menu-gaveta < 992px).
+           ===================================================================== */
+        :root {
+            --jc-ease-out: cubic-bezier(0.16, 1, 0.3, 1);      /* expo: rápido e assenta */
+            --jc-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1); /* leve passada do ponto */
+            --jc-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+            --jc-stagger: 45ms;
+        }
+
+        @keyframes jc-rise   { from { opacity: 0; transform: translateY(14px); } }
+        @keyframes jc-fade   { from { opacity: 0; } }
+        @keyframes jc-pop    { from { opacity: 0; transform: translateY(8px) scale(0.94); } }
+        @keyframes jc-slide  { from { opacity: 0; transform: translateX(-10px); } }
+        @keyframes jc-drop   { from { opacity: 0; transform: translateY(-8px); } }
+        @keyframes jc-dialog { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
+        @keyframes jc-spin   { to { transform: rotate(360deg); } }
+        @keyframes jc-glow-drift {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50%      { transform: translate(-6%, 4%) scale(1.08); }
+        }
+        @keyframes jc-login-out { to { opacity: 0; transform: scale(1.015); } }
+
+        /* ---------- 1. Marcador deslizante da barra lateral ---------- */
+        .sidebar-nav ul { position: relative; }
+        .jc-nav-ink { display: none; }
+        .jc-motion .sidebar-nav.has-ink .jc-nav-ink {
+            display: block;
+            position: absolute; left: 0; right: 0; top: 0;
+            border-radius: 8px;
+            background: var(--sidebar-active-bg);
+            pointer-events: none;
+            transition: transform 0.5s var(--jc-ease-spring), height 0.3s var(--jc-ease-out), opacity 0.2s ease;
+        }
+        /* Filete dourado — o ouro do brasão — que estica ao chegar. */
+        .jc-motion .sidebar-nav.has-ink .jc-nav-ink::before {
+            content: ""; position: absolute; left: 0; top: 22%; bottom: 22%;
+            width: 3px; border-radius: 0 3px 3px 0; background: var(--gold);
+        }
+        .jc-motion .jc-nav-ink.no-anim { transition: none; }
+        .jc-motion .sidebar-nav.has-ink a.tab.active { background-color: transparent; }
+        .jc-motion .sidebar-nav a { z-index: 1; }
+        .jc-motion .sidebar-nav a svg { transition: transform 0.35s var(--jc-ease-spring); }
+        .jc-motion .sidebar-nav a:hover svg { transform: translateX(2px); }
+        .jc-motion .sidebar-nav a.active svg { transform: none; }
+
+        /* ---------- 2. Troca de aba: cascata ---------- */
+        .jc-motion .section-enter { animation: jc-fade 0.25s ease-out backwards; }
+        .jc-motion .section-enter .jc-rise {
+            animation: jc-rise 0.62s var(--jc-ease-out) backwards;
+            animation-delay: calc(40ms + var(--jc-i, 0) * var(--jc-stagger));
+        }
+        /* Radar: os dias entram na ordem do calendário, depois do cartão. */
+        .jc-motion .section-enter .radar-day { animation: jc-pop 0.5s var(--jc-ease-spring) backwards; }
+        .jc-motion .section-enter .radar-day:nth-child(1) { animation-delay: 0.30s; }
+        .jc-motion .section-enter .radar-day:nth-child(2) { animation-delay: 0.34s; }
+        .jc-motion .section-enter .radar-day:nth-child(3) { animation-delay: 0.38s; }
+        .jc-motion .section-enter .radar-day:nth-child(4) { animation-delay: 0.42s; }
+        .jc-motion .section-enter .radar-day:nth-child(5) { animation-delay: 0.46s; }
+        .jc-motion .section-enter .radar-day:nth-child(6) { animation-delay: 0.50s; }
+        .jc-motion .section-enter .radar-day:nth-child(7) { animation-delay: 0.54s; }
+        .jc-motion .section-enter .radar-day:nth-child(8) { animation-delay: 0.58s; }
+        /* Linhas da tabela: só na entrada da aba (o JS tira .section-enter
+           depois), então buscar ou paginar não fica piscando. */
+        .jc-motion .section-enter tbody tr { animation: jc-rise 0.5s var(--jc-ease-out) backwards; }
+        .jc-motion .section-enter tbody tr:nth-child(1)  { animation-delay: 0.16s; }
+        .jc-motion .section-enter tbody tr:nth-child(2)  { animation-delay: 0.19s; }
+        .jc-motion .section-enter tbody tr:nth-child(3)  { animation-delay: 0.22s; }
+        .jc-motion .section-enter tbody tr:nth-child(4)  { animation-delay: 0.25s; }
+        .jc-motion .section-enter tbody tr:nth-child(5)  { animation-delay: 0.28s; }
+        .jc-motion .section-enter tbody tr:nth-child(6)  { animation-delay: 0.31s; }
+        .jc-motion .section-enter tbody tr:nth-child(7)  { animation-delay: 0.34s; }
+        .jc-motion .section-enter tbody tr:nth-child(8)  { animation-delay: 0.37s; }
+        .jc-motion .section-enter tbody tr:nth-child(n+9) { animation-delay: 0.40s; }
+
+        /* ---------- KPIs e dias do radar: elevação e luz no cursor ---------- */
+        .jc-motion .kpi,
+        .jc-motion .radar-day { position: relative; isolation: isolate; }
+        .jc-motion .kpi {
+            transition: transform 0.4s var(--jc-ease-out), box-shadow 0.4s var(--jc-ease-out), border-color 0.2s ease;
+        }
+        .jc-motion .kpi:hover { transform: translateY(-3px); box-shadow: 0 12px 28px -12px rgba(16, 42, 74, 0.28); }
+        .jc-motion body[data-theme="dark"] .kpi:hover { box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.6); }
+        .jc-motion .kpi:active { transform: translateY(-1px) scale(0.99); transition-duration: 0.1s; }
+        .jc-motion .kpi::after,
+        .jc-motion .radar-day::after {
+            content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+            background: radial-gradient(180px circle at var(--jc-mx, 50%) var(--jc-my, 50%),
+                        color-mix(in srgb, var(--brand-500) 11%, transparent), transparent 70%);
+            opacity: 0; transition: opacity 0.3s ease; pointer-events: none;
+        }
+        .jc-motion .kpi:hover::after,
+        .jc-motion .radar-day:not(.is-empty):hover::after { opacity: 1; }
+        .jc-motion .kpi-icon { transition: transform 0.45s var(--jc-ease-spring); }
+        .jc-motion .kpi:hover .kpi-icon { transform: scale(1.1); }
+        .jc-motion .radar-day { transition: transform 0.4s var(--jc-ease-spring), box-shadow 0.3s ease, border-color 0.2s ease; }
+
+        /* ---------- Botões: resposta ao toque ---------- */
+        .jc-motion .btn:active:not(:disabled) { transform: translateY(0) scale(0.97); transition-duration: 0.08s; }
+
+        /* ---------- Modais, menus e painéis ---------- */
+        .jc-motion .modal {
+            animation: jc-fade 0.25s ease-out backwards;
+            -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+        }
+        .jc-motion .modal .dialog { animation: jc-dialog 0.45s var(--jc-ease-out) backwards; }
+        .jc-motion .notification-panel,
+        .jc-motion .theme-menu {
+            transform-origin: top right;
+            transition: opacity 0.2s ease, transform 0.35s var(--jc-ease-out), visibility 0.2s;
+        }
+        .jc-motion .notification-panel:not(.active),
+        .jc-motion .theme-menu:not(.active) { transform: translateY(-6px) scale(0.97); }
+        .jc-motion .notification-count { animation: jc-pop 0.45s var(--jc-ease-spring) backwards; }
+        .jc-motion .toast { animation: toast-slide-in 0.5s var(--jc-ease-spring) forwards, toast-fade-out 0.4s ease-in 3.5s forwards; }
+
+        /* ---------- 3. Troca de tema: revelação circular ----------
+           O JS anima o clip-path do snapshot novo; aqui só desligamos o
+           crossfade padrão para ele não brigar com o círculo. */
+        .jc-vt-theme::view-transition-old(root),
+        .jc-vt-theme::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+        .jc-vt-theme::view-transition-new(root) { z-index: 2; }
+
+        /* ---------- 4. Login ---------- */
+        .jc-motion .login-hero { position: relative; overflow: hidden; }
+        .jc-motion .login-hero::before {
+            content: ""; position: absolute; width: 70vmax; height: 70vmax; right: -25vmax; top: -30vmax;
+            background: radial-gradient(closest-side, rgba(126, 170, 224, 0.22), transparent);
+            animation: jc-glow-drift 18s ease-in-out infinite;
+            pointer-events: none;
+        }
+        .jc-motion .login-hero > * { position: relative; }
+        .jc-motion .login-hero-shield  { animation: jc-pop 0.8s var(--jc-ease-out) 0.05s backwards; }
+        .jc-motion .login-hero-eyebrow { animation: jc-rise 0.7s var(--jc-ease-out) 0.18s backwards; }
+        .jc-motion .login-hero-title   { animation: jc-rise 0.7s var(--jc-ease-out) 0.26s backwards; }
+        .jc-motion .login-panel > * { animation: jc-rise 0.6s var(--jc-ease-out) backwards; }
+        .jc-motion .login-panel > :nth-child(1) { animation-delay: 0.20s; }
+        .jc-motion .login-panel > :nth-child(2) { animation-delay: 0.26s; }
+        .jc-motion .login-panel > :nth-child(3) { animation-delay: 0.31s; }
+        .jc-motion .login-panel > :nth-child(4) { animation-delay: 0.36s; }
+        .jc-motion .login-panel > :nth-child(5) { animation-delay: 0.41s; }
+        .jc-motion .login-panel > :nth-child(6) { animation-delay: 0.46s; }
+        .jc-motion .login-panel > :nth-child(7) { animation-delay: 0.51s; }
+        .jc-motion .login-panel > :nth-child(n+8) { animation-delay: 0.56s; }
+        .jc-motion .login-erro:not(:empty) { animation: jc-drop 0.35s var(--jc-ease-out); }
+        .jc-motion #btnEntrar { position: relative; }
+        .jc-motion #btnEntrar.is-loading { color: transparent; pointer-events: none; }
+        .jc-motion #btnEntrar.is-loading::after {
+            content: ""; position: absolute; width: 18px; height: 18px; left: calc(50% - 9px); top: calc(50% - 9px);
+            border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff; border-radius: 50%;
+            animation: jc-spin 0.7s linear infinite;
+        }
+        .jc-motion .login-overlay.jc-leaving { animation: jc-login-out 0.55s var(--jc-ease-in-out) forwards; pointer-events: none; }
+
+        /* Entrada do app depois do login (conteúdo da barra, não a barra). */
+        .jc-motion .jc-app-enter .sidebar-header { animation: jc-slide 0.6s var(--jc-ease-out) 0.15s backwards; }
+        .jc-motion .jc-app-enter .sidebar-nav li { animation: jc-slide 0.55s var(--jc-ease-out) backwards; }
+        .jc-motion .jc-app-enter .sidebar-nav li:nth-child(2) { animation-delay: 0.22s; }
+        .jc-motion .jc-app-enter .sidebar-nav li:nth-child(3) { animation-delay: 0.26s; }
+        .jc-motion .jc-app-enter .sidebar-nav li:nth-child(4) { animation-delay: 0.30s; }
+        .jc-motion .jc-app-enter .sidebar-nav li:nth-child(5) { animation-delay: 0.34s; }
+        .jc-motion .jc-app-enter .sidebar-nav li:nth-child(6) { animation-delay: 0.38s; }
+        .jc-motion .jc-app-enter .sidebar-nav li:nth-child(7) { animation-delay: 0.42s; }
+        .jc-motion .jc-app-enter .sidebar-nav li:nth-child(8) { animation-delay: 0.46s; }
+        .jc-motion .jc-app-enter .app-header { animation: jc-drop 0.6s var(--jc-ease-out) 0.2s backwards; }
+        .jc-motion .jc-app-enter .jc-nav-ink { animation: jc-fade 0.4s ease-out 0.5s backwards; }
+
+        /* ---------- Preferência em Configurações ---------- */
+        .cfg-switch { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-weight: 600; color: var(--text-primary); }
+        .cfg-switch input { width: auto; margin: 0; accent-color: var(--brand-600); inline-size: 1.05rem; block-size: 1.05rem; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .jc-nav-ink { transition: none !important; }
+        }
