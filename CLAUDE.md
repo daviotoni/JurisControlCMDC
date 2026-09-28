@@ -24,6 +24,14 @@ firebase deploy --only hosting --token "<TOKEN>" --project juriscontrolcmdc
 `firebase.json` é multi-site (array). Obs: `procuradoriacmdc` deve ser removido
 do array quando o site for excluído.
 
+## Login (linguagem editorial)
+
+Painel azul com medalhão em guilhochê (`img/guilloche-a.svg` e `-b.svg`,
+gerados por curvas — duas camadas girando em sentidos opostos criam o moiré)
+e citação do art. 37 da CF; título do formulário em EB Garamond. Em telas
+largas porém em pé (celular em "site para computador") o layout empilha.
+A abertura pousa o brasão em `.login-hero-shield`, no centro do medalhão.
+
 ## Stack
 
 App estático (HTML/CSS/JS puro) + Firebase (Auth, Firestore, Storage).

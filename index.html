@@ -32,7 +32,7 @@
             }
         } catch (e) { /* sem animação */ }
     </script>
-        <link rel="stylesheet" href="style.css?v=5ed4833e22">
+        <link rel="stylesheet" href="style.css?v=c735001765">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -89,9 +89,21 @@
     <div id="loginOverlay" class="login-overlay">
         <div class="login-card">
             <div class="login-hero">
-                <img src="img/brasao-shield.png" alt="Brasão CMDC" class="login-hero-shield">
-                <div class="login-hero-eyebrow">Câmara Municipal de Duque de Caxias</div>
-                <h1 class="login-hero-title">JurisControl</h1>
+                <div class="login-hero-brand">
+                    <div class="login-hero-eyebrow">Câmara Municipal de Duque de Caxias</div>
+                    <div class="login-hero-title">JurisControl</div>
+                </div>
+                <!-- Medalhão em guilhochê (a trama de diplomas e selos oficiais)
+                     com o brasão ao centro; a abertura pousa o brasão aqui. -->
+                <div class="login-medal">
+                    <img class="login-guil login-guil-a" src="img/guilloche-a.svg" alt="">
+                    <img class="login-guil login-guil-b" src="img/guilloche-b.svg" alt="">
+                    <img src="img/brasao-shield.png" alt="Brasão da Câmara Municipal de Duque de Caxias" class="login-hero-shield">
+                </div>
+                <figure class="login-quote">
+                    <blockquote>&ldquo;&hellip;obedecerá aos princípios de <em>legalidade, impessoalidade, moralidade, publicidade e eficiência</em>.&rdquo;</blockquote>
+                    <figcaption>Constituição Federal, art. 37</figcaption>
+                </figure>
             </div>
             <div class="login-panel">
                 <div class="login-mobile-brand">
@@ -99,8 +111,8 @@
                     <div class="login-mobile-eyebrow">Câmara Municipal de Duque de Caxias</div>
                     <div class="login-mobile-title">JurisControl</div>
                 </div>
-                <h2>Acessar o sistema</h2>
-                <p class="login-panel-subtitle">Use suas credenciais institucionais</p>
+                <h1 class="login-heading">Acessar o sistema.</h1>
+                <p class="login-panel-subtitle">Entre com o e-mail e a senha da sua conta institucional.</p>
                 <div class="grupo">
                     <label for="loginUser">E-mail</label>
                     <input id="loginUser" type="email" class="input" autocomplete="email" placeholder="Digite seu e-mail">
@@ -120,6 +132,7 @@
                     <button id="btnEntrar" class="btn primary">Entrar</button>
                 </div>
                 <div id="loginErro" class="login-erro"></div>
+                <p class="login-footnote">Acesso restrito a usuários autorizados pela administração do sistema.</p>
             </div>
         </div>
     </div>

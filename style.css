@@ -491,73 +491,123 @@
             margin: 0.5rem 0;
         }
 
-        .login-overlay {
-            position: fixed; inset: 0;
-            background: #fff;
-            display: flex; z-index: 2001;
-        }
-        .login-card {
-            width: 100%; height: 100%;
-            background: #fff;
-            display: flex;
-        }
+        /* ===== Login — linguagem editorial =====
+           Painel azul com o medalhão em guilhochê (a trama de diplomas e
+           selos oficiais) e uma citação constitucional; formulário com título
+           em EB Garamond, a mesma serifa dos pareceres. Sempre claro,
+           independente do tema do app. */
+        .login-overlay { position: fixed; inset: 0; background: #fff; display: flex; z-index: 2001; }
+        .login-card { width: 100%; height: 100%; background: #fff; display: flex; }
+
         .login-hero {
-            flex: 1 1 55%;
-            background: linear-gradient(160deg, #092c52 0%, #0a3d73 55%, #0e4a89 100%);
-            color: #fff;
-            display: flex; flex-direction: column; justify-content: center;
-            padding: 3rem 5vw;
+            flex: 1 1 55%; position: relative; overflow: hidden; color: #fff;
+            background: radial-gradient(120% 80% at 50% 45%, #0e4a89 0%, #0a3d73 45%, #082a4f 100%);
+            display: grid; grid-template-rows: auto 1fr auto;
+            padding: clamp(2rem, 4vw, 3.25rem) clamp(2rem, 5vw, 4rem);
         }
-        .login-hero-shield { width: 110px; filter: brightness(0) invert(1); opacity: 0.95; margin-bottom: 1.75rem; }
         .login-hero-eyebrow {
-            font-size: 0.8125rem; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase;
-            color: #9fc0e8; margin: 0 0 0.625rem;
+            font-size: 0.75rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
+            color: #9fc0e8; margin: 0 0 0.4rem;
         }
-        .login-hero-title { font-size: 3rem; font-weight: 700; letter-spacing: -1px; line-height: 1.15; color: #fff; margin: 0; }
+        .login-hero-title { font-size: 1.375rem; font-weight: 700; letter-spacing: -0.3px; color: #fff; }
+
+        .login-medal {
+            position: relative; align-self: center; justify-self: center;
+            width: min(100%, 58vh, 520px); aspect-ratio: 1; margin: 2rem 0;
+            display: grid; place-items: center;
+        }
+        .login-guil { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+        .login-guil-a { opacity: 0.55; }
+        .login-guil-b { opacity: 0.5; }
+        /* Disco que separa o brasão da trama. */
+        .login-medal::after {
+            content: ""; position: absolute; width: 42%; aspect-ratio: 1; border-radius: 50%;
+            background: radial-gradient(circle, #0b3f78 0%, #0a3a6e 70%, rgba(10, 58, 110, 0) 72%);
+        }
+        .login-hero-shield {
+            position: relative; z-index: 1; width: 25%; height: auto;
+            filter: brightness(0) invert(1); opacity: 0.96;
+        }
+
+        .login-quote { margin: 0; max-width: 34rem; }
+        .login-quote blockquote {
+            margin: 0; font-family: 'EB Garamond', Georgia, serif; font-weight: 400;
+            font-size: clamp(1.25rem, 1.9vw, 1.625rem); line-height: 1.3; color: #eef3fa;
+        }
+        .login-quote em { font-style: italic; color: #fff; }
+        .login-quote figcaption {
+            margin-top: 0.85rem; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.18em;
+            text-transform: uppercase; color: #c2a14d;
+        }
+
         .login-panel {
-            flex: 0 0 420px; max-width: 420px;
-            background: #fff;
+            flex: 0 0 clamp(380px, 38%, 520px);
+            background: #fff; overflow-y: auto; text-align: left;
             display: flex; flex-direction: column; justify-content: center;
-            padding: 3rem 4vw;
-            overflow-y: auto;
-            text-align: left;
+            padding: 3rem clamp(2rem, 4.5vw, 4.5rem);
         }
-        .login-panel h2 { font-size: 1.5rem; font-weight: 700; color: var(--text-primary-light); margin: 0 0 0.35rem; letter-spacing: -0.3px; }
-        .login-panel-subtitle { color: var(--text-secondary-light); font-size: 0.875rem; margin: 0 0 1.75rem; }
-        .login-card .grupo { margin-bottom: 1.1rem; text-align: left;}
-        .login-card label { display: block; font-weight: 600; color: var(--text-secondary-light); margin-bottom: 0.4375rem; font-size: 0.8125rem; }
-        .login-erro { color: var(--danger); font-weight: 600; margin-top: 1rem; min-height: 1.2em; text-align: left; }
-        .login-erro.info { color: var(--brand-600); }
-        .login-forgot { cursor: pointer; }
-        .login-forgot:hover, .login-forgot:focus-visible { text-decoration: underline; }
-        .login-acoes { margin-top: 1.5rem; }
-        .login-acoes .btn { width: 100%; padding: 0.75rem 1rem; font-size: 0.9375rem; box-shadow: 0 4px 14px rgba(10, 61, 115, 0.35); }
-        .login-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem; }
-        .lembrar-me { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary-light); font-size: 0.84rem; justify-content: flex-start; }
-        .login-forgot { font-size: 0.84rem; color: var(--brand-600); font-weight: 600; }
-        /* A tela de login mantém sempre o visual claro, independente do tema do app */
+        .login-panel > * { max-width: 380px; width: 100%; }
+        .login-heading {
+            font-family: 'EB Garamond', Georgia, serif; font-weight: 500;
+            font-size: clamp(2.25rem, 3.2vw, 2.875rem); line-height: 1.05; letter-spacing: -0.02em;
+            color: #0b2e55; margin: 0 0 0.6rem;
+        }
+        .login-panel-subtitle { color: #5a6b82; font-size: 0.9375rem; line-height: 1.5; margin: 0 0 2.25rem; }
+        .login-card .grupo { margin-bottom: 1.15rem; text-align: left; }
+        .login-card label { display: block; font-weight: 600; color: #3d4f66; margin-bottom: 0.45rem; font-size: 0.8125rem; }
         .login-panel .input {
-            background: #fafbfd; color: #132a44; border: 1.5px solid #d5dce6;
+            background: #fff; color: #132a44; border: 1px solid #cfd8e3; border-radius: 10px;
+            padding: 0.8rem 0.9rem; font-size: 0.9375rem;
         }
-        .login-panel .input::placeholder { color: #94a3b8; }
-        .login-panel .input:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(10, 61, 115, 0.15); }
+        .login-panel .input::placeholder { color: #9aa8ba; }
+        .login-panel .input:hover { border-color: #aebdd0; }
+        .login-panel .input:focus { border-color: #0a3d73; box-shadow: 0 0 0 4px rgba(10, 61, 115, 0.12); }
+        .login-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.1rem; }
+        .lembrar-me { display: flex; align-items: center; gap: 0.5rem; color: #5a6b82; font-size: 0.84rem; justify-content: flex-start; }
+        .lembrar-me input { accent-color: #0a3d73; }
+        .login-forgot { cursor: pointer; font-size: 0.84rem; color: #0a3d73; font-weight: 600; }
+        .login-forgot:hover, .login-forgot:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+        .login-acoes { margin-top: 1.75rem; }
+        .login-acoes .btn {
+            width: 100%; padding: 0.875rem 1rem; font-size: 0.9375rem; border-radius: 10px;
+            background: #0b2e55; border-color: #0b2e55; box-shadow: 0 10px 24px -12px rgba(11, 46, 85, 0.7);
+        }
+        .login-acoes .btn:hover { background: #0a3d73; border-color: #0a3d73; }
+        .login-erro { color: var(--danger); font-weight: 600; margin-top: 1rem; min-height: 1.2em; text-align: left; font-size: 0.875rem; }
+        .login-erro.info { color: #0a3d73; }
+        .login-footnote {
+            margin: 2.5rem 0 0; padding-top: 1.25rem; border-top: 1px solid #e6ebf1;
+            font-size: 0.78rem; line-height: 1.5; color: #8394aa;
+        }
+
+        /* Tela larga porém em pé (tablet, ou celular em "site para computador"):
+           lado a lado sobrava um vão azul enorme. Empilha: medalhão em cima,
+           formulário embaixo. */
+        @media (min-width: 801px) and (max-aspect-ratio: 4/5) {
+            .login-overlay { overflow-y: auto; }
+            .login-card { flex-direction: column; height: auto; min-height: 100%; }
+            .login-hero { flex: 1 1 auto; min-height: 58vh; }
+            .login-medal { width: min(100%, 44vh, 620px); }
+            .login-panel { flex: 0 0 auto; align-items: center; padding: 3.5rem 2rem 4rem; }
+            .login-panel > * { max-width: 460px; }
+            .login-quote blockquote { font-size: 1.625rem; }
+        }
+
         .login-mobile-brand { display: none; }
         @media (max-width: 800px) {
             .login-hero { display: none; }
-            .login-panel { flex: 1 1 auto; max-width: none; align-items: center; justify-content: flex-start; padding-top: 3.5rem; }
-            .login-panel > * { width: 100%; max-width: 380px; }
+            .login-panel { flex: 1 1 auto; align-items: center; justify-content: flex-start; padding: 3.5rem 1.5rem 2rem; }
             .login-mobile-brand {
                 display: flex; flex-direction: column; align-items: center;
                 text-align: center; margin-bottom: 2rem;
             }
-            .login-mobile-brand img { width: 88px; margin-bottom: 1rem; }
+            .login-mobile-brand img { width: 84px; margin-bottom: 1rem; }
             .login-mobile-eyebrow {
-                font-size: 0.6875rem; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase;
-                color: var(--brand-500); margin-bottom: 0.25rem;
+                font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+                color: #1c5f9e; margin-bottom: 0.3rem;
             }
-            .login-mobile-title { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.5px; color: var(--brand-600); }
-            .login-panel h2 { text-align: center; }
-            .login-panel-subtitle { text-align: center; }
+            .login-mobile-title { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.3px; color: #0b2e55; }
+            .login-heading, .login-panel-subtitle { text-align: center; }
         }
 
         .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 1.5rem; }
@@ -1588,14 +1638,14 @@
         .jc-vt-theme::view-transition-new(root) { z-index: 2; }
 
         /* ---------- 4. Login ---------- */
-        .jc-motion .login-hero { position: relative; overflow: hidden; }
-        .jc-motion .login-hero::before {
-            content: ""; position: absolute; width: 70vmax; height: 70vmax; right: -25vmax; top: -30vmax;
-            background: radial-gradient(closest-side, rgba(126, 170, 224, 0.22), transparent);
-            animation: jc-glow-drift 18s ease-in-out infinite;
-            pointer-events: none;
-        }
-        .jc-motion .login-hero > * { position: relative; }
+        /* Medalhão: duas tramas girando devagar em sentidos opostos — o
+           desencontro das linhas produz um moiré que "respira". */
+        .jc-motion .login-guil-a { animation: jc-spin 240s linear infinite; }
+        .jc-motion .login-guil-b { animation: jc-spin 170s linear infinite reverse; }
+        /* Na entrada, só as tramas aparecem aos poucos — o brasão não pisca. */
+        .jc-motion:not(.jc-intro-on) .login-guil-a { animation: jc-spin 240s linear infinite, jc-fade 1.6s ease-out 0.15s backwards; }
+        .jc-motion:not(.jc-intro-on) .login-guil-b { animation: jc-spin 170s linear infinite reverse, jc-fade 1.6s ease-out 0.3s backwards; }
+        .jc-motion:not(.jc-intro-on) .login-quote { animation: jc-rise 0.8s var(--jc-ease-out) 0.42s backwards; }
         .jc-motion:not(.jc-intro-on) .login-hero-shield  { animation: jc-pop 0.8s var(--jc-ease-out) 0.05s backwards; }
         .jc-motion:not(.jc-intro-on) .login-hero-eyebrow { animation: jc-rise 0.7s var(--jc-ease-out) 0.18s backwards; }
         .jc-motion:not(.jc-intro-on) .login-hero-title   { animation: jc-rise 0.7s var(--jc-ease-out) 0.26s backwards; }
