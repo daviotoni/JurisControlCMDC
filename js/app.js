@@ -218,6 +218,13 @@ document.addEventListener('DOMContentLoaded', () => {
     else loginOverlay.style.display = 'none';
     appLayout.style.display = 'flex';
     welcomeMsg.textContent = `Bem-vindo, ${sanitizeHTML(user.name)}`;
+    const sidebarUser = $('#sidebarUser');
+    if (sidebarUser) {
+        const nome = String(user.name || '');
+        sidebarUser.innerHTML = `<span class="sidebar-user-avatar">${sanitizeHTML(nome.charAt(0).toUpperCase())}</span>
+            <span class="sidebar-user-text"><span class="sidebar-user-name">${sanitizeHTML(nome)}</span>
+            <span class="sidebar-user-role">${user.role === 'admin' ? 'Administrador' : 'Usuário'}</span></span>`;
+    }
     applyRoleUI(user.role);
     if (sidebar && CFG.sidebarCollapsed) sidebar.classList.add('collapsed');
     renderDashboard();
@@ -1399,18 +1406,18 @@ document.addEventListener('DOMContentLoaded', () => {
           (dados.edicoes || []).forEach(ed => {
               try {
                   const d = aplicarEdicaoIA(ed);
-                  feitos.push(d || `⚠️ Não apliquei (“${ed.secao || ed.acao}”: seção não encontrada ou editor bloqueado)`);
+                  feitos.push(d || `Não apliquei (“${ed.secao || ed.acao}”: seção não encontrada ou editor bloqueado)`);
               } catch (e) {
                   console.warn('Edição da IA falhou:', e);
-                  feitos.push(`⚠️ Falha ao aplicar em “${ed.secao || ed.acao}”`);
+                  feitos.push(`Falha ao aplicar em “${ed.secao || ed.acao}”`);
               }
           });
 
           let html = sanitizeHTML(dados.mensagem || '').replace(/\n/g, '<br>');
-          if (feitos.length) html += `<div class="ia-feitos">${feitos.map(f => `<div>✏️ ${sanitizeHTML(f)}</div>`).join('')}<div class="ia-undo">Ctrl+Z no editor desfaz</div></div>`;
+          if (feitos.length) html += `<div class="ia-feitos">${feitos.map(f => `<div>${sanitizeHTML(f)}</div>`).join('')}<div class="ia-undo">Ctrl+Z no editor desfaz</div></div>`;
           if (dados.fontes && dados.fontes.length) {
               html += `<div class="ia-fontes">${dados.fontes.slice(0, 5).map(f =>
-                  `<div>📚 ${sanitizeHTML([f.tribunal, f.numero || f.titulo, f.data].filter(Boolean).join(' · '))}${f.url ? ` <a href="${sanitizeHTML(f.url)}" target="_blank" rel="noopener">abrir ↗</a>` : ''}</div>`).join('')}</div>`;
+                  `<div>${sanitizeHTML([f.tribunal, f.numero || f.titulo, f.data].filter(Boolean).join(' · '))}${f.url ? ` <a href="${sanitizeHTML(f.url)}" target="_blank" rel="noopener">abrir ↗</a>` : ''}</div>`).join('')}</div>`;
           }
           aguarde.querySelector('div').innerHTML = html || 'Feito.';
       } catch (e) {
@@ -3624,7 +3631,7 @@ ${corpo}
           const doc = await dbHelper.get('segredos', 'jurisai');
           const token = doc && doc.token ? String(doc.token) : '';
           statusEl.textContent = token
-              ? `✅ Token configurado (termina em …${token.slice(-4)}). Cole um novo para substituir.`
+              ? `Token configurado (termina em …${token.slice(-4)}). Cole um novo para substituir.`
               : 'Nenhum token configurado ainda — a busca pelo Jurisprudências.ai fica indisponível até colar um.';
       } catch (e) {
           console.warn('Sem acesso ao token do Jurisprudências.ai:', e);
@@ -3663,7 +3670,7 @@ ${corpo}
           const doc = await dbHelper.get('segredos', 'gemini');
           const chave = doc && doc.token ? String(doc.token) : '';
           statusEl.textContent = chave
-              ? `✅ Chave configurada (termina em …${chave.slice(-4)}). Cole uma nova para substituir.`
+              ? `Chave configurada (termina em …${chave.slice(-4)}). Cole uma nova para substituir.`
               : 'Nenhuma chave configurada ainda — o Assistente IA fica indisponível até colar uma.';
       } catch (e) {
           console.warn('Sem acesso à chave do Gemini:', e);
@@ -3912,7 +3919,10 @@ ${corpo}
   const colorPalette = ['#0a3d73', '#b25e09', '#2f855a', '#b42323', '#7c3aad', '#8194ab', '#1c5f9e', '#c2a14d', '#0e4a89', '#245f43'];
   const mesesMap = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const sMapKeys = Object.keys(statusMap);
+   // Visual novo: gráficos quase monocromáticos — cor só no que pede atenção.
+   const statusColorMapV3 = {'pendente': '#b3452f', 'em-analise': '#b7802f', 'aguardando-documentacao': '#44566c', 'em-diligencia': '#7d6b91', 'finalizado': '#5b7a63', 'arquivado': '#c9c4ba'};
    function getChartConfigs(data) {
+    const uiV3 = document.documentElement.classList.contains('ui-v3');
     const isDark = document.body.dataset.theme === 'dark', gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', textColor = isDark ? '#eef2f8' : '#132a44', cardColor = getComputedStyle(document.body).getPropertyValue('--card-bg').trim();
     Chart.defaults.color = textColor; Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
     const labels = mesesMap, dadosAdm = Array(12).fill(0), dadosJud = Array(12).fill(0);
@@ -3925,8 +3935,8 @@ ${corpo}
         data: { 
             labels, 
             datasets: [
-                { label: 'Administrativo', data: dadosAdm, backgroundColor: colorPalette[0] },
-                { label: 'Judicial', data: dadosJud, backgroundColor: colorPalette[1] }
+                { label: 'Administrativo', data: dadosAdm, backgroundColor: uiV3 ? (isDark ? '#d9d6d0' : '#1f2933') : colorPalette[0], borderRadius: uiV3 ? 3 : 0 },
+                { label: 'Judicial', data: dadosJud, backgroundColor: uiV3 ? (isDark ? '#6b6f76' : '#bdb7ab') : colorPalette[1], borderRadius: uiV3 ? 3 : 0 }
             ] 
         }, 
         options: { 
@@ -3945,7 +3955,7 @@ ${corpo}
     };
     // ===== FIM DA ALTERAÇÃO =====
 
-    const statusConfig = { type: 'doughnut', data: { labels: Object.values(statusMap), datasets: [{ data: sMapKeys.map(k=>sCounts[k]||0), backgroundColor: sMapKeys.map(key => statusColorMap[key]), borderWidth: 2, borderColor: cardColor }] }, options: { responsive: true, maintainAspectRatio: false, onClick: (e, els) => { if (els.length > 0) { const statusKey = sMapKeys[els[0].index]; showTab('proc', { filterBy: { status: statusKey } }) } } }};
+    const statusConfig = { type: 'doughnut', data: { labels: Object.values(statusMap), datasets: [{ data: sMapKeys.map(k=>sCounts[k]||0), backgroundColor: sMapKeys.map(key => (uiV3 ? statusColorMapV3 : statusColorMap)[key]), borderWidth: 2, borderColor: cardColor }] }, options: { responsive: true, maintainAspectRatio: false, onClick: (e, els) => { if (els.length > 0) { const statusKey = sMapKeys[els[0].index]; showTab('proc', { filterBy: { status: statusKey } }) } } }};
     
     // Nota: propositalmente NÃO usa getParecerInfo aqui. O accessor é "por processo vivo"
     // (prioriza estruturado > legado > nenhum), mas esta contagem histórica é "por registro" —
@@ -3966,7 +3976,7 @@ ${corpo}
             if (!isNaN(emitidoDate)) pareceresPorMes[emitidoDate.getUTCMonth()]++;
         }
     });
-    const pareceresMesConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Nº de Pareceres', data: pareceresPorMes, backgroundColor: '#1c5f9e' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: {} } } };
+    const pareceresMesConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Nº de Pareceres', data: pareceresPorMes, backgroundColor: uiV3 ? (isDark ? '#d9d6d0' : '#1f2933') : '#1c5f9e', borderRadius: uiV3 ? 3 : 0 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: {} } } };
     return { entradasConfig, statusConfig, pareceresMesConfig };
   }
   function renderCharts(chartConfigs) {
@@ -4022,7 +4032,7 @@ ${corpo}
       }
       const overdueHtml = vencidos > 0
           ? `<button type="button" class="radar-day radar-overdue" data-goto-vencidos="1" title="${vencidos} processo(s) vencido(s) — clique para ver">
-              <span class="radar-warn">⚠</span>
+              <span class="radar-warn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
               <span class="radar-num">${vencidos}</span>
               <span class="radar-count">vencido${vencidos > 1 ? 's' : ''}</span>
           </button>` : '';
@@ -4084,7 +4094,27 @@ ${corpo}
           if (filter === 'alerta' || filter === 'vencido') { filterBy.prazo = filter; } else { filterBy.status = filter; }
           showTab('proc', { filterBy });
       };
+      renderSaudacao(kpiData);
       const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderRadarPrazos(); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
+  }
+
+  // Resumo do dia no topo do Dashboard (exibido no visual novo).
+  function renderSaudacao(kpiData) {
+      const el = $('#dashHello'); if (!el) return;
+      let nome = '';
+      try { nome = (JSON.parse(sessionStorage.getItem('loggedInUser')) || {}).name || ''; } catch { nome = ''; }
+      nome = nome.split(/[\s.@_]/)[0];
+      nome = nome ? nome.charAt(0).toUpperCase() + nome.slice(1) : '';
+      const hora = new Date().getHours();
+      const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+      let data = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+      data = data.charAt(0).toUpperCase() + data.slice(1);
+      const partes = [];
+      if (kpiData.venc) partes.push(`<span class="is-danger">${kpiData.venc} ${kpiData.venc === 1 ? 'processo vencido' : 'processos vencidos'}</span>`);
+      if (kpiData.alert) partes.push(`<span class="is-warning">${kpiData.alert} ${kpiData.alert === 1 ? 'vencendo' : 'vencendo'} em até 5 dias</span>`);
+      const resumo = partes.length ? partes.join(' e ') + '.' : 'nenhum prazo vencido ou vencendo nos próximos 5 dias.';
+      el.innerHTML = `<img class="dash-hello-mark" src="img/brasao-shield.png" alt="">
+          <p><strong>${saudacao}${nome ? ', ' + sanitizeHTML(nome) : ''}.</strong> ${sanitizeHTML(data)}: ${resumo}</p>`;
   }
 
   async function renderUltimasAtividades() {

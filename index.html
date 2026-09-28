@@ -31,8 +31,13 @@
                 }
             }
         } catch (e) { /* sem animação */ }
+        // Visual novo (ui-v3) é o padrão; o clássico fica disponível por
+        // navegador em Configurações → Aparência.
+        try {
+            if (localStorage.getItem('jc-ui') !== 'classico') document.documentElement.classList.add('ui-v3');
+        } catch (e) { document.documentElement.classList.add('ui-v3'); }
     </script>
-        <link rel="stylesheet" href="style.css?v=c1e004d007">
+        <link rel="stylesheet" href="style.css?v=2e1b7f85b0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -151,12 +156,15 @@
                     <li><a href="#" class="tab active" data-tab="dashboard" data-tooltip="Dashboard" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg><span class="nav-label">Dashboard</span></a></li>
                     <li><a href="#" class="tab" data-tab="proc" data-tooltip="Processos"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><span class="nav-label">Processos</span></a></li>
                     <li><a href="#" class="tab" data-tab="cal" data-tooltip="Calendário"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="nav-label">Calendário</span></a></li>
+                    <li class="nav-group" aria-hidden="true">Acervo</li>
                     <li><a href="#" class="tab" data-tab="docs" data-tooltip="Documentos"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="nav-label">Documentos</span></a></li>
                     <li><a href="#" class="tab" data-tab="leis" data-tooltip="Banco de Leis"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="nav-label">Leis</span></a></li>
                     <li><a href="#" class="tab" data-tab="juris" data-tooltip="Jurisprudência"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M4 7h16M7 7l-3 6a3 3 0 0 0 6 0zM17 7l-3 6a3 3 0 0 0 6 0z"/><path d="M7 21h10"/></svg><span class="nav-label">Jurisprudência</span></a></li>
+                    <li class="nav-group" aria-hidden="true">Sistema</li>
                     <li><a href="#" class="tab" data-tab="cfg" data-tooltip="Configurações"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8L7 17M17 7l2.8-2.8"/></svg><span class="nav-label">Configurações</span></a></li>
                 </ul>
             </nav>
+            <div id="sidebarUser" class="sidebar-user"></div>
         </aside>
 
         <div class="app-body">
@@ -213,6 +221,7 @@
         <div class="main-content">
             <main>
                 <section id="secDashboard" style="display:block;">
+                    <div id="dashHello" class="dash-hello" aria-live="polite"></div>
                     <div class="dash-grid">
                         <div id="dashboard-kpis" class="dash-kpis"></div>
                         <div class="card dash-radar-card" style="grid-column: 1 / -1;">
@@ -401,10 +410,10 @@
                 </section>
                 <section id="secJuris" style="display:none;">
                   <h2>Jurisprudência</h2>
-                  <p class="cfg-note">Pesquise decisões e legislação sem sair do sistema. Os mesmos resultados também podem ser inseridos direto na redação de um parecer, pelo botão “⚖ Jurisprudência” dentro do editor.</p>
+                  <p class="cfg-note">Pesquise decisões e legislação sem sair do sistema. Os mesmos resultados também podem ser inseridos direto na redação de um parecer, pelo botão “Jurisprudência” dentro do editor.</p>
                   <div class="juris-busca-site juris-aba-busca">
                     <input id="jr_tema_aba" class="input" placeholder="Ex.: dispensa de licitação câmara municipal">
-                    <button type="button" class="btn primary" id="btnBuscarJurisAba">🔍 Buscar por tema</button>
+                    <button type="button" class="btn primary" id="btnBuscarJurisAba">Buscar por tema</button>
                   </div>
                   <div class="juris-portais">
                     <span class="juris-portais-label">Ou pesquisar nos portais oficiais:</span>
@@ -438,9 +447,9 @@
                 <section id="secCal" style="display:none">
                   <div class="cal-header">
                     <button id="c_today" class="btn secondary">Hoje</button>
-                    <button id="c_prev" class="btn secondary">◀</button>
+                    <button id="c_prev" class="btn secondary" aria-label="Mês anterior" title="Anterior"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
                     <div id="c_title" class="cal-title">Mês Ano</div>
-                    <button id="c_next" class="btn secondary">▶</button>
+                    <button id="c_next" class="btn secondary" aria-label="Próximo mês" title="Próximo"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
                     <div class="view-toggle-group cal-view-toggle">
                         <button id="c_view_month" class="btn secondary active" data-cal-view="month" title="Visualização Mensal">Mês</button>
                         <button id="c_view_week" class="btn secondary" data-cal-view="week" title="Visualização Semanal">Semana</button>
@@ -484,6 +493,11 @@
                         </label>
                         <p class="cfg-note" style="margin-top:0.5rem;">Transições ao trocar de aba, ao abrir janelas e ao mudar o tema. Vale só para este navegador.</p>
                         <p id="cfgAnimacoesNota" class="cfg-note"></p>
+                        <label class="cfg-switch" for="cfgVisualClassico" style="margin-top:1rem;">
+                            <input type="checkbox" id="cfgVisualClassico">
+                            Usar o visual clássico
+                        </label>
+                        <p class="cfg-note" style="margin-top:0.5rem;">Volta ao acabamento anterior das páginas internas (barra azul e cartões). Vale só para este navegador.</p>
                     </div>
                      <div class="card">
                         <h3>Gerenciamento de Emissores</h3>
@@ -501,7 +515,7 @@
                     </div>
                     <div class="card admin-only">
                         <h3>Integração Jurisprudências.ai</h3>
-                        <p class="cfg-note">Cole o token de API (<code>jur_...</code>) da conta do Jurisprudências.ai. Ele fica guardado no banco (visível só para administradores) e alimenta a busca integrada do painel ⚖ Jurisprudência.</p>
+                        <p class="cfg-note">Cole o token de API (<code>jur_...</code>) da conta do Jurisprudências.ai. Ele fica guardado no banco (visível só para administradores) e alimenta a busca integrada do painel Jurisprudência.</p>
                         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                             <input id="jurisaiToken" type="password" class="input" placeholder="jur_..." autocomplete="off" style="flex:1; min-width:200px;">
                             <button id="btnSalvarJurisaiToken" class="btn primary">Salvar token</button>
@@ -510,8 +524,8 @@
                     </div>
                     <div class="card admin-only">
                         <h3>Assistente de IA (Gemini)</h3>
-                        <p class="cfg-note">Cole a chave da API do Gemini (<code>AQ....</code> ou <code>AIza...</code>). Crie uma <strong>gratuita</strong> em <code>aistudio.google.com/apikey</code>, escolhendo um <strong>projeto sem cobrança</strong> (para não gerar custo). Ela fica guardada no banco (visível só para administradores) e habilita o botão <strong>✨ Assistente IA</strong> no editor de parecer.</p>
-                        <p class="cfg-note" style="border-left:4px solid var(--warning); background:var(--warning-bg); padding:0.5rem 0.75rem; border-radius:6px;"><strong>⚠️ Modo gratuito:</strong> o Google pode usar o conteúdo enviado para treinar seus modelos. <strong>Não envie dados sigilosos ou pessoais de processos</strong> (nomes, CPF, endereços). Use para temas, redação e revisão de texto.</p>
+                        <p class="cfg-note">Cole a chave da API do Gemini (<code>AQ....</code> ou <code>AIza...</code>). Crie uma <strong>gratuita</strong> em <code>aistudio.google.com/apikey</code>, escolhendo um <strong>projeto sem cobrança</strong> (para não gerar custo). Ela fica guardada no banco (visível só para administradores) e habilita o botão <strong>Assistente IA</strong> no editor de parecer.</p>
+                        <p class="cfg-note" style="border-left:4px solid var(--warning); background:var(--warning-bg); padding:0.5rem 0.75rem; border-radius:6px;"><strong>Modo gratuito:</strong> o Google pode usar o conteúdo enviado para treinar seus modelos. <strong>Não envie dados sigilosos ou pessoais de processos</strong> (nomes, CPF, endereços). Use para temas, redação e revisão de texto.</p>
                         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                             <input id="geminiToken" type="password" class="input" placeholder="AQ.... ou AIza..." autocomplete="off" style="flex:1; min-width:200px;">
                             <button id="btnSalvarGeminiToken" class="btn primary">Salvar chave</button>
@@ -688,10 +702,10 @@
             </div>
             <aside id="iaPanel" class="ia-panel" style="display:none;">
                 <div class="ia-panel-header">
-                    <span>✨ Assistente IA</span>
+                    <span>Assistente IA</span>
                     <button type="button" class="icon-btn" id="btnFecharIaPanel" title="Fechar painel" aria-label="Fechar painel">✕</button>
                 </div>
-                <div class="ia-aviso ia-aviso-panel">⚠️ O texto do parecer é enviado ao Gemini (modo gratuito — o Google pode usar o conteúdo para treinar). <strong>Evite dados sigilosos/pessoais.</strong> As alterações da IA podem ser desfeitas com Ctrl+Z.</div>
+                <div class="ia-aviso ia-aviso-panel">O texto do parecer é enviado ao Gemini (modo gratuito — o Google pode usar o conteúdo para treinar). <strong>Evite dados sigilosos/pessoais.</strong> As alterações da IA podem ser desfeitas com Ctrl+Z.</div>
                 <div id="iaChat" class="ia-chat"></div>
                 <div class="ia-chips">
                     <button type="button" class="btn secondary" data-ia-chip="Redija a seção II. DA ANÁLISE JURÍDICA com os fundamentos aplicáveis ao caso.">Redigir análise</button>
@@ -701,14 +715,14 @@
                 </div>
                 <div class="ia-input-row">
                     <textarea id="ia_prompt" rows="2" placeholder="Peça algo… (ex.: complete a conclusão opinando pela viabilidade)"></textarea>
-                    <button type="button" class="btn primary" id="btnGerarIA" title="Enviar">➤</button>
+                    <button type="button" class="btn primary" id="btnGerarIA" title="Enviar" aria-label="Enviar"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
                 </div>
             </aside>
             </div>
             <div class="dialog-footer">
                 <div style="margin-right:auto; display:flex; gap:0.5rem; flex-wrap:wrap;">
-                    <button type="button" class="btn secondary" id="btnJurisprudencia">⚖ Jurisprudência</button>
-                    <button type="button" class="btn secondary" id="btnAssistenteIA">✨ Assistente IA</button>
+                    <button type="button" class="btn secondary" id="btnJurisprudencia">Jurisprudência</button>
+                    <button type="button" class="btn secondary" id="btnAssistenteIA">Assistente IA</button>
                     <button type="button" class="btn danger" id="btnDevolverRevisao" style="display:none;">Devolver para ajustes</button>
                     <button type="button" class="btn danger" id="btnReabrirParecer" style="display:none;">Reabrir para edição</button>
                 </div>
@@ -724,14 +738,14 @@
     </div>
     <div id="m_juris" class="modal">
         <div class="dialog" style="max-width: 640px;">
-            <div class="dialog-header"><h3>⚖ Pesquisa de Jurisprudência</h3></div>
+            <div class="dialog-header"><h3>Pesquisa de Jurisprudência</h3></div>
             <div class="dialog-body">
                 <div class="form-group">
                     <label for="jr_tema">Tema da pesquisa</label>
                     <input id="jr_tema" class="input" placeholder="Ex.: dispensa de licitação câmara municipal">
                 </div>
                 <div class="juris-busca-site">
-                    <button type="button" class="btn primary" id="btnBuscarJurisSite">🔍 Buscar por tema</button>
+                    <button type="button" class="btn primary" id="btnBuscarJurisSite">Buscar por tema</button>
                 </div>
                 <div id="jurisResultados" class="juris-resultados"></div>
                 <div class="juris-portais">
@@ -822,8 +836,8 @@
     <script src="js/utils.js?v=7d58b23e0d"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
     <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
-    <script src="js/motion.js?v=14445868f7"></script>
-    <script src="js/app.js?v=ed382d4fc3"></script>
+    <script src="js/motion.js?v=0559776488"></script>
+    <script src="js/app.js?v=45b6bc0495"></script>
 
 </body>
 </html>
