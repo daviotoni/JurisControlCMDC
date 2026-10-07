@@ -3775,7 +3775,7 @@ ${corpo}
   $('#c_prev').onclick=()=>shift(-1); $('#c_next').onclick=()=>shift(1); $('#c_today').onclick=()=>{CUR=new Date();drawView();}; 
   $('#new_evt').onclick=()=>openEvt({id:null,data:ymd(CUR),hora:'',desc:'',cat:'g'}); $$('.side input').forEach(el => el.onchange = drawView);
 
-  function getEventList(){ const F={g:$('#f_g').checked,a:$('#f_a').checked,e:$('#f_e').checked,o:$('#f_o').checked,r:$('#f_r').checked,p:$('#f_p').checked,u:$('#f_u').checked}; let list=CAL.filter(e=>F[e.cat]); if($('#f_sync').checked){DB.forEach(pr=>{if(pr.prazo&&pr.stat!=='finalizado'&&pr.stat!=='arquivado'&&F.p)list.push({id:`pr-${pr.id}`,data:pr.prazo,hora:'',desc:`Prazo: ${pr.num}`,cat:'p',readonly:true});});} return list; }
+  function getEventList(){ const F={g:$('#f_g').checked,a:$('#f_a').checked,e:$('#f_e').checked,o:$('#f_o').checked,r:$('#f_r').checked,p:$('#f_p').checked,u:$('#f_u').checked}; let list=CAL.filter(e=>F[e.cat]); if($('#f_sync').checked){DB.forEach(pr=>{if(pr.prazo&&pr.stat!=='finalizado'&&pr.stat!=='arquivado'&&F.p)list.push({id:`pr-${pr.id}`,data:pr.prazo,hora:'',desc:`Prazo: ${pr.num}`,curto:pr.num,cat:'p',readonly:true});});} return list; }
   function shift(delta){
       if(VIEW==='month') CUR.setMonth(CUR.getMonth()+delta);
       else if(VIEW==='week') CUR.setDate(CUR.getDate()+7*delta);
@@ -3889,7 +3889,7 @@ ${corpo}
         const ds=ymd(p);const evts=list.filter(e=>e.data===ds); const initialsMap = { g: 'G', a: 'A', r: 'R', p: 'TP', u: 'U', e: 'E', o: 'OAB' };
         const dotsContainer = document.createElement('div'); dotsContainer.className = 'event-dots-container';
         evts.forEach(evt => {
-            const dot = document.createElement('div'); dot.className = `event-dot ${safeCSSClass(evt.cat, VALID_CAT)}`; dot.textContent = initialsMap[evt.cat] || '?'; dot.title = sanitizeHTML(evt.desc);
+            const dot = document.createElement('div'); dot.className = `event-dot ${safeCSSClass(evt.cat, VALID_CAT)}`; dot.textContent = initialsMap[evt.cat] || '?'; dot.title = sanitizeHTML(evt.desc); dot.dataset.label = evt.curto || evt.desc || '';
             dot.onclick = () => openEventOrProc(evt);
             dotsContainer.appendChild(dot);
         });
@@ -4142,7 +4142,7 @@ ${corpo}
           { filter: 'vencido',   label: 'Vencidos',            value: kpiData.venc,   color: '#b42323', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>` },
       ];
       kpiContainer.innerHTML = kpiItems.map(item => `
-          <button type="button" class="kpi" data-kpi-filter="${item.filter}" style="border-left-color:${item.color};">
+          <button type="button" class="kpi" data-kpi-filter="${item.filter}">
               <span class="kpi-header">
                   <span class="kpi-label">${item.label}</span>
                   <span class="kpi-icon" style="color:${item.color};">${item.icon}</span>
