@@ -89,6 +89,7 @@ module.exports = [
         base64ToArrayBuffer: 'readonly',
         getMimeType: 'readonly',
         filtrarOrdenarProcessos: 'readonly',
+        ultimosMeses: 'readonly',
         normalizeParecerParaLista: 'readonly',
         combinarPareceres: 'readonly',
         versoesDoDocumento: 'readonly',

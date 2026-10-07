@@ -71,7 +71,7 @@ function getMimeType(filename) {
 // vem por `criterios`, incluindo o mapa de rótulos de status usado na busca.
 //
 // criterios = {
-//   busca, initialFilter:{status,prazo:'alerta'|'vencido',month}, status, setor,
+//   busca, initialFilter:{status,prazo:'alerta'|'vencido',month,year}, status, setor,
 //   tipo, emissor, entradaDe, entradaAte, ordem:'prazo'|'status'|<entrada>, statusMap
 // }
 function filtrarOrdenarProcessos(lista, criterios = {}) {
@@ -86,6 +86,7 @@ function filtrarOrdenarProcessos(lista, criterios = {}) {
   if (initialFilter?.prazo === 'alerta') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) <= 5 && diffDays(todayUTC(), parse(p.prazo)) >= 0);
   if (initialFilter?.prazo === 'vencido') L = L.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(todayUTC(), parse(p.prazo)) < 0);
   if (initialFilter?.month !== undefined && initialFilter?.month !== null) L = L.filter(p => p.ent && parse(p.ent).getUTCMonth() === initialFilter.month);
+  if (initialFilter?.year !== undefined && initialFilter?.year !== null) L = L.filter(p => p.ent && parse(p.ent).getUTCFullYear() === initialFilter.year);
   if (status) L = L.filter(p => p.stat === status);
   if (setor) L = L.filter(p => p.setorOrigem === setor || p.dest === setor);
   if (tipo) L = L.filter(p => p.tipo === tipo);
@@ -283,12 +284,26 @@ function filtrarOrdenarResultadosJuris(lista, opcoes = {}) {
   return out;
 }
 
+// ----- Janela dos últimos 12 meses (gráficos do Dashboard) -----
+// Devolve os `n` meses que terminam no mês de `hoje` (o mais antigo primeiro),
+// cada um com { ano, mes (0-based), chave 'YYYY-MM' }. Os gráficos agrupam por
+// essa chave para não somar o janeiro de um ano com o de outro.
+function ultimosMeses(hoje, n = 12) {
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - i, 1));
+    const ano = d.getUTCFullYear(), mes = d.getUTCMonth();
+    out.push({ ano, mes, chave: `${ano}-${String(mes + 1).padStart(2, '0')}` });
+  }
+  return out;
+}
+
 // Exporta para ambientes de teste (Node/Vitest). No navegador `module` não
 // existe, então este bloco é ignorado e NÃO afeta o carregamento via <script>.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
-    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos,
+    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, ultimosMeses,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
     normalizarConsultaJuris, expandirConsultaJuris, filtrarOrdenarResultadosJuris,
     VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,

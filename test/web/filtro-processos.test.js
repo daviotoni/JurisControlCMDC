@@ -119,6 +119,24 @@ describe('initialFilter (atalhos do dashboard)', () => {
     // month é 0-based; 2 = março.
     expect(nums(filtrarOrdenarProcessos(db, { initialFilter: { month: 2 } }))).toEqual(['MAR']);
   });
+
+  it('month + year separa o mesmo mês de anos diferentes', () => {
+    const db = [
+      proc({ num: 'MAR24', ent: '2024-03-05' }),
+      proc({ num: 'MAR25', ent: '2025-03-18' }),
+    ];
+    expect(nums(filtrarOrdenarProcessos(db, { initialFilter: { month: 2, year: 2025 } }))).toEqual(['MAR25']);
+  });
+});
+
+describe('ultimosMeses', () => {
+  it('termina no mês corrente e atravessa a virada do ano', () => {
+    const meses = utils.ultimosMeses(new Date(Date.UTC(2026, 1, 15)), 12);
+    expect(meses).toHaveLength(12);
+    expect(meses[0]).toEqual({ ano: 2025, mes: 2, chave: '2025-03' });
+    expect(meses[10]).toEqual({ ano: 2026, mes: 0, chave: '2026-01' });
+    expect(meses[11]).toEqual({ ano: 2026, mes: 1, chave: '2026-02' });
+  });
 });
 
 describe('ordenação', () => {
