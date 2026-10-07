@@ -37,11 +37,11 @@
             if (localStorage.getItem('jc-ui') !== 'classico') document.documentElement.classList.add('ui-v3');
         } catch (e) { document.documentElement.classList.add('ui-v3'); }
     </script>
-        <link rel="stylesheet" href="style.css?v=2e1b7f85b0">
+        <link rel="stylesheet" href="style.css?v=f168463ae9">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
@@ -224,7 +224,7 @@
                     <div id="dashHello" class="dash-hello" aria-live="polite"></div>
                     <div class="dash-grid">
                         <div id="dashboard-kpis" class="dash-kpis"></div>
-                        <div class="card dash-radar-card" style="grid-column: 1 / -1;">
+                        <div class="card dash-radar-card">
                             <div class="radar-head">
                                 <h3 style="margin:0">Radar de Prazos — Próximos 7 dias</h3>
                                 <div class="radar-legend">
@@ -236,23 +236,32 @@
                             </div>
                             <div id="dashboard-radar" class="radar-week"></div>
                         </div>
-                        <div class="dash-left-col">
-                            <div class="card">
+                        <div class="dash-row">
+                            <div class="card dash-list-card">
+                                <h3>Próximos Prazos (15 dias)</h3>
+                                <ul class="prazos-list" id="dashboard-prazos"></ul>
+                            </div>
+                            <div class="card dash-list-card">
+                                <h3>Alertas Inteligentes</h3>
+                                <ul class="alert-list" id="dashboard-alertas"></ul>
+                            </div>
+                        </div>
+                        <div class="dash-row dash-row-wide">
+                            <div class="card dash-chart-card">
                                 <h3>Entradas por Mês</h3>
                                 <div class="chart-container"><canvas id="chartEntradasDashboard"></canvas></div>
                             </div>
-                            <div class="card">
+                            <div class="card dash-status-card">
                                 <h3>Distribuição por Status</h3>
                                 <div class="chart-container" style="height: 250px;"><canvas id="chartStatusDashboard"></canvas></div>
+                                <div id="dashboard-status" class="status-breakdown"></div>
                             </div>
-                             <div class="card" style="grid-column: 1 / -1;">
+                        </div>
+                        <div class="dash-row dash-row-wide">
+                            <div class="card dash-chart-card">
                                 <h3>Pareceres Emitidos por Mês</h3>
                                 <div class="chart-container" style="height: 250px;"><canvas id="chartPareceresMes"></canvas></div>
                             </div>
-                        </div>
-                        <div class="dash-right-col">
-                            <div class="card"><h3>Próximos Prazos (15 dias)</h3><ul class="prazos-list" id="dashboard-prazos"></ul></div>
-                            <div class="card"><h3>Alertas Inteligentes</h3><ul class="alert-list" id="dashboard-alertas"></ul></div>
                             <div class="card"><h3>Últimas Atividades</h3><div id="dashboard-atividades" class="atividades-list"></div></div>
                         </div>
                     </div>
@@ -833,11 +842,11 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/utils.js?v=7d58b23e0d"></script>
+    <script src="js/utils.js?v=ebf2ff753d"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
     <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
     <script src="js/motion.js?v=0559776488"></script>
-    <script src="js/app.js?v=45b6bc0495"></script>
+    <script src="js/app.js?v=900847945d"></script>
 
 </body>
 </html>

@@ -3923,40 +3923,50 @@ ${corpo}
    const statusColorMapV3 = {'pendente': '#b3452f', 'em-analise': '#b7802f', 'aguardando-documentacao': '#44566c', 'em-diligencia': '#7d6b91', 'finalizado': '#5b7a63', 'arquivado': '#c9c4ba'};
    function getChartConfigs(data) {
     const uiV3 = document.documentElement.classList.contains('ui-v3');
-    const isDark = document.body.dataset.theme === 'dark', gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', textColor = isDark ? '#eef2f8' : '#132a44', cardColor = getComputedStyle(document.body).getPropertyValue('--card-bg').trim();
+    const isDark = document.body.dataset.theme === 'dark', cardColor = getComputedStyle(document.body).getPropertyValue('--card-bg').trim();
+    const cssVar = (nome, padrao) => getComputedStyle(document.body).getPropertyValue(nome).trim() || padrao;
+    // No visual novo os eixos usam o cinza de texto da paleta tinta, não o azul do clássico.
+    const textColor = uiV3 ? cssVar('--t-muted', isDark ? '#9a9ca0' : '#6c7178') : (isDark ? '#eef2f8' : '#132a44');
+    const gridColor = uiV3 ? cssVar('--t-line', isDark ? 'rgba(255, 255, 255, 0.08)' : '#e8e5df') : (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)');
     Chart.defaults.color = textColor; Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
-    const labels = mesesMap, dadosAdm = Array(12).fill(0), dadosJud = Array(12).fill(0);
-    data.forEach(p => { if(p.ent){ const m = parse(p.ent).getUTCMonth(); if(p.tipo==='administrativo')dadosAdm[m]++; else dadosJud[m]++; }});
+
+    // Janela dos últimos 12 meses (termina no mês corrente). Antes os gráficos
+    // agrupavam só pelo mês, somando o janeiro de um ano com o de outro.
+    const meses = ultimosMeses(todayUTC(), 12);
+    const idxMes = new Map(meses.map((m, i) => [m.chave, i]));
+    const chaveDe = (d) => d && !isNaN(d) ? `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}` : '';
+    // O ano aparece embaixo do primeiro mês e de cada janeiro.
+    const labels = meses.map((m, i) => (i === 0 || m.mes === 0) ? [mesesMap[m.mes], String(m.ano)] : mesesMap[m.mes]);
+    const dadosAdm = Array(12).fill(0), dadosJud = Array(12).fill(0);
+    data.forEach(p => { if (p.ent) { const i = idxMes.get(chaveDe(parse(p.ent))); if (i === undefined) return; if (p.tipo === 'administrativo') dadosAdm[i]++; else dadosJud[i]++; } });
     const sCounts={}; data.forEach(p=>sCounts[p.stat]=(sCounts[p.stat]||0)+1);
-    
-    // ===== GRÁFICO DE ENTRADAS ALTERADO PARA BARRAS =====
-    const entradasConfig = { 
-        type: 'bar', 
-        data: { 
-            labels, 
+
+    const eixoX = { grid: { display: false }, border: { display: false }, ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 8 } };
+    const eixoY = { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridColor }, border: { display: false } };
+    const legenda = uiV3
+        ? { position: 'top', align: 'end', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 7, boxHeight: 7, padding: 14 } }
+        : {};
+    const barra = uiV3 ? { borderRadius: 3, maxBarThickness: 22 } : { borderRadius: 0 };
+
+    const entradasConfig = {
+        type: 'bar',
+        data: {
+            labels,
             datasets: [
-                { label: 'Administrativo', data: dadosAdm, backgroundColor: uiV3 ? (isDark ? '#d9d6d0' : '#1f2933') : colorPalette[0], borderRadius: uiV3 ? 3 : 0 },
-                { label: 'Judicial', data: dadosJud, backgroundColor: uiV3 ? (isDark ? '#6b6f76' : '#bdb7ab') : colorPalette[1], borderRadius: uiV3 ? 3 : 0 }
-            ] 
-        }, 
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            scales: { 
-                y: { 
-                    beginAtZero: true,
-                    ticks: { precision: 0 },
-                    grid: { color: gridColor, drawBorder: false } 
-                }, 
-                x: { grid: { display: false } } 
-            }, 
-            onClick: (e, els) => { if(els.length > 0) showTab('proc', { filterBy: { month: els[0].index } }) } 
+                { label: 'Administrativo', data: dadosAdm, backgroundColor: uiV3 ? (isDark ? '#d9d6d0' : '#1f2933') : colorPalette[0], ...barra },
+                { label: 'Judicial', data: dadosJud, backgroundColor: uiV3 ? (isDark ? '#6b6f76' : '#bdb7ab') : colorPalette[1], ...barra }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: legenda },
+            scales: { y: eixoY, x: eixoX },
+            onClick: (e, els) => { if (els.length > 0) { const m = meses[els[0].index]; showTab('proc', { filterBy: { month: m.mes, year: m.ano } }); } }
         }
     };
-    // ===== FIM DA ALTERAÇÃO =====
 
-    const statusConfig = { type: 'doughnut', data: { labels: Object.values(statusMap), datasets: [{ data: sMapKeys.map(k=>sCounts[k]||0), backgroundColor: sMapKeys.map(key => (uiV3 ? statusColorMapV3 : statusColorMap)[key]), borderWidth: 2, borderColor: cardColor }] }, options: { responsive: true, maintainAspectRatio: false, onClick: (e, els) => { if (els.length > 0) { const statusKey = sMapKeys[els[0].index]; showTab('proc', { filterBy: { status: statusKey } }) } } }};
-    
+    const statusConfig = { type: 'doughnut', data: { labels: Object.values(statusMap), datasets: [{ data: sMapKeys.map(k=>sCounts[k]||0), backgroundColor: sMapKeys.map(key => statusColorMap[key]), borderWidth: 2, borderColor: cardColor }] }, options: { responsive: true, maintainAspectRatio: false, onClick: (e, els) => { if (els.length > 0) { const statusKey = sMapKeys[els[0].index]; showTab('proc', { filterBy: { status: statusKey } }) } } }};
     // Nota: propositalmente NÃO usa getParecerInfo aqui. O accessor é "por processo vivo"
     // (prioriza estruturado > legado > nenhum), mas esta contagem histórica é "por registro" —
     // cada coleção (processos legado, pareceres estruturados) é somada de forma independente,
@@ -3964,28 +3974,41 @@ ${corpo}
     // excluído (órfãos em DB_PARECERES continuam contando) e evita um scan O(N×M) via getParecerInfo
     // dentro de um loop sobre DB inteiro.
     const pareceresPorMes = Array(12).fill(0);
-    DB.forEach(p => {
-        if (p.docId && p.saida) {
-            const saidaDate = parse(p.saida);
-            if (saidaDate) pareceresPorMes[saidaDate.getUTCMonth()]++;
-        }
-    });
-    DB_PARECERES.forEach(pz => {
-        if (pz.status === 'emitido' && pz.emitidoEm) {
-            const emitidoDate = new Date(pz.emitidoEm);
-            if (!isNaN(emitidoDate)) pareceresPorMes[emitidoDate.getUTCMonth()]++;
-        }
-    });
-    const pareceresMesConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Nº de Pareceres', data: pareceresPorMes, backgroundColor: uiV3 ? (isDark ? '#d9d6d0' : '#1f2933') : '#1c5f9e', borderRadius: uiV3 ? 3 : 0 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: {} } } };
+    const contarParecer = (d) => { const i = idxMes.get(chaveDe(d)); if (i !== undefined) pareceresPorMes[i]++; };
+    DB.forEach(p => { if (p.docId && p.saida) contarParecer(parse(p.saida)); });
+    DB_PARECERES.forEach(pz => { if (pz.status === 'emitido' && pz.emitidoEm) contarParecer(new Date(pz.emitidoEm)); });
+    // Uma série só: a legenda repetiria o título do cartão.
+    const pareceresMesConfig = { type: 'bar', data: { labels, datasets: [{ label: 'Pareceres emitidos', data: pareceresPorMes, backgroundColor: uiV3 ? (isDark ? '#d9d6d0' : '#1f2933') : '#1c5f9e', ...barra }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: !uiV3 } }, scales: { y: eixoY, x: eixoX } } };
     return { entradasConfig, statusConfig, pareceresMesConfig };
   }
   function renderCharts(chartConfigs) {
-    const chartIds = { chartEntradasDashboard: chartConfigs.entradasConfig, chartStatusDashboard: chartConfigs.statusConfig, chartPareceresMes: chartConfigs.pareceresMesConfig };
+    // No visual novo a distribuição por status é uma lista com barras (renderStatusBreakdown),
+    // com rótulo e número à vista — a rosca de seis fatias só existe no clássico.
+    const uiV3 = document.documentElement.classList.contains('ui-v3');
+    const chartIds = { chartEntradasDashboard: chartConfigs.entradasConfig, chartStatusDashboard: uiV3 ? null : chartConfigs.statusConfig, chartPareceresMes: chartConfigs.pareceresMesConfig };
     Object.entries(chartIds).forEach(([canvasId, config]) => {
         const canvas = $('#' + canvasId); if(!canvas) return;
-        if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
-        chartInstances[canvasId] = new Chart(canvas.getContext('2d'), config);
+        if (chartInstances[canvasId]) { chartInstances[canvasId].destroy(); delete chartInstances[canvasId]; }
+        if (config) chartInstances[canvasId] = new Chart(canvas.getContext('2d'), config);
     });
+  }
+  // Distribuição por status (visual novo): uma barra 100% empilhada e, embaixo,
+  // uma linha por status com contagem e percentual. Cada linha filtra os processos.
+  function renderStatusBreakdown() {
+    const el = $('#dashboard-status'); if (!el) return;
+    const total = DB.length;
+    const counts = {}; DB.forEach(p => { counts[p.stat] = (counts[p.stat] || 0) + 1; });
+    const pct = (n) => total ? Math.round((n / total) * 100) : 0;
+    const segs = sMapKeys.filter(k => counts[k]).map(k => `<span style="flex:${counts[k]};--c:${statusColorMapV3[k]}"></span>`).join('');
+    const resumo = sMapKeys.filter(k => counts[k]).map(k => `${statusMap[k]}: ${counts[k]}`).join(', ');
+    el.innerHTML = `<div class="sb-bar" role="img" aria-label="${sanitizeHTML(resumo || 'Nenhum processo cadastrado')}">${segs}</div>
+        <ul class="sb-list">${sMapKeys.map(k => `<li><button type="button" class="sb-row${counts[k] ? '' : ' is-zero'}" data-status="${k}">
+            <span class="sb-dot" style="--c:${statusColorMapV3[k]}"></span>
+            <span class="sb-label">${sanitizeHTML(statusMap[k])}</span>
+            <span class="sb-count">${counts[k] || 0}</span>
+            <span class="sb-pct">${pct(counts[k] || 0)}%</span>
+        </button></li>`).join('')}</ul>`;
+    el.onclick = (e) => { const row = e.target.closest('[data-status]'); if (row) showTab('proc', { filterBy: { status: row.dataset.status } }); };
   }
   function calculateGlobalStats(){
       const hoje=todayUTC(); let pend=0, anal=0, fin=0, alert=0, venc=0;
@@ -4044,30 +4067,69 @@ ${corpo}
       };
   }
 
+  // Listas do Dashboard (próximos prazos, alertas): cada linha é um botão que
+  // leva ao processo (ou ao dia na agenda). Mostram DASH_LIST_MAX itens e um
+  // "Ver todos" que expande no lugar — em vez de uma caixa com rolagem que
+  // cortava a última linha ao meio.
+  const DASH_LIST_MAX = 6;
+  const quandoTxt = (dias) => dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `em ${dias} dias`;
+  function dashItemHTML({ nav, valor, tile = '', titulo, meta = '', quando = '', tom = '' }) {
+      return `<li><button type="button" class="dash-item" data-nav="${nav}" data-valor="${sanitizeHTML(valor).replace(/"/g, '&quot;')}">
+          ${tile}
+          <span class="dash-item-body"><span class="dash-item-title">${sanitizeHTML(titulo)}</span>${meta ? `<span class="dash-item-meta">${sanitizeHTML(meta)}</span>` : ''}</span>
+          ${quando ? `<span class="dash-item-when ${tom}">${sanitizeHTML(quando)}</span>` : ''}
+      </button></li>`;
+  }
+  function preencherListaDash(listEl, itensHTML, vazio) {
+      if (itensHTML.length === 0) { listEl.innerHTML = `<li class="dash-empty">${vazio}</li>`; return; }
+      const extra = itensHTML.length - DASH_LIST_MAX;
+      listEl.classList.remove('is-expanded');
+      listEl.innerHTML = itensHTML.map((h, i) => i >= DASH_LIST_MAX ? h.replace('<li>', '<li class="dash-extra">') : h).join('')
+          + (extra > 0 ? `<li class="dash-more-li"><button type="button" class="dash-more" aria-expanded="false">Ver todos (${itensHTML.length})</button></li>` : '');
+      listEl.onclick = (e) => {
+          const mais = e.target.closest('.dash-more');
+          if (mais) {
+              const aberto = listEl.classList.toggle('is-expanded');
+              mais.setAttribute('aria-expanded', String(aberto));
+              mais.textContent = aberto ? 'Mostrar menos' : `Ver todos (${itensHTML.length})`;
+              return;
+          }
+          const item = e.target.closest('.dash-item'); if (!item) return;
+          if (item.dataset.nav === 'cal') { showTab('cal'); navigateToDate(item.dataset.valor); }
+          else showTab('proc', { filterBy: { text: item.dataset.valor } });
+      };
+  }
   function renderProximosPrazos() {
-      const listEl = $('#dashboard-prazos'); if(!listEl) return; listEl.innerHTML = '';
-      const hoje = todayUTC(); const futuro = new Date(hoje); futuro.setDate(hoje.getDate() + 15);
-      const prazosProc = DB.filter(p=>p.prazo&&parse(p.prazo)>=hoje&&parse(p.prazo)<=futuro&&p.stat!=='finalizado'&&p.stat!=='arquivado').map(p=>({data:p.prazo,tipo:'processo',desc:`Prazo Proc: ${p.num}`}));
-      const prazosAgenda = CAL.filter(c=>c.data&&parse(c.data)>=hoje&&parse(c.data)<=futuro).map(c=>({data:c.data,tipo:'agenda',desc:c.desc}));
-      const todosOsPrazos=[...prazosProc,...prazosAgenda].sort((a,b)=>a.data.localeCompare(b.data));
-      if(todosOsPrazos.length===0){listEl.innerHTML='<li>Nenhum prazo nos próximos 15 dias.</li>';return;}
-      todosOsPrazos.forEach(item=>{
-          const data=parse(item.data); const dia=String(data.getUTCDate()).padStart(2,'0'); const mes=data.toLocaleDateString('pt-BR',{month:'short',timeZone:'UTC'}).replace('.','');
+      const listEl = $('#dashboard-prazos'); if(!listEl) return;
+      const hoje = todayUTC(); const futuro = new Date(hoje); futuro.setUTCDate(hoje.getUTCDate() + 15);
+      const noPeriodo = (s) => { const d = parse(s); return d && d >= hoje && d <= futuro; };
+      const prazosProc = DB.filter(p => p.prazo && noPeriodo(p.prazo) && p.stat !== 'finalizado' && p.stat !== 'arquivado')
+          .map(p => ({ data: p.prazo, nav: 'proc', valor: p.num, titulo: `Processo ${p.num}`, meta: p.int || '' }));
+      const prazosAgenda = CAL.filter(c => c.data && noPeriodo(c.data))
+          .map(c => ({ data: c.data, nav: 'cal', valor: c.data, titulo: c.desc || 'Compromisso', meta: c.hora ? `Agenda · ${c.hora}` : 'Agenda' }));
+      const todos = [...prazosProc, ...prazosAgenda].sort((a, b) => a.data.localeCompare(b.data));
+      preencherListaDash(listEl, todos.map(item => {
+          const data = parse(item.data); const dia = String(data.getUTCDate()).padStart(2, '0');
+          const mes = data.toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' }).replace('.', '');
           const dias = diffDays(hoje, data);
+          const tom = dias <= 1 ? 'is-danger' : dias <= 5 ? 'is-warning' : '';
           const urgClass = dias <= 1 ? 'prazo-date-danger' : dias <= 5 ? 'prazo-date-warning' : 'prazo-date-info';
-          const li=document.createElement('li');
-          li.innerHTML=`<div class="prazo-date ${urgClass}"><span class="month">${sanitizeHTML(mes)}</span><span class="day">${sanitizeHTML(dia)}</span></div><div class="prazo-info"><span class="type type-${sanitizeHTML(item.tipo)}">${sanitizeHTML(item.tipo.toUpperCase())}</span><div class="desc">${sanitizeHTML(item.desc)}</div></div>`;
-          listEl.appendChild(li);
-      });
+          const tile = `<span class="prazo-date ${urgClass}" aria-hidden="true"><span class="month">${sanitizeHTML(mes)}</span><span class="day">${dia}</span></span>`;
+          return dashItemHTML({ ...item, tile, quando: quandoTxt(dias), tom });
+      }), 'Nenhum prazo nos próximos 15 dias.');
   }
   function renderAlertasInteligentes() {
-    const listEl = $('#dashboard-alertas'); if (!listEl) return; listEl.innerHTML = ''; const hoje = todayUTC(); const alertas = [];
-    DB.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(hoje, parse(p.prazo)) < 0)
-      .forEach(p => { alertas.push({ tipo: 'Vencido', desc: `Processo ${p.num} está vencido.` }); });
-    DB.filter(p => (p.stat === 'em-analise' || p.stat === 'pendente') && diffDays(parse(p.ent), hoje) > 20)
-      .forEach(p => { alertas.push({ tipo: 'Inativo', desc: `Processo ${p.num} parado há mais de 20 dias.` }); });
-    if (alertas.length === 0) { listEl.innerHTML = '<li>Nenhum alerta no momento.</li>'; return; }
-    alertas.forEach(item => { const li = document.createElement('li'); li.innerHTML = `<div class="prazo-info"><span class="type">${sanitizeHTML(item.tipo.toUpperCase())}</span><div class="desc">${sanitizeHTML(item.desc)}</div></div>`; listEl.appendChild(li); });
+    const listEl = $('#dashboard-alertas'); if (!listEl) return; const hoje = todayUTC();
+    const vencidos = DB.filter(p => p.prazo && p.stat !== 'finalizado' && p.stat !== 'arquivado' && diffDays(hoje, parse(p.prazo)) < 0)
+      .map(p => ({ p, dias: -diffDays(hoje, parse(p.prazo)) })).sort((a, b) => b.dias - a.dias);
+    // "Parado" = pendente ou em análise com entrada há mais de 20 dias.
+    const parados = DB.filter(p => (p.stat === 'em-analise' || p.stat === 'pendente') && p.ent && diffDays(parse(p.ent), hoje) > 20)
+      .map(p => ({ p, dias: diffDays(parse(p.ent), hoje) })).sort((a, b) => b.dias - a.dias);
+    const itens = [
+      ...vencidos.map(({ p, dias }) => dashItemHTML({ nav: 'proc', valor: p.num, titulo: `Processo ${p.num}`, meta: p.int || '', quando: `vencido há ${dias} ${dias === 1 ? 'dia' : 'dias'}`, tom: 'is-danger' })),
+      ...parados.map(({ p, dias }) => dashItemHTML({ nav: 'proc', valor: p.num, titulo: `Processo ${p.num}`, meta: `${statusMap[p.stat]} · ${p.int || ''}`.replace(/ · $/, ''), quando: `parado há ${dias} dias` })),
+    ];
+    preencherListaDash(listEl, itens, 'Nenhum alerta no momento.');
   }
   function renderDashboard() {
       const kpiData = calculateGlobalStats(); const kpiContainer = $('#dashboard-kpis'); if (!kpiContainer) return;
@@ -4080,13 +4142,13 @@ ${corpo}
           { filter: 'vencido',   label: 'Vencidos',            value: kpiData.venc,   color: '#b42323', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>` },
       ];
       kpiContainer.innerHTML = kpiItems.map(item => `
-          <div class="kpi" data-kpi-filter="${item.filter}" style="border-left-color:${item.color};">
-              <div class="kpi-header">
-                  <h4>${item.label}</h4>
-                  <div class="kpi-icon" style="color:${item.color};">${item.icon}</div>
-              </div>
-              <div class="v">${item.value}</div>
-          </div>`).join('');
+          <button type="button" class="kpi" data-kpi-filter="${item.filter}" style="border-left-color:${item.color};">
+              <span class="kpi-header">
+                  <span class="kpi-label">${item.label}</span>
+                  <span class="kpi-icon" style="color:${item.color};">${item.icon}</span>
+              </span>
+              <span class="v">${item.value}</span>
+          </button>`).join('');
       kpiContainer.onclick = (e) => {
           const kpi = e.target.closest('[data-kpi-filter]'); if(!kpi) return;
           const filter = kpi.dataset.kpiFilter, filterBy = {};
@@ -4095,7 +4157,7 @@ ${corpo}
           showTab('proc', { filterBy });
       };
       renderSaudacao(kpiData);
-      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderRadarPrazos(); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
+      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderStatusBreakdown(); renderRadarPrazos(); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
   }
 
   // Resumo do dia no topo do Dashboard (exibido no visual novo).
@@ -4121,12 +4183,20 @@ ${corpo}
       const container = $('#dashboard-atividades');
       if (!container) return;
       try {
-          const snap = await window.db.collection('historico').get();
-          const entries = snap.docs.map(d => d.data());
+          // Busca só os mais recentes (timestamp ISO ordena como texto) em vez da
+          // coleção inteira a cada render; se a consulta falhar, cai na leitura completa.
+          let entries;
+          try {
+              const snap = await window.db.collection('historico').orderBy('timestamp', 'desc').limit(6).get();
+              entries = snap.docs.map(d => d.data());
+          } catch {
+              const snap = await window.db.collection('historico').get();
+              entries = snap.docs.map(d => d.data());
+          }
           entries.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-          const recent = entries.slice(0, 8);
+          const recent = entries.slice(0, 6);
           if (recent.length === 0) {
-              container.innerHTML = '<div style="padding:1rem 0; color:var(--text-muted); font-size:0.85rem;">Nenhuma atividade registrada.</div>';
+              container.innerHTML = '<div class="dash-empty">Nenhuma atividade registrada.</div>';
               return;
           }
           const acaoIconMap = {
