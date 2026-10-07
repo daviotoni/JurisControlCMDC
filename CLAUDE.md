@@ -49,6 +49,16 @@ EB Garamond (`fonts.serif` / `fonts.serifRegular`, só os pesos 400 e 500 são
 importados em `App.tsx`). Depois de mudar o `mobile/`, rodar
 `cd mobile && npm run build:site` e commitar a pasta `/app`.
 
+## Skills de design (`.claude/skills`)
+
+Versionadas no repo para valerem também nas sessões do Claude Code na nuvem:
+`frontend-design` (direção estética), `impeccable` (critique/audit/polish;
+na 1ª execução baixa o motor dela do GitHub Releases), `ui-ux-pro-max`
+(paletas, tipografia, gráficos; busca com `python .claude/skills/ui-ux-pro-max/scripts/search.py "<consulta>"`),
+`web-design-guidelines` (revisão por arquivo:linha) e `shadcn` (só se um
+dia o projeto usar shadcn/ui). Sempre respeitar a linguagem "tinta" acima.
+Atualizar: `npx skills add <repo> --skill <nome> -a claude-code --copy -y`.
+
 ## Stack
 
 App estático (HTML/CSS/JS puro) + Firebase (Auth, Firestore, Storage).
