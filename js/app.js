@@ -1796,7 +1796,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(key==='leis') renderLeis();
     if(key==='juris') { initJurisAba(); $('#jr_tema_aba')?.focus(); }
-    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); }
+    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); renderFeriadosCfg(); }
   }
 
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
@@ -2370,6 +2370,110 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
+  // ----- Cálculo do prazo final (dias úteis/corridos, feriados BR/RJ/Caxias) -----
+  // Opções vindas de Configurações → Feriados e pontos facultativos.
+  function opcoesPrazo(extra = {}) {
+      const cfg = (CFG && CFG.prazos) || {};
+      return { pontos: cfg.pontos || {}, extras: cfg.extras || [], ...extra };
+  }
+  const fmtDiaSemana = (s) => { const d = parse(s); return d ? d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }) : ''; };
+  const fmtDiaMes = (s) => { const [, m, d] = String(s).split('-'); return `${d}/${m}`; };
+  // Texto que explica a conta: quando vence e o que ficou fora da contagem.
+  function descreverPrazo(r, inicio, dias, contagem) {
+      const tipo = contagem === 'corridos' ? (dias == 1 ? 'dia corrido' : 'dias corridos') : (dias == 1 ? 'dia útil' : 'dias úteis');
+      let txt = `Vence em <strong>${sanitizeHTML(fmtDiaSemana(r.vencimento))}</strong>: ${dias} ${tipo} a partir de ${fmtDiaMes(inicio)}.`;
+      const recesso = r.pulados.some(p => p.motivo === 'Recesso forense');
+      // Dentro do recesso, feriados e fins de semana já estão cobertos por ele.
+      const fora = recesso ? r.pulados.filter(p => !Prazos.emRecessoForense(parse(p.data))) : r.pulados;
+      const feriados = fora.filter(p => p.motivo !== 'fim de semana' && p.motivo !== 'Recesso forense');
+      const fds = fora.filter(p => p.motivo === 'fim de semana').length;
+      const partes = feriados.map(p => `${fmtDiaMes(p.data)} (${sanitizeHTML(p.motivo)})`);
+      if (recesso) partes.push('recesso forense');
+      if (fds && contagem !== 'corridos') partes.push(`${fds} ${fds === 1 ? 'dia' : 'dias'} de fim de semana`);
+      if (contagem === 'corridos' && r.prorrogado) txt += ' O último dia caiu sem expediente, então o prazo foi para o próximo dia útil.';
+      if (partes.length) txt += ` Fora da contagem: ${partes.join(', ')}.`;
+      return txt;
+  }
+  function ligarCalculoPrazo(form, proc) {
+      const ini = $('#fp_pini'), dias = $('#fp_pdias'), cont = $('#fp_pcont'), rec = $('#fp_precesso');
+      const prazo = $('#fp_prazo'), tipo = $('#fp_tipo'), ent = $('#fp_ent'), out = $('#prazoCalcResult');
+      if (!ini || !dias || !prazo) return;
+      const ajuda = 'O dia do início não conta. Feriados nacionais, do Estado do RJ e de Duque de Caxias ficam fora da contagem.';
+      rec.checked = proc ? proc.prazoRecesso === '1' : tipo.value === 'judicial';
+      let recessoTocado = !!proc;
+      cont.value = (proc && proc.prazoContagem) || 'uteis';
+      // aplicar=false (ao abrir um processo salvo): só explica a conta, sem mexer no
+      // prazo gravado — se o calendário mudou desde então, avisa a diferença.
+      const recalcular = (aplicar = true) => {
+          out.classList.remove('is-erro');
+          if (!dias.value) { out.innerHTML = ajuda; return; }
+          if (!ini.value) ini.value = ent.value || ymd(new Date());
+          const r = Prazos.calcularPrazo(ini.value, dias.value, cont.value, opcoesPrazo({ recesso: rec.checked }));
+          if (!r) { out.textContent = 'Informe um número de dias entre 1 e 3650.'; out.classList.add('is-erro'); return; }
+          if (!aplicar && prazo.value && prazo.value !== r.vencimento) {
+              out.innerHTML = `Pelo calendário atual este prazo venceria em <strong>${sanitizeHTML(fmtDiaSemana(r.vencimento))}</strong>; o prazo salvo é ${sanitizeHTML(fmtBR(prazo.value))}. Altere qualquer campo acima para recalcular.`;
+              out.classList.add('is-erro');
+              return;
+          }
+          prazo.value = r.vencimento;
+          out.innerHTML = descreverPrazo(r, ini.value, Number(dias.value), cont.value);
+      };
+      [ini, dias, cont, rec].forEach(el => { el.oninput = el.onchange = () => { if (el === rec) recessoTocado = true; recalcular(); }; });
+      tipo.onchange = () => { if (!recessoTocado) { rec.checked = tipo.value === 'judicial'; recalcular(); } };
+      // Data digitada à mão: o cálculo deixa de valer.
+      prazo.oninput = () => { if (dias.value) { dias.value = ''; out.innerHTML = 'Prazo informado à mão (sem cálculo).'; } };
+      if (dias.value) recalcular(false); else out.innerHTML = ajuda;
+  }
+
+  // Configurações → Feriados e pontos facultativos (CFG.prazos, compartilhado).
+  // Qualquer usuário vê a lista; só administradores ligam pontos ou cadastram datas.
+  let ferAnoVisto = new Date().getFullYear();
+  function renderFeriadosCfg() {
+      const lista = $('#ferLista'); if (!lista) return;
+      const ehAdmin = (() => { try { return (JSON.parse(sessionStorage.getItem('loggedInUser')) || {}).role === 'admin'; } catch { return false; } })();
+      CFG.prazos = CFG.prazos || { pontos: {}, extras: [] };
+      const cfgP = CFG.prazos; cfgP.pontos = cfgP.pontos || {}; cfgP.extras = cfgP.extras || [];
+      $('#ferAno').textContent = String(ferAnoVisto);
+      const feriados = Prazos.feriadosDoAno(ferAnoVisto, cfgP);
+      lista.innerHTML = feriados.map(f => {
+          const extra = f.esfera === 'Cadastrado';
+          return `<li><span class="fer-data">${sanitizeHTML(fmtDiaSemana(f.data))}</span>
+              <span class="fer-nome">${sanitizeHTML(f.nome)}</span>
+              <span class="fer-esfera">${sanitizeHTML(f.esfera)}</span>
+              ${extra && ehAdmin ? `<button type="button" class="icon-btn fer-remover" data-data="${f.data}" aria-label="Remover ${sanitizeHTML(f.nome)}"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}</li>`;
+      }).join('');
+      const edit = $('.feriados-edit'); if (edit) edit.style.display = ehAdmin ? '' : 'none';
+      $('#ferPontos').innerHTML = Prazos.PONTOS_FACULTATIVOS.map(pf => `<label class="cfg-switch"><input type="checkbox" data-ponto="${pf.id}" ${cfgP.pontos[pf.id] ? 'checked' : ''}> ${sanitizeHTML(pf.nome)}</label>`).join('');
+      const salvar = async (msg) => { await saveCFG(); $('#ferMsg').textContent = msg; renderFeriadosCfg(); };
+      $('#ferAnoPrev').onclick = () => { ferAnoVisto--; renderFeriadosCfg(); };
+      $('#ferAnoNext').onclick = () => { ferAnoVisto++; renderFeriadosCfg(); };
+      $('#ferPontos').onchange = (e) => { const id = e.target.dataset.ponto; if (!id) return; cfgP.pontos[id] = e.target.checked; salvar('Salvo. Vale para os próximos cálculos.'); };
+      lista.onclick = (e) => {
+          const b = e.target.closest('.fer-remover'); if (!b) return;
+          cfgP.extras = cfgP.extras.filter(x => x.data !== b.dataset.data);
+          salvar('Data removida.');
+      };
+      $('#ferAdd').onclick = () => {
+          const data = $('#ferData').value, desc = $('#ferDesc').value.trim();
+          if (!data) { $('#ferMsg').textContent = 'Escolha a data.'; return; }
+          if (cfgP.extras.some(x => x.data === data)) { $('#ferMsg').textContent = 'Essa data já está cadastrada.'; return; }
+          cfgP.extras.push({ data, desc: desc || 'Sem expediente' });
+          cfgP.extras.sort((x, y) => x.data.localeCompare(y.data));
+          $('#ferData').value = ''; $('#ferDesc').value = '';
+          ferAnoVisto = Number(data.slice(0, 4));
+          salvar('Data cadastrada.');
+      };
+  }
+
+  // Nome do feriado (ou ponto facultativo/data cadastrada) num dia 'YYYY-MM-DD'.
+  const cacheFeriados = new Map();
+  function feriadoNoDia(ds) {
+      const ano = Number(String(ds).slice(0, 4)); if (!ano || typeof Prazos === 'undefined') return null;
+      const sig = `${ano}|${JSON.stringify((CFG && CFG.prazos) || {})}`;
+      if (!cacheFeriados.has(sig)) cacheFeriados.set(sig, new Map(Prazos.feriadosDoAno(ano, opcoesPrazo()).map(f => [f.data, f.nome])));
+      return cacheFeriados.get(sig).get(ds) || null;
+  }
+
   function openProc(mode, id) {
     const m = $('#m_proc'); m.style.display = 'flex';
     $('#m_proc_t').textContent = mode === 'new' ? 'Novo Processo' : 'Editar Processo';
@@ -2382,16 +2486,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = $('#f_proc'), del = $('#fp_del');
     form.reset();
 
+    let procAtual = null;
     if (mode === 'edit') {
         const p = DB.find(x => x.id == id); if (!p) return;
+        procAtual = p;
         for (const key in p) {
-            if (form.elements[key]) form.elements[key].value = p[key];
+            if (form.elements[key] && form.elements[key].type !== 'checkbox') form.elements[key].value = p[key];
         }
         del.style.display = 'inline-flex';
     } else {
         form.elements.id.value = '';
         del.style.display = 'none';
     }
+    ligarCalculoPrazo(form, procAtual);
     
     form.onsubmit = async (e) => {
         e.preventDefault();
@@ -2402,11 +2509,16 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let [key, value] of formData.entries()) {
             if (key !== 'id') rec[key] = value.trim();
         }
+        // Checkbox desmarcado não entra no FormData: grava explicitamente.
+        rec.prazoRecesso = $('#fp_precesso')?.checked ? '1' : '';
         
         try { const idx = DB.findIndex(p => p.id == rec.id);
         if (idx > -1) {
             const oldRec = { ...DB[idx] };
-            rec.docId = DB[idx].docId ?? null;
+            // Parte do registro antigo e sobrepõe o formulário: campos que o
+            // formulário não tem (anotações, docId…) não se perdem ao editar.
+            Object.assign(rec, { ...oldRec, ...rec });
+            rec.docId = oldRec.docId ?? null;
             DB[idx] = rec;
             await dbHelper.put('processos', rec);
             await logHistorico(rec.id, rec.num, 'editado', getChanges(oldRec, rec));
@@ -2494,7 +2606,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tramGrid = $('#details-tramitacao');
     tramGrid.appendChild(createViewItemHTML('Status', `<span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(statusMap[p.stat]) || '—'}</span>`));
-    tramGrid.appendChild(createViewItem('Prazo Final', fmtBR(p.prazo)));
+    const comoContou = p.prazo && p.prazoDias ? ` (${p.prazoDias} ${p.prazoContagem === 'corridos' ? 'dias corridos' : 'dias úteis'} a partir de ${fmtBR(p.prazoInicio)})` : '';
+    tramGrid.appendChild(createViewItem('Prazo Final', fmtBR(p.prazo) + comoContou));
     tramGrid.appendChild(createViewItem('Setor de Origem', p.setorOrigem));
     tramGrid.appendChild(createViewItem('Setor Enviado', p.dest));
     tramGrid.appendChild(createViewItem('Data de Entrada', fmtBR(p.ent)));
@@ -3886,7 +3999,8 @@ ${corpo}
         const c=document.createElement('div');c.className='cell';if(p.getMonth()!==m)c.classList.add('dim');
         const dn=document.createElement('div');dn.className='dnum';const tdy=ymd(new Date())===ymd(p);dn.innerHTML=`<span class="${tdy?'today':''}">${p.getDate()}</span>`; c.appendChild(dn);
         const eventsWrapper = document.createElement('div'); eventsWrapper.className = 'events-wrapper';
-        const ds=ymd(p);const evts=list.filter(e=>e.data===ds); const initialsMap = { g: 'G', a: 'A', r: 'R', p: 'TP', u: 'U', e: 'E', o: 'OAB' };
+        const ds=ymd(p);const evts=list.filter(e=>e.data===ds);
+        const fer = feriadoNoDia(ds); if (fer) { c.classList.add('is-feriado'); const fl=document.createElement('div'); fl.className='cal-feriado'; fl.textContent=fer; fl.title=`Sem expediente: ${fer}`; c.appendChild(fl); } const initialsMap = { g: 'G', a: 'A', r: 'R', p: 'TP', u: 'U', e: 'E', o: 'OAB' };
         const dotsContainer = document.createElement('div'); dotsContainer.className = 'event-dots-container';
         evts.forEach(evt => {
             const dot = document.createElement('div'); dot.className = `event-dot ${safeCSSClass(evt.cat, VALID_CAT)}`; dot.textContent = initialsMap[evt.cat] || '?'; dot.title = sanitizeHTML(evt.desc); dot.dataset.label = evt.curto || evt.desc || '';

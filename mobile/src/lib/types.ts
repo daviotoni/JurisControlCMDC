@@ -21,6 +21,11 @@ export interface Processo {
   emissorId?: string;
   docId?: number | null;
   anotacoes?: Anotacao[];
+  // Cálculo do prazo feito no site (js/prazos.js): início, nº de dias e contagem.
+  prazoInicio?: string;
+  prazoDias?: string;
+  prazoContagem?: 'uteis' | 'corridos' | string;
+  prazoRecesso?: string;
 }
 
 /** Anotação/pendência de um processo (mesmo formato do web: id, usuario, dt, texto). */
