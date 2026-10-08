@@ -1347,6 +1347,25 @@
         .dash-relatorio-btn { flex-shrink: 0; align-self: stretch; }
         @media (max-width: 600px) { .dash-top { flex-direction: column; align-items: stretch; } }
 
+        /* ===== Movimentações judiciais (DataJud) ===== */
+        .dash-mov-card[hidden], .mov-section[hidden] { display: none !important; }
+        .mov-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+        .mov-head h3 { margin: 0 0 0.25rem !important; }
+        .mov-status { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
+        .mov-acoes { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .mov-acoes .btn { padding: 0.45rem 0.8rem; font-size: 0.8125rem; }
+        .mov-aviso { margin: 0.25rem 0 0.75rem; padding: 0.65rem 0.8rem; border-radius: 8px; font-size: 0.875rem; line-height: 1.5;
+            background: var(--warning-bg); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); color: var(--text-primary); }
+        .mov-aviso code { font-size: 0.8125rem; }
+        .mov-lista { list-style: none; margin: 0.5rem 0 1rem; padding: 0; }
+        .mov-lista li { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) auto; gap: 0.75rem; align-items: baseline; padding: 0.45rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+        .mov-lista li:last-child { border-bottom: 0; }
+        .mov-data { color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+        .mov-nome { color: var(--text-primary); }
+        .mov-comp { color: var(--text-muted); }
+        .mov-lista li.is-nova .mov-nome { font-weight: 600; }
+        .mov-tag { font-size: 0.75rem; font-weight: 600; color: var(--warning); }
+
         /* ===== Relatório mensal (prévia) ===== */
         .rel-controles { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; }
         .rel-controles label { font-weight: 600; margin: 0; }
@@ -2227,6 +2246,14 @@
         .ui-v3 .tag-pill.r, .ui-v3 .tag-pill.g { --tg: #5a7190; }
         .ui-v3 .tag-pill.o { --tg: #b39448; }
         .ui-v3 .tag-pill.e { --tg: #8a8f96; }
+
+        /* Movimentações */
+        .ui-v3 .mov-status, .ui-v3 .mov-data, .ui-v3 .mov-comp { color: var(--t-muted); }
+        .ui-v3 .mov-nome { color: var(--t-ink); }
+        .ui-v3 .mov-lista li { border-bottom-color: var(--t-line); }
+        .ui-v3 .mov-lista li.is-nova .mov-nome { font-weight: 500; }
+        .ui-v3 .mov-tag { color: var(--t-warning); font-weight: 500; }
+        .ui-v3 .mov-aviso { background: color-mix(in srgb, var(--t-warning) 7%, var(--t-canvas)); border-color: color-mix(in srgb, var(--t-warning) 28%, var(--t-line)); color: var(--t-ink); }
 
         /* Relatório mensal */
         .ui-v3 .dash-relatorio-btn { border-radius: 12px; }

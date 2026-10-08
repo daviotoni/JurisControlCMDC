@@ -93,6 +93,8 @@ module.exports = [
         buscarGlobal: 'readonly',
         buscaNormalizar: 'readonly',
         relatorioMensal: 'readonly',
+        numeroCNJValido: 'readonly',
+        tribunalDoCNJ: 'readonly',
         Prazos: 'readonly', // js/prazos.js
         normalizeParecerParaLista: 'readonly',
         combinarPareceres: 'readonly',

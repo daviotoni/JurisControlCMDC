@@ -19,7 +19,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // (devem bater com o bloco "Dados de trabalho" de firestore.rules).
 const COLECOES_APROVADO = [
   'processos', 'pareceres', 'parecerVersoes', 'documentos', 'versoes',
-  'calendario', 'emissores', 'modelos', 'leis', 'config',
+  'calendario', 'emissores', 'modelos', 'leis', 'config', 'movimentacoes',
 ];
 // Coleções com regra própria (também declaradas em firestore.rules).
 const COLECOES_ESPECIAIS = ['perfis', 'historico', 'auditoria', 'users', 'segredos'];

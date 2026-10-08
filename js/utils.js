@@ -366,6 +366,29 @@ function relatorioMensal({ processos = [], pareceres = [], ano, mes, hoje, statu
   };
 }
 
+// ----- Número CNJ → tribunal no Datajud -----
+// NNNNNNN-DD.AAAA.J.TR.OOOO (Res. CNJ 65/2008). Confere o dígito verificador
+// (módulo 97) e devolve o índice do Datajud ('tjrj', 'trf2', 'trt1', 'stj'…),
+// ou null se o número não for CNJ válido ou o ramo não estiver no Datajud.
+const UF_TJ_CNJ = ['ac', 'al', 'ap', 'am', 'ba', 'ce', 'dft', 'es', 'go', 'ma', 'mt', 'ms', 'mg', 'pa', 'pb', 'pr', 'pe', 'pi', 'rj', 'rn', 'rs', 'ro', 'rr', 'sc', 'se', 'sp', 'to'];
+function numeroCNJValido(num) {
+  const d = String(num || '').replace(/\D/g, '');
+  if (d.length !== 20) return false;
+  const base = BigInt(d.slice(0, 7) + d.slice(9) + '00');
+  return 98n - (base % 97n) === BigInt(d.slice(7, 9));
+}
+function tribunalDoCNJ(num) {
+  if (!numeroCNJValido(num)) return null;
+  const d = String(num).replace(/\D/g, '');
+  const j = d[13], tr = Number(d.slice(14, 16));
+  if (j === '8') return tr >= 1 && tr <= 27 ? `tj${UF_TJ_CNJ[tr - 1]}` : null;
+  if (j === '4') return tr >= 1 && tr <= 6 ? `trf${tr}` : null;
+  if (j === '5') return tr === 0 ? 'tst' : (tr <= 24 ? `trt${tr}` : null);
+  if (j === '3') return 'stj';
+  if (j === '1') return 'stf';
+  return null;
+}
+
 // ----- Janela dos últimos 12 meses (gráficos do Dashboard) -----
 // Devolve os `n` meses que terminam no mês de `hoje` (o mais antigo primeiro),
 // cada um com { ano, mes (0-based), chave 'YYYY-MM' }. Os gráficos agrupam por
@@ -385,7 +408,7 @@ function ultimosMeses(hoje, n = 12) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
-    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, ultimosMeses, buscarGlobal, buscaNormalizar, relatorioMensal,
+    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, ultimosMeses, buscarGlobal, buscaNormalizar, relatorioMensal, numeroCNJValido, tribunalDoCNJ,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
     normalizarConsultaJuris, expandirConsultaJuris, filtrarOrdenarResultadosJuris,
     VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,

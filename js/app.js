@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Variáveis de dados em memória
   let DB_PERFIS = [], DB = [], CAL = [], DB_DOCS = [], DB_VERSOES = [], DB_MODELOS = [], DB_EMISSORES = [], DB_LEIS = [];
   let DB_PARECERES = [], DB_PARECER_VERSOES = [];
+  let DB_MOV = []; // movimentações do Datajud por processo (coleção 'movimentacoes')
   let CFG;
   let allNotifications = [];
   
@@ -142,6 +143,10 @@ document.addEventListener('DOMContentLoaded', () => {
       DB_LEIS = await dbHelper.getAll('leis');
       DB_PARECERES = await dbHelper.getAll('pareceres');
       DB_PARECER_VERSOES = await dbHelper.getAll('parecerVersoes');
+      // Coleção nova: se as regras do Firestore ainda não foram publicadas, a
+      // leitura é negada — o resto do sistema carrega normalmente.
+      try { DB_MOV = await dbHelper.getAll('movimentacoes'); movStatus.regras = 'ok'; }
+      catch (e) { DB_MOV = []; movStatus.regras = 'pendente'; console.warn('Movimentações indisponíveis (regras do Firestore?):', e); }
       
       const loadedCfg = await dbHelper.get('config', 'main_cfg');
       CFG = loadedCfg ? { ...defaultConfig, ...loadedCfg.value } : defaultConfig;
@@ -229,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebar && CFG.sidebarCollapsed) sidebar.classList.add('collapsed');
     renderDashboard();
     showTab('dashboard');
+    setTimeout(() => verificarMovimentacoes(), 1500);
   }
 
   // Esconde os recursos de administrador (gestão de usuários, restauração de
@@ -2465,6 +2471,142 @@ document.addEventListener('DOMContentLoaded', () => {
       };
   }
 
+  // ----- Movimentações dos processos judiciais (Datajud/CNJ) -----
+  // Processos judiciais com nº CNJ válido são consultados uma vez por dia (pela
+  // Cloud Function `juris`, fonte datajud-mov). O que chegou depois de
+  // `vistoAte` é "novo": aparece no Dashboard, no sininho e no detalhe.
+  // Na primeira consulta de um processo nada é novo (só marca o ponto de partida).
+  const movStatus = { servidor: 'ok', regras: 'ok', verificando: false, erro: '', ultima: null };
+  const MOV_MAX_POR_RODADA = 25;
+  const movDoProcesso = (id) => DB_MOV.find(m => String(m.id) === String(id));
+  const processosAcompanhados = () => DB.filter(p => p.tipo === 'judicial' && p.stat !== 'arquivado' && tribunalDoCNJ(p.num));
+  function novasMovimentacoes(reg) { return (reg && reg.movimentos || []).filter(m => m.data > (reg.vistoAte || '')); }
+  async function consultarMovimentos(num, tribunal) {
+      const usuarioFb = window.auth?.currentUser;
+      if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
+      const token = await usuarioFb.getIdToken();
+      const url = `${JURIS_FUNCTION_URL}?fonte=datajud-mov&q=${encodeURIComponent(num)}&tribunal=${encodeURIComponent(tribunal)}`;
+      const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      const corpo = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+          const e = new Error(corpo.erro || `HTTP_${resp.status}`);
+          // Função ainda na versão antiga: não conhece a fonte nova.
+          if (resp.status === 400 && /fonte desconhecida/i.test(corpo.erro || '')) e.servidorPendente = true;
+          throw e;
+      }
+      return corpo.processo || null;
+  }
+  async function salvarMov(reg) {
+      const i = DB_MOV.findIndex(m => String(m.id) === String(reg.id));
+      if (i > -1) DB_MOV[i] = reg; else DB_MOV.push(reg);
+      if (movStatus.regras === 'pendente') return;
+      try { await dbHelper.put('movimentacoes', reg); }
+      catch (e) { movStatus.regras = 'pendente'; console.warn('Não foi possível gravar movimentações:', e); }
+  }
+  async function verificarUm(p) {
+      const tribunal = tribunalDoCNJ(p.num);
+      const r = await consultarMovimentos(p.num, tribunal);
+      const antigo = movDoProcesso(p.id);
+      const maisRecente = (r && r.movimentos[0] && r.movimentos[0].data) || '';
+      await salvarMov({
+          id: String(p.id), processoId: p.id, num: p.num, tribunal,
+          verificadoEm: ymd(new Date()), verificadoAs: new Date().toISOString(),
+          encontrado: !!r, classe: (r && r.classe) || '', orgao: (r && r.orgao) || '',
+          movimentos: (r && r.movimentos) || [],
+          vistoAte: antigo ? (antigo.vistoAte || '') : maisRecente,
+      });
+  }
+  async function verificarMovimentacoes({ forcar = false } = {}) {
+      if (movStatus.verificando) return;
+      const hoje = ymd(new Date());
+      const fila = processosAcompanhados().filter(p => forcar || movDoProcesso(p.id)?.verificadoEm !== hoje).slice(0, MOV_MAX_POR_RODADA);
+      if (!fila.length) { renderMovimentacoes(); return; }
+      movStatus.verificando = true; movStatus.erro = ''; renderMovimentacoes();
+      for (const p of fila) {
+          try { await verificarUm(p); movStatus.servidor = 'ok'; }
+          catch (e) {
+              if (e.servidorPendente) { movStatus.servidor = 'pendente'; break; }
+              movStatus.erro = e.message; console.warn(`Datajud (${p.num}):`, e);
+          }
+      }
+      movStatus.verificando = false; movStatus.ultima = new Date();
+      renderMovimentacoes(); updateAllNotifications();
+  }
+  async function marcarMovVistas(ids) {
+      for (const id of ids) {
+          const reg = movDoProcesso(id); if (!reg || !reg.movimentos.length) continue;
+          await salvarMov({ ...reg, vistoAte: reg.movimentos[0].data });
+      }
+      renderMovimentacoes(); updateAllNotifications();
+  }
+  const fmtDataHora = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
+  function renderMovimentacoes() {
+      const card = $('#dashMov'); if (!card) return;
+      const acompanhados = processosAcompanhados();
+      card.hidden = !acompanhados.length;
+      if (!acompanhados.length) return;
+      const regs = acompanhados.map(p => movDoProcesso(p.id)).filter(Boolean);
+      const comNovas = regs.map(r => ({ r, novas: novasMovimentacoes(r) })).filter(x => x.novas.length)
+          .sort((a, b) => b.novas[0].data.localeCompare(a.novas[0].data));
+      const verificados = regs.filter(r => r.verificadoAs).map(r => r.verificadoAs).sort();
+      const ultima = verificados.length ? new Date(verificados[verificados.length - 1]) : null;
+      const status = movStatus.verificando ? 'Verificando no DataJud…'
+          : ultima ? `Verificado ${ymd(ultima) === ymd(new Date()) ? 'hoje' : `em ${ultima.toLocaleDateString('pt-BR')}`} às ${ultima.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+          : 'Ainda não verificado';
+      let corpo = '';
+      if (movStatus.servidor === 'pendente') {
+          corpo = `<p class="mov-aviso">A consulta ao DataJud depende de uma atualização do servidor que ainda não foi publicada (<code>firebase deploy --only functions</code>). Até lá, nada é verificado.</p>`;
+      } else if (comNovas.length) {
+          corpo = `<ul class="prazos-list">${comNovas.map(({ r, novas }) => dashItemHTML({
+              nav: 'proc', valor: r.num, titulo: `Processo ${r.num}`,
+              meta: `${String(r.tribunal).toUpperCase()} · ${novas[0].nome}${novas[0].complemento ? ` (${novas[0].complemento})` : ''} · ${fmtDataHora(novas[0].data)}`,
+              quando: novas.length === 1 ? '1 nova' : `${novas.length} novas`, tom: 'is-warning',
+          })).join('')}</ul>`;
+      } else {
+          corpo = `<p class="dash-empty">${regs.length ? 'Nenhuma movimentação nova desde a última vez.' : 'As movimentações aparecem aqui depois da primeira verificação.'}</p>`;
+      }
+      const naoAchados = regs.filter(r => r.encontrado === false).length;
+      card.innerHTML = `
+          <div class="mov-head">
+              <div><h3>Movimentações judiciais</h3>
+              <p class="mov-status">${plural(acompanhados.length, 'processo acompanhado', 'processos acompanhados')} no DataJud (CNJ) · ${status}${naoAchados ? ` · ${plural(naoAchados, 'não encontrado', 'não encontrados')}` : ''}</p></div>
+              <div class="mov-acoes">
+                  ${comNovas.length ? '<button type="button" class="btn secondary" data-mov-vistas>Marcar como vistas</button>' : ''}
+                  <button type="button" class="btn secondary" data-mov-verificar ${movStatus.verificando ? 'disabled' : ''}>Verificar agora</button>
+              </div>
+          </div>
+          ${movStatus.regras === 'pendente' && movStatus.servidor !== 'pendente' ? '<p class="mov-aviso">As movimentações não estão sendo guardadas: falta publicar as regras do Firestore (<code>firebase deploy --only firestore:rules</code>).</p>' : ''}
+          ${corpo}`;
+      card.onclick = (e) => {
+          if (e.target.closest('[data-mov-verificar]')) { verificarMovimentacoes({ forcar: true }); return; }
+          if (e.target.closest('[data-mov-vistas]')) { marcarMovVistas(comNovas.map(x => x.r.id)); return; }
+          const item = e.target.closest('.dash-item'); if (!item) return;
+          const p = DB.find(x => x.num === item.dataset.valor); if (p) openProcDetails(p.id);
+      };
+  }
+  // Seção "Movimentações (DataJud)" no detalhe do processo; abrir marca como vistas.
+  function renderMovProcesso(p) {
+      const sec = $('#details-mov'); if (!sec) return;
+      const tribunal = p.tipo === 'judicial' ? tribunalDoCNJ(p.num) : null;
+      sec.hidden = !tribunal; if (!tribunal) return;
+      const reg = movDoProcesso(p.id);
+      const novas = new Set(novasMovimentacoes(reg).map(m => m.data + m.nome));
+      const lista = reg && reg.movimentos.length
+          ? `<ol class="mov-lista">${reg.movimentos.slice(0, 10).map(m => `<li class="${novas.has(m.data + m.nome) ? 'is-nova' : ''}"><span class="mov-data">${fmtDataHora(m.data)}</span><span class="mov-nome">${sanitizeHTML(m.nome)}${m.complemento ? ` <span class="mov-comp">(${sanitizeHTML(m.complemento)})</span>` : ''}</span>${novas.has(m.data + m.nome) ? '<span class="mov-tag">nova</span>' : ''}</li>`).join('')}</ol>`
+          : `<p class="cfg-note">${reg && reg.encontrado === false ? `Processo não encontrado no DataJud do ${tribunal.toUpperCase()}.` : 'Ainda não verificado.'}</p>`;
+      sec.innerHTML = `<h4>Movimentações (DataJud · ${tribunal.toUpperCase()})</h4>
+          ${reg ? `<p class="cfg-note">${sanitizeHTML([reg.classe, reg.orgao].filter(Boolean).join(' · '))}${reg.verificadoAs ? `${reg.classe || reg.orgao ? '. ' : ''}Verificado em ${new Date(reg.verificadoAs).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.` : ''}</p>` : ''}
+          ${lista}
+          <button type="button" class="btn secondary" id="btnMovVerificar">Verificar agora</button>`;
+      $('#btnMovVerificar').onclick = async () => {
+          const b = $('#btnMovVerificar'); b.disabled = true; b.textContent = 'Verificando…';
+          try { await verificarUm(p); }
+          catch (e) { showToast(e.servidorPendente ? 'A consulta ao DataJud ainda não foi publicada no servidor.' : `DataJud: ${e.message}`, 'danger'); }
+          renderMovProcesso(p); renderMovimentacoes(); updateAllNotifications();
+      };
+      if (novas.size) marcarMovVistas([reg.id]);
+  }
+
   // ----- Relatório mensal (Dashboard → "Relatório do mês") -----
   const MESES_EXTENSO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   const nomeMes = (ano, mes) => `${MESES_EXTENSO[mes].charAt(0).toUpperCase()}${MESES_EXTENSO[mes].slice(1)} de ${ano}`;
@@ -2797,6 +2939,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <h4>Tramitação e Parecer</h4>
         <div class="view-grid" id="details-tramitacao"></div>
       </div>
+      <div class="view-section mov-section" id="details-mov" hidden></div>
       <div class="view-section anotacoes-section">
         <h4>Anotações e Pendências</h4>
         <div class="anotacoes-timeline" id="anotacoes-timeline"></div>
@@ -2807,6 +2950,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
 
+    renderMovProcesso(p);
     const idGrid = $('#details-identificacao');
     idGrid.appendChild(createViewItem('Nº Processo', p.num)).style.gridColumn = '1 / -1';
     idGrid.appendChild(createViewItem('Tipo', p.tipo === 'administrativo' ? 'Administrativo' : 'Judicial'));
@@ -4479,7 +4623,7 @@ ${corpo}
           showTab('proc', { filterBy });
       };
       renderSaudacao(kpiData);
-      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderStatusBreakdown(); renderRadarPrazos(); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
+      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderStatusBreakdown(); renderMovimentacoes(); renderRadarPrazos(); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
   }
 
   // Resumo do dia no topo do Dashboard (exibido no visual novo).
@@ -4553,6 +4697,10 @@ ${corpo}
         DB.filter(p => p.prazo && (p.stat !== 'finalizado' && p.stat !== 'arquivado')).forEach(p => { const prazoDate = parse(p.prazo); const df = diffDays(hoje, prazoDate); if (df < 0) { notifications.push({ id: `alert-vencido-${p.id}`, type: 'alerta', date: p.prazo, title: `Processo ${p.num}`, subtitle: `Vencido há ${Math.abs(df)} dia(s)`, navInfo: { type: 'proc', num: p.num } }); } else if (df === 0) { notifications.push({ id: `alert-fatal-${p.id}`, type: 'alerta', date: p.prazo, title: `Processo ${p.num}`, subtitle: 'Prazo fatal (hoje!)', navInfo: { type: 'proc', num: p.num } }); } else if (df > 0 && df <= 5) { notifications.push({ id: `proc-${p.id}`, type: 'prazo', date: p.prazo, title: `Processo ${p.num}`, subtitle: `Prazo em ${df} dia(s)`, navInfo: { type: 'proc', num: p.num } }); } });
         const futuroEventos = new Date(hoje); futuroEventos.setDate(hoje.getDate() + 7);
         CAL.filter(e => e.cat !== 'p').forEach(e => { const eventDate = parse(e.data); if (eventDate >= hoje && eventDate <= futuroEventos) { notifications.push({ id: `cal-${e.id}`, type: 'evento', date: e.data, title: e.desc, subtitle: `Dia ${fmtBR(e.data)}${e.hora ? ` às ${e.hora}` : ''}`, navInfo: { type: 'cal', date: e.data } }); } });
+        DB_MOV.forEach(reg => {
+            const novas = novasMovimentacoes(reg); if (!novas.length) return;
+            notifications.push({ id: `mov-${reg.id}-${novas[0].data}`, type: 'alerta', date: novas[0].data.slice(0, 10), title: `Processo ${reg.num}`, subtitle: `${novas.length === 1 ? 'Nova movimentação' : `${novas.length} movimentações novas`}: ${novas[0].nome}`, navInfo: { type: 'proc', num: reg.num } });
+        });
         return notifications.filter(n => !CFG.dismissedNotifications?.includes(n.id)).sort((a,b) => a.date.localeCompare(b.date));
     }
     function updateAllNotifications(filter = 'all') {

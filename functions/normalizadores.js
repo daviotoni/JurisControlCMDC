@@ -117,6 +117,42 @@ function normalizarDatajud(json, tribunalId) {
   return out;
 }
 
+/**
+ * Movimentações de um processo no Datajud (endpoint _search). Junta os graus
+ * (o mesmo número pode vir em G1 e G2), remove repetidas e devolve as mais
+ * recentes primeiro. Nunca lança: entrada inesperada resulta em null.
+ */
+function normalizarDatajudMovimentos(json, tribunalId, limite = 15) {
+  const hits = json && json.hits && Array.isArray(json.hits.hits) ? json.hits.hits : [];
+  const fontes = hits.map((h) => (h && h._source) || {}).filter((s) => s.numeroProcesso);
+  if (!fontes.length) return null;
+  const vistos = new Set();
+  const movimentos = [];
+  for (const s of fontes) {
+    for (const m of Array.isArray(s.movimentos) ? s.movimentos : []) {
+      const data = String((m && m.dataHora) || '');
+      const nome = String((m && m.nome) || '').trim();
+      if (!data || !nome) continue;
+      const chave = `${data}|${nome}`;
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      const complemento = (Array.isArray(m.complementosTabelados) ? m.complementosTabelados : [])
+        .map((c) => c && (c.nome || c.descricao)).filter(Boolean).join(', ');
+      movimentos.push({ data, nome, complemento, grau: s.grau || '' });
+    }
+  }
+  movimentos.sort((a, b) => b.data.localeCompare(a.data));
+  const recente = fontes.slice().sort((a, b) => String(b.dataHoraUltimaAtualizacao || '').localeCompare(String(a.dataHoraUltimaAtualizacao || '')))[0];
+  return {
+    numero: formatarNumeroCNJ(recente.numeroProcesso),
+    tribunal: NOMES_TRIBUNAIS[tribunalId] || String(recente.tribunal || tribunalId || '').toUpperCase(),
+    classe: (recente.classe && recente.classe.nome) || '',
+    orgao: (recente.orgaoJulgador && recente.orgaoJulgador.nome) || '',
+    atualizadoEm: String(recente.dataHoraUltimaAtualizacao || ''),
+    movimentos: movimentos.slice(0, limite),
+  };
+}
+
 // ---------- Jurisprudências.ai (API REST /api/v1) ----------
 
 // A API ora devolve datas ISO (2024-03-10), ora no formato brasileiro
@@ -157,4 +193,4 @@ function normalizarJurisai(json, courtId) {
   return out;
 }
 
-module.exports = { normalizarLexml, normalizarDatajud, normalizarJurisai, normalizarDataJuris, formatarNumeroCNJ, extrairTags, tribunalDaUrn };
+module.exports = { normalizarLexml, normalizarDatajud, normalizarDatajudMovimentos, normalizarJurisai, normalizarDataJuris, formatarNumeroCNJ, extrairTags, tribunalDaUrn };
