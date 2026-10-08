@@ -284,6 +284,38 @@ function filtrarOrdenarResultadosJuris(lista, opcoes = {}) {
   return out;
 }
 
+// ----- Busca global (Ctrl+K) -----
+// itens: [{ grupo, titulo, sub?, campos?: string[] , ... }]. Todos os termos da
+// consulta precisam aparecer (sem diferenciar acento/maiúscula). Pontua mais
+// quando o termo abre o título, depois quando está no título, depois no resto.
+// Devolve os itens ordenados por grupo (na ordem de `ordemGrupos`) e pontuação,
+// no máximo `porGrupo` de cada grupo.
+function buscaNormalizar(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+function buscarGlobal(itens, consulta, { ordemGrupos = [], porGrupo = 5 } = {}) {
+  const termos = buscaNormalizar(consulta).split(/\s+/).filter(Boolean);
+  if (!termos.length) return [];
+  const grupos = new Map();
+  for (const it of itens || []) {
+    const titulo = buscaNormalizar(it.titulo);
+    const resto = buscaNormalizar([it.sub, ...(it.campos || [])].join(' '));
+    let score = 0, ok = true;
+    for (const t of termos) {
+      if (titulo.startsWith(t)) score += 3;
+      else if (titulo.includes(t)) score += 2;
+      else if (resto.includes(t)) score += 1;
+      else { ok = false; break; }
+    }
+    if (!ok) continue;
+    if (!grupos.has(it.grupo)) grupos.set(it.grupo, []);
+    grupos.get(it.grupo).push({ ...it, score });
+  }
+  const ordem = [...ordemGrupos, ...[...grupos.keys()].filter(g => !ordemGrupos.includes(g))];
+  return ordem.filter(g => grupos.has(g)).flatMap(g =>
+    grupos.get(g).sort((a, b) => b.score - a.score).slice(0, porGrupo));
+}
+
 // ----- Janela dos últimos 12 meses (gráficos do Dashboard) -----
 // Devolve os `n` meses que terminam no mês de `hoje` (o mais antigo primeiro),
 // cada um com { ano, mes (0-based), chave 'YYYY-MM' }. Os gráficos agrupam por
@@ -303,7 +335,7 @@ function ultimosMeses(hoje, n = 12) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
-    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, ultimosMeses,
+    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, ultimosMeses, buscarGlobal, buscaNormalizar,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
     normalizarConsultaJuris, expandirConsultaJuris, filtrarOrdenarResultadosJuris,
     VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,

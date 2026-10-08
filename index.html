@@ -37,7 +37,7 @@
             if (localStorage.getItem('jc-ui') !== 'classico') document.documentElement.classList.add('ui-v3');
         } catch (e) { document.documentElement.classList.add('ui-v3'); }
     </script>
-        <link rel="stylesheet" href="style.css?v=3149e650ce">
+        <link rel="stylesheet" href="style.css?v=50ca3f59d1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -176,6 +176,11 @@
                 <h2 id="page-title" class="page-title">Dashboard</h2>
             </div>
             <div class="header-right">
+                <button type="button" id="btnBuscaGlobal" class="busca-trigger" aria-haspopup="dialog" aria-keyshortcuts="Control+K">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <span class="busca-trigger-label">Buscar</span>
+                    <kbd class="busca-kbd">Ctrl K</kbd>
+                </button>
                 <span id="welcomeMsg"></span>
                 <div class="theme-switch-wrapper">
                     <button class="theme-toggle-btn" id="theme-toggle-btn" aria-haspopup="true" aria-expanded="false" aria-label="Alterar tema: claro, escuro ou automático">
@@ -877,12 +882,22 @@
 
     <div id="toast-container"></div>
 
+    <dialog id="buscaGlobal" class="busca-dialog" aria-label="Busca global">
+        <div class="busca-campo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="buscaGlobalInput" type="text" placeholder="Buscar processo, parecer, lei, compromisso ou tela…" autocomplete="off" spellcheck="false"
+                   role="combobox" aria-expanded="true" aria-controls="buscaGlobalLista" aria-autocomplete="list">
+            <kbd class="busca-kbd">Esc</kbd>
+        </div>
+        <ul id="buscaGlobalLista" class="busca-lista" role="listbox" aria-label="Resultados"></ul>
+        <div class="busca-rodape"><span><kbd class="busca-kbd">↑</kbd><kbd class="busca-kbd">↓</kbd> navegar</span><span><kbd class="busca-kbd">Enter</kbd> abrir</span></div>
+    </dialog>
     <script src="js/prazos.js?v=e5bae30bc2"></script>
-    <script src="js/utils.js?v=265311a4e1"></script>
+    <script src="js/utils.js?v=9e400e86b3"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
     <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
     <script src="js/motion.js?v=0559776488"></script>
-    <script src="js/app.js?v=8e96b8593a"></script>
+    <script src="js/app.js?v=0e5455e278"></script>
 
 </body>
 </html>

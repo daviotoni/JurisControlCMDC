@@ -90,6 +90,8 @@ module.exports = [
         getMimeType: 'readonly',
         filtrarOrdenarProcessos: 'readonly',
         ultimosMeses: 'readonly',
+        buscarGlobal: 'readonly',
+        buscaNormalizar: 'readonly',
         Prazos: 'readonly', // js/prazos.js
         normalizeParecerParaLista: 'readonly',
         combinarPareceres: 'readonly',

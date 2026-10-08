@@ -2465,6 +2465,86 @@ document.addEventListener('DOMContentLoaded', () => {
       };
   }
 
+  // ----- Busca global (Ctrl+K ou "/") -----
+  // Junta processos, pareceres, documentos, leis, compromissos e as telas num
+  // índice simples montado na hora (os dados já estão em memória).
+  const BUSCA_GRUPOS = ['Ações', 'Telas', 'Processos', 'Pareceres', 'Documentos', 'Leis', 'Compromissos'];
+  function itensBuscaGlobal() {
+      const itens = [];
+      Object.entries(tabTitles).forEach(([key, nome]) => itens.push({ grupo: 'Telas', titulo: nome, abrir: () => showTab(key) }));
+      itens.push({ grupo: 'Ações', titulo: 'Novo processo', campos: ['adicionar', 'cadastrar'], abrir: () => { showTab('proc'); openProc('new'); } });
+      itens.push({ grupo: 'Ações', titulo: 'Novo compromisso', campos: ['agenda', 'evento', 'adicionar'], abrir: () => { showTab('cal'); $('#new_evt')?.click(); } });
+      DB.forEach(p => itens.push({
+          grupo: 'Processos', titulo: `Processo ${p.num}`, sub: [p.int, statusMap[p.stat]].filter(Boolean).join(' · '),
+          campos: [p.obj, p.setorOrigem, p.dest, p.acao, p.prazo ? `prazo ${fmtBR(p.prazo)}` : ''],
+          abrir: () => { showTab('proc', { filterBy: { text: p.num } }); openProcDetails(p.id); },
+      }));
+      DB_PARECERES.forEach(pz => {
+          const proc = DB.find(p => String(p.id) === String(pz.processoId));
+          itens.push({
+              grupo: 'Pareceres', titulo: `Parecer — Processo ${pz.processoNum || (proc && proc.num) || 's/ nº'}`,
+              sub: [proc && proc.int, pz.status === 'emitido' ? 'Emitido' : pz.status === 'em-revisao' ? 'Em revisão' : 'Rascunho'].filter(Boolean).join(' · '),
+              campos: [proc && proc.obj],
+              abrir: () => { if (proc) { showTab('docs'); openParecerModal(proc); } else { showTab('docs'); showToast('Processo vinculado não encontrado.', 'danger'); } },
+          });
+      });
+      DB_DOCS.forEach(d => itens.push({ grupo: 'Documentos', titulo: d.nomePrincipal || 'Documento', sub: d.criadoEm ? `Enviado em ${fmtBR(String(d.criadoEm).slice(0, 10))}` : '', abrir: () => showTab('docs') }));
+      DB_LEIS.forEach(l => itens.push({
+          grupo: 'Leis', titulo: `${l.tipo || 'Lei'} nº ${l.numero || ''}${l.ano ? `/${l.ano}` : ''}`, sub: l.ementa || '',
+          abrir: () => { const q = $('#qLeis'); if (q) q.value = String(l.numero || ''); showTab('leis'); },
+      }));
+      CAL.forEach(c => itens.push({
+          grupo: 'Compromissos', titulo: c.desc || 'Compromisso', sub: `${fmtBR(c.data)}${c.hora ? ` às ${c.hora}` : ''}`,
+          abrir: () => { showTab('cal'); navigateToDate(c.data); },
+      }));
+      return itens;
+  }
+  function ligarBuscaGlobal() {
+      const dlg = $('#buscaGlobal'), input = $('#buscaGlobalInput'), lista = $('#buscaGlobalLista'), trigger = $('#btnBuscaGlobal');
+      if (!dlg || typeof dlg.showModal !== 'function') { if (trigger) trigger.style.display = 'none'; return; }
+      let itens = [], resultados = [], ativo = 0;
+      const desenhar = () => {
+          const q = input.value;
+          resultados = q.trim()
+              ? buscarGlobal(itens, q, { ordemGrupos: BUSCA_GRUPOS, porGrupo: 6 })
+              : itens.filter(i => i.grupo === 'Ações' || i.grupo === 'Telas');
+          ativo = Math.min(ativo, Math.max(resultados.length - 1, 0));
+          if (!resultados.length) { lista.innerHTML = `<li class="busca-vazio">Nada encontrado para “${sanitizeHTML(q.trim())}”.</li>`; input.removeAttribute('aria-activedescendant'); return; }
+          let grupoAtual = '';
+          lista.innerHTML = resultados.map((r, i) => {
+              const cab = r.grupo !== grupoAtual ? `<li class="busca-grupo" role="presentation">${sanitizeHTML(r.grupo)}</li>` : '';
+              grupoAtual = r.grupo;
+              return `${cab}<li id="busca-op-${i}" class="busca-item${i === ativo ? ' is-ativo' : ''}" role="option" aria-selected="${i === ativo}" data-i="${i}">
+                  <span class="busca-item-titulo">${sanitizeHTML(r.titulo)}</span>${r.sub ? `<span class="busca-item-sub">${sanitizeHTML(r.sub)}</span>` : ''}</li>`;
+          }).join('');
+          input.setAttribute('aria-activedescendant', `busca-op-${ativo}`);
+          lista.querySelector('.is-ativo')?.scrollIntoView({ block: 'nearest' });
+      };
+      const abrir = () => {
+          if ($('.app-layout')?.style.display === 'none' || dlg.open) return;
+          itens = itensBuscaGlobal(); ativo = 0; input.value = '';
+          dlg.showModal(); desenhar(); input.focus();
+      };
+      const escolher = (i) => { const r = resultados[i]; if (!r) return; dlg.close(); r.abrir(); };
+      if (trigger) trigger.onclick = abrir;
+      input.oninput = () => { ativo = 0; desenhar(); };
+      input.onkeydown = (e) => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); ativo = Math.min(ativo + 1, resultados.length - 1); desenhar(); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); ativo = Math.max(ativo - 1, 0); desenhar(); }
+          else if (e.key === 'Enter') { e.preventDefault(); escolher(ativo); }
+      };
+      lista.onclick = (e) => { const li = e.target.closest('.busca-item'); if (li) escolher(Number(li.dataset.i)); };
+      lista.onmousemove = (e) => { const li = e.target.closest('.busca-item'); if (li && Number(li.dataset.i) !== ativo) { ativo = Number(li.dataset.i); desenhar(); } };
+      dlg.onclick = (e) => { if (e.target === dlg) dlg.close(); }; // clique fora da caixa
+      document.addEventListener('keydown', (e) => {
+          const emCampo = e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"], .ql-editor');
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); abrir(); }
+          else if (e.key === '/' && !emCampo && !document.querySelector('.modal[style*="flex"]')) { e.preventDefault(); abrir(); }
+      });
+      // No Mac, mostra ⌘K no lugar de Ctrl K.
+      if (/Mac|iPhone|iPad/.test(navigator.platform || '')) $$('.busca-trigger .busca-kbd').forEach(k => { k.textContent = '⌘K'; });
+  }
+
   // Nome do feriado (ou ponto facultativo/data cadastrada) num dia 'YYYY-MM-DD'.
   const cacheFeriados = new Map();
   function feriadoNoDia(ds) {
@@ -4533,6 +4613,7 @@ ${corpo}
     if (btnGeminiTk) btnGeminiTk.onclick = salvarGeminiToken;
 
     setupEnhancedNav();
+    ligarBuscaGlobal();
 
     $$('.tab').forEach(b => b.onclick = (e) => { e.preventDefault(); showTab(b.dataset.tab); if (window.closeMobileMenu) window.closeMobileMenu(); });
     $('#userList').onclick = async (e) => {

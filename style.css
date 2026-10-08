@@ -1341,6 +1341,43 @@
         @keyframes toast-slide-in { to { opacity: 1; transform: translateX(0); } }
         @keyframes toast-fade-out { from { opacity: 1; } to { opacity: 0; transform: translateY(1rem); height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; } }
 
+        /* ===== Busca global (Ctrl+K) ===== */
+        .busca-trigger {
+            display: inline-flex; align-items: center; gap: 0.5rem; height: 36px; padding: 0 0.5rem 0 0.7rem;
+            border: 1px solid var(--border-color); border-radius: 9px; background: var(--card-bg); color: var(--text-muted);
+            font: inherit; font-size: 0.875rem; cursor: pointer; min-width: 200px;
+        }
+        .busca-trigger:hover { color: var(--text-primary); border-color: var(--brand-200); }
+        .busca-trigger-label { flex: 1; text-align: left; }
+        .busca-kbd {
+            display: inline-flex; align-items: center; padding: 1px 6px; border: 1px solid var(--border-color); border-radius: 5px;
+            font: inherit; font-size: 0.75rem; line-height: 1.4; color: var(--text-muted); background: var(--bg-color-only); white-space: nowrap;
+        }
+        @media (max-width: 992px) {
+            .busca-trigger { min-width: 0; width: 36px; padding: 0; justify-content: center; }
+            .busca-trigger-label, .busca-trigger .busca-kbd { display: none; }
+        }
+        .busca-dialog {
+            width: min(640px, calc(100vw - 2rem)); max-height: min(560px, calc(100vh - 6rem)); margin: 12vh auto auto; padding: 0;
+            border: 0; border-radius: 14px; background: var(--card-bg); color: var(--text-primary);
+            box-shadow: 0 24px 60px -20px rgba(var(--shadow-rgb), 0.45); overflow: hidden;
+        }
+        .busca-dialog[open] { display: flex; flex-direction: column; }
+        .busca-dialog::backdrop { background: rgba(12, 16, 22, 0.45); }
+        body[data-theme="dark"] .busca-dialog { border: 1px solid var(--border-color); }
+        .busca-campo { display: flex; align-items: center; gap: 0.7rem; padding: 0.9rem 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted); }
+        .busca-campo input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 1rem; color: var(--text-primary); }
+        .busca-campo input::-webkit-search-cancel-button { display: none; }
+        .busca-lista { list-style: none; margin: 0; padding: 0.4rem; overflow-y: auto; flex: 1; }
+        .busca-grupo { padding: 0.65rem 0.6rem 0.3rem; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+        .busca-item { display: flex; flex-direction: column; gap: 1px; padding: 0.55rem 0.6rem; border-radius: 8px; cursor: pointer; }
+        .busca-item.is-ativo { background: var(--bg-color-only); }
+        .busca-item-titulo { font-weight: 500; font-size: 0.9375rem; }
+        .busca-item-sub { font-size: 0.8125rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .busca-vazio { padding: 1.25rem 0.6rem; color: var(--text-muted); font-size: 0.9rem; }
+        .busca-rodape { display: flex; gap: 1.25rem; padding: 0.55rem 1rem; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted); }
+        .busca-rodape .busca-kbd { margin-right: 2px; }
+
         /* ===== Cálculo do prazo (formulário do processo) ===== */
         .prazo-calc { margin-top: 1rem; padding: 0.9rem 1rem 0.8rem; border-radius: 10px; background: var(--bg-color-only); }
         .prazo-calc-title { margin: 0 0 0.6rem; font-weight: 600; font-size: 0.875rem; color: var(--text-primary); }
@@ -2166,6 +2203,16 @@
         .ui-v3 .tag-pill.r, .ui-v3 .tag-pill.g { --tg: #5a7190; }
         .ui-v3 .tag-pill.o { --tg: #b39448; }
         .ui-v3 .tag-pill.e { --tg: #8a8f96; }
+
+        /* Busca global */
+        .ui-v3 .busca-trigger { border-color: var(--t-line); background: var(--t-canvas); color: var(--t-muted); }
+        .ui-v3 .busca-trigger:hover { color: var(--t-ink); border-color: var(--t-line-strong); background: var(--t-paper); }
+        .ui-v3 .busca-kbd { border-color: var(--t-line); background: var(--t-paper); color: var(--t-muted); }
+        .ui-v3 .busca-dialog { background: var(--t-canvas); color: var(--t-ink); }
+        .ui-v3 .busca-campo, .ui-v3 .busca-rodape { border-color: var(--t-line); }
+        .ui-v3 .busca-campo input { color: var(--t-ink); }
+        .ui-v3 .busca-grupo, .ui-v3 .busca-item-sub, .ui-v3 .busca-vazio, .ui-v3 .busca-rodape { color: var(--t-muted); }
+        .ui-v3 .busca-item.is-ativo { background: var(--t-paper); }
 
         /* Cálculo do prazo e feriados */
         .ui-v3 .prazo-calc { background: var(--t-paper); }
