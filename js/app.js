@@ -2465,6 +2465,136 @@ document.addEventListener('DOMContentLoaded', () => {
       };
   }
 
+  // ----- Relatório mensal (Dashboard → "Relatório do mês") -----
+  const MESES_EXTENSO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const nomeMes = (ano, mes) => `${MESES_EXTENSO[mes].charAt(0).toUpperCase()}${MESES_EXTENSO[mes].slice(1)} de ${ano}`;
+  const SITUACAO_PRAZO = { 'no-prazo': 'Cumpridos no prazo', 'fora-do-prazo': 'Cumpridos fora do prazo', vencido: 'Vencidos sem saída', 'a-vencer': 'A vencer', 'sem-data': 'Concluídos sem data de saída' };
+  const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+  function dadosRelatorio(ano, mes) {
+      return relatorioMensal({ processos: DB, pareceres: DB_PARECERES, ano, mes, hoje: todayUTC(), statusMap });
+  }
+  function resumoRelatorio(r) {
+      const cumpridos = r.prazos['no-prazo'];
+      return [
+          { v: r.entradas.total, l: 'Entradas' },
+          { v: r.saidas, l: 'Saídas' },
+          { v: r.pareceresEmitidos, l: 'Pareceres emitidos' },
+          { v: r.tramitacao.media === null ? '—' : plural(r.tramitacao.media, 'dia', 'dias'), l: 'Tempo médio de tramitação' },
+          { v: r.prazos.total ? `${cumpridos} de ${r.prazos.total}` : '—', l: 'Prazos do mês cumpridos no prazo' },
+          { v: r.emAberto, l: 'Em aberto hoje' },
+      ];
+  }
+  function renderRelatorioPreview(r) {
+      const el = $('#relPreview'); if (!el) return;
+      const hoje = todayUTC(), mesCorrente = hoje.getUTCFullYear() === r.ano && hoje.getUTCMonth() === r.mes;
+      const linhas = (arr) => arr.map(c => `<tr>${c.map((x, i) => `<td${i ? ' class="num"' : ''}>${sanitizeHTML(String(x))}</td>`).join('')}</tr>`).join('');
+      el.innerHTML = `
+          ${mesCorrente ? '<p class="rel-aviso">Mês em andamento: números até hoje.</p>' : ''}
+          <div class="rel-resumo">${resumoRelatorio(r).map(k => `<div class="rel-num"><span class="v">${sanitizeHTML(String(k.v))}</span><span class="l">${k.l}</span></div>`).join('')}</div>
+          <h4>Entradas</h4>
+          <p>${plural(r.entradas.total, 'processo', 'processos')}: ${plural(r.entradas.administrativo, 'administrativo', 'administrativos')} e ${plural(r.entradas.judicial, 'judicial', 'judiciais')}.</p>
+          ${r.entradas.porSetor.length ? `<table class="rel-tabela"><thead><tr><th>Setor de origem</th><th class="num">Processos</th></tr></thead><tbody>${linhas(r.entradas.porSetor.slice(0, 8).map(x => [x.setor, x.n]))}</tbody></table>` : ''}
+          <h4>Prazos com vencimento no mês</h4>
+          ${r.prazos.total ? `<table class="rel-tabela"><tbody>${linhas(Object.keys(SITUACAO_PRAZO).filter(k => r.prazos[k]).map(k => [SITUACAO_PRAZO[k], r.prazos[k]]))}</tbody></table>` : '<p>Nenhum prazo venceu neste mês.</p>'}
+          ${r.prazos.atencao.length ? `<p class="rel-sub">Pedem atenção</p><table class="rel-tabela"><thead><tr><th>Processo</th><th>Interessado</th><th>Prazo</th><th>Saída</th></tr></thead><tbody>${r.prazos.atencao.map(a => `<tr><td>${sanitizeHTML(a.num)}</td><td>${sanitizeHTML(a.int)}</td><td>${fmtBR(a.prazo)}</td><td>${a.saida ? fmtBR(a.saida) : 'sem saída'}</td></tr>`).join('')}</tbody></table>` : ''}
+          <h4>Carteira hoje, por status</h4>
+          <table class="rel-tabela"><tbody>${linhas(r.situacaoAtual.map(x => [x.rotulo, x.n]))}</tbody></table>`;
+  }
+  async function generateRelatorioPDF(r) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+      const fonte = registrarFonteParecer(doc);
+      const P = PDF_PARECER, pageW = doc.internal.pageSize.getWidth(), pageH = doc.internal.pageSize.getHeight();
+      const L = P.left, R = pageW - P.right, W = R - L, maxY = pageH - P.fundo;
+      let y = drawParecerTimbre(doc, fonte);
+      const novaPagina = () => { doc.addPage(); y = drawParecerTimbre(doc, fonte); };
+      const garantir = (h) => { if (y + h > maxY) novaPagina(); };
+      const cinza = () => doc.setTextColor(95, 95, 95), tinta = () => doc.setTextColor(22, 25, 29);
+
+      tinta(); doc.setFont(fonte, 'bold'); doc.setFontSize(18);
+      doc.text(`Relatório mensal — ${nomeMes(r.ano, r.mes)}`, L, y); y += 6;
+      cinza(); doc.setFont(fonte, 'normal'); doc.setFontSize(11);
+      const hoje = todayUTC(), mesCorrente = hoje.getUTCFullYear() === r.ano && hoje.getUTCMonth() === r.mes;
+      const agora = new Date();
+      doc.text(`Gerado em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} por ${currentUserName()}.${mesCorrente ? ' Mês em andamento: números até hoje.' : ''}`, L, y); y += 9;
+
+      // Resumo: 3 colunas × 2 linhas
+      const colW = W / 3, boxH = 22;
+      resumoRelatorio(r).forEach((k, i) => {
+          const cx = L + (i % 3) * colW, cy = y + Math.floor(i / 3) * (boxH + 3);
+          doc.setDrawColor(216, 211, 202); doc.setLineWidth(0.3); doc.roundedRect(cx, cy, colW - 3, boxH, 2, 2, 'S');
+          tinta(); doc.setFont(fonte, 'normal'); doc.setFontSize(19); doc.text(String(k.v), cx + 4, cy + 9);
+          cinza(); doc.setFontSize(10.5); doc.text(doc.splitTextToSize(k.l, colW - 10).slice(0, 2), cx + 4, cy + 14.5);
+      });
+      y += 2 * (boxH + 3) + 6;
+
+      const secao = (titulo) => {
+          y += 4; garantir(18); tinta(); doc.setFont(fonte, 'bold'); doc.setFontSize(13); doc.text(titulo, L, y);
+          doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3); doc.line(L, y + 1.8, R, y + 1.8); y += 7;
+          doc.setFont(fonte, 'normal'); doc.setFontSize(11.5);
+      };
+      const paragrafo = (txt) => { tinta(); doc.setFont(fonte, 'normal'); doc.setFontSize(11.5); const ls = doc.splitTextToSize(txt, W); garantir(ls.length * 5.2); doc.text(ls, L, y); y += ls.length * 5.2 + 1.5; };
+      // Tabela simples: colunas [{ t, w (fração), num }]; corta texto longo em uma linha.
+      const tabela = (cols, rows, cabecalho = true) => {
+          const xs = []; let acc = L; cols.forEach(c => { xs.push(acc); acc += c.w * W; });
+          const linha = (vals, bold) => {
+              garantir(7);
+              doc.setFont(fonte, bold ? 'bold' : 'normal'); doc.setFontSize(bold ? 10.5 : 11); bold ? cinza() : tinta();
+              vals.forEach((v, i) => {
+                  const larg = cols[i].w * W - 3; let t = String(v ?? '');
+                  while (t.length > 1 && doc.getTextWidth(t) > larg) t = t.slice(0, -2) + '…';
+                  if (cols[i].num) doc.text(t, xs[i] + cols[i].w * W - 1, y, { align: 'right' }); else doc.text(t, xs[i], y);
+              });
+              doc.setDrawColor(232, 229, 223); doc.setLineWidth(0.2); doc.line(L, y + 2.2, R, y + 2.2); y += 6.6;
+          };
+          if (cabecalho) linha(cols.map(c => c.t), true);
+          rows.forEach(rw => linha(rw, false));
+          y += 3;
+      };
+
+      secao('Entradas');
+      paragrafo(`${plural(r.entradas.total, 'processo', 'processos')}: ${plural(r.entradas.administrativo, 'administrativo', 'administrativos')} e ${plural(r.entradas.judicial, 'judicial', 'judiciais')}.`);
+      if (r.entradas.porSetor.length) tabela([{ t: 'Setor de origem', w: 0.8 }, { t: 'Processos', w: 0.2, num: true }], r.entradas.porSetor.slice(0, 10).map(x => [x.setor, x.n]));
+      if (r.tramitacao.n) paragrafo(`Tempo de tramitação ${r.tramitacao.n === 1 ? 'do processo que saiu' : `dos ${r.tramitacao.n} processos que saíram`} no mês: média de ${plural(r.tramitacao.media, 'dia', 'dias')}, mediana de ${plural(r.tramitacao.mediana, 'dia', 'dias')}.`);
+
+      secao('Prazos com vencimento no mês');
+      if (!r.prazos.total) paragrafo('Nenhum prazo venceu neste mês.');
+      else tabela([{ t: 'Situação', w: 0.8 }, { t: 'Processos', w: 0.2, num: true }], Object.keys(SITUACAO_PRAZO).filter(k => r.prazos[k]).map(k => [SITUACAO_PRAZO[k], r.prazos[k]]));
+      if (r.prazos.atencao.length) {
+          garantir(14); tinta(); doc.setFont(fonte, 'bold'); doc.setFontSize(11.5); doc.text('Pedem atenção', L, y); y += 6;
+          tabela([{ t: 'Processo', w: 0.2 }, { t: 'Interessado', w: 0.44 }, { t: 'Prazo', w: 0.17 }, { t: 'Saída', w: 0.19 }],
+              r.prazos.atencao.map(a => [a.num, a.int, fmtBR(a.prazo), a.saida ? fmtBR(a.saida) : 'sem saída']));
+      }
+
+      secao('Carteira hoje, por status');
+      tabela([{ t: 'Status', w: 0.8 }, { t: 'Processos', w: 0.2, num: true }], r.situacaoAtual.map(x => [x.rotulo, x.n]));
+
+      const total = doc.getNumberOfPages();
+      for (let i = 1; i <= total; i++) {
+          doc.setPage(i); cinza(); doc.setFont(fonte, 'normal'); doc.setFontSize(10);
+          doc.text(`Relatório mensal · ${nomeMes(r.ano, r.mes)} · página ${i} de ${total}`, R, pageH - 10, { align: 'right' });
+      }
+      doc.save(`relatorio-mensal_${r.ano}-${String(r.mes + 1).padStart(2, '0')}.pdf`);
+  }
+  function openRelatorio() {
+      const m = $('#m_relatorio'), sel = $('#relMes'); if (!m || !sel) return;
+      const meses = ultimosMeses(todayUTC(), 12).reverse();
+      sel.innerHTML = meses.map(x => `<option value="${x.chave}">${nomeMes(x.ano, x.mes)}</option>`).join('');
+      const atual = () => { const [a, mm] = sel.value.split('-').map(Number); return dadosRelatorio(a, mm - 1); };
+      sel.onchange = () => renderRelatorioPreview(atual());
+      renderRelatorioPreview(atual());
+      m.style.display = 'flex';
+      const fechar = () => { m.style.display = 'none'; };
+      $$('[data-close-rel]').forEach(b => b.onclick = fechar);
+      m.onclick = (e) => { if (e.target === m) fechar(); };
+      $('#relPdf').onclick = async () => {
+          const btn = $('#relPdf'); btn.disabled = true;
+          try { await generateRelatorioPDF(atual()); showToast('Relatório gerado.'); }
+          catch (err) { console.error('Erro ao gerar relatório:', err); showToast('Não foi possível gerar o relatório.', 'danger'); }
+          finally { btn.disabled = false; }
+      };
+  }
+
   // ----- Busca global (Ctrl+K ou "/") -----
   // Junta processos, pareceres, documentos, leis, compromissos e as telas num
   // índice simples montado na hora (os dados já estão em memória).
@@ -4614,6 +4744,7 @@ ${corpo}
 
     setupEnhancedNav();
     ligarBuscaGlobal();
+    $('#btnRelatorio')?.addEventListener('click', openRelatorio);
 
     $$('.tab').forEach(b => b.onclick = (e) => { e.preventDefault(); showTab(b.dataset.tab); if (window.closeMobileMenu) window.closeMobileMenu(); });
     $('#userList').onclick = async (e) => {

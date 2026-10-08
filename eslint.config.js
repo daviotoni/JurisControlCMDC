@@ -92,6 +92,7 @@ module.exports = [
         ultimosMeses: 'readonly',
         buscarGlobal: 'readonly',
         buscaNormalizar: 'readonly',
+        relatorioMensal: 'readonly',
         Prazos: 'readonly', // js/prazos.js
         normalizeParecerParaLista: 'readonly',
         combinarPareceres: 'readonly',

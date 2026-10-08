@@ -1341,6 +1341,30 @@
         @keyframes toast-slide-in { to { opacity: 1; transform: translateX(0); } }
         @keyframes toast-fade-out { from { opacity: 1; } to { opacity: 0; transform: translateY(1rem); height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; } }
 
+        /* ===== Dashboard: saudação + botão do relatório ===== */
+        .dash-top { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; margin-bottom: 1.5rem; }
+        .dash-top .dash-hello { flex: 1; margin: 0 !important; }
+        .dash-relatorio-btn { flex-shrink: 0; align-self: stretch; }
+        @media (max-width: 600px) { .dash-top { flex-direction: column; align-items: stretch; } }
+
+        /* ===== Relatório mensal (prévia) ===== */
+        .rel-controles { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; }
+        .rel-controles label { font-weight: 600; margin: 0; }
+        .rel-controles .select { max-width: 240px; }
+        .rel-aviso { margin: 0 0 1rem; font-size: 0.875rem; color: var(--text-muted); }
+        .rel-resumo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+        .rel-num { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.85rem 1rem; border-radius: 10px; background: var(--bg-color-only); }
+        .rel-num .v { font-size: 1.5rem; font-weight: 700; line-height: 1.1; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+        .rel-num .l { font-size: 0.8125rem; color: var(--text-secondary); }
+        .rel-preview h4 { margin: 1.4rem 0 0.5rem; font-size: 1rem; color: var(--text-primary); }
+        .rel-preview p { margin: 0 0 0.6rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .rel-sub { font-weight: 600; color: var(--text-primary) !important; margin-top: 0.9rem !important; }
+        .rel-tabela { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-bottom: 0.5rem; }
+        .rel-tabela th, .rel-tabela td { padding: 0.45rem 0.25rem; border-bottom: 1px solid var(--border-color); text-align: left; position: static; background: none; }
+        .rel-tabela th { font-weight: 500; color: var(--text-muted); font-size: 0.8125rem; text-transform: none; letter-spacing: 0; }
+        .rel-tabela .num { text-align: right; font-variant-numeric: tabular-nums; }
+        @media (max-width: 600px) { .rel-resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
         /* ===== Busca global (Ctrl+K) ===== */
         .busca-trigger {
             display: inline-flex; align-items: center; gap: 0.5rem; height: 36px; padding: 0 0.5rem 0 0.7rem;
@@ -2203,6 +2227,18 @@
         .ui-v3 .tag-pill.r, .ui-v3 .tag-pill.g { --tg: #5a7190; }
         .ui-v3 .tag-pill.o { --tg: #b39448; }
         .ui-v3 .tag-pill.e { --tg: #8a8f96; }
+
+        /* Relatório mensal */
+        .ui-v3 .dash-relatorio-btn { border-radius: 12px; }
+        .ui-v3 .rel-num { background: var(--t-paper); }
+        .ui-v3 .rel-num .v { font-family: var(--t-serif); font-weight: 400; font-size: 2rem; color: var(--t-ink); font-variant-numeric: lining-nums tabular-nums; }
+        .ui-v3 .rel-num .l, .ui-v3 .rel-aviso, .ui-v3 .rel-tabela th { color: var(--t-muted); }
+        .ui-v3 .rel-preview h4 { font-weight: 600; color: var(--t-ink); }
+        .ui-v3 .rel-preview p { color: var(--t-ink-2); }
+        .ui-v3 .rel-tabela td { color: var(--t-ink-2); border-bottom-color: var(--t-line); }
+        .ui-v3 .rel-tabela th, .ui-v3 .rel-tabela thead th:first-child, .ui-v3 .rel-tabela thead th:last-child { border-bottom: 1px solid var(--t-line); background: none; border-radius: 0; padding: 0.45rem 0.25rem; font-size: 0.8125rem; }
+        .ui-v3 .rel-tabela td { padding: 0.5rem 0.25rem; font-size: 0.875rem; }
+        .ui-v3 .rel-tabela tbody tr:hover { background: none; }
 
         /* Busca global */
         .ui-v3 .busca-trigger { border-color: var(--t-line); background: var(--t-canvas); color: var(--t-muted); }
