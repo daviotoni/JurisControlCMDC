@@ -3992,22 +3992,20 @@ ${corpo}
         if (config) chartInstances[canvasId] = new Chart(canvas.getContext('2d'), config);
     });
   }
-  // Distribuição por status (visual novo): uma barra 100% empilhada e, embaixo,
-  // uma linha por status com contagem e percentual. Cada linha filtra os processos.
+  // Distribuição por status (visual novo): uma linha por status com contagem,
+  // percentual e uma barrinha do tamanho do percentual. Cada linha filtra os processos.
   function renderStatusBreakdown() {
     const el = $('#dashboard-status'); if (!el) return;
     const total = DB.length;
     const counts = {}; DB.forEach(p => { counts[p.stat] = (counts[p.stat] || 0) + 1; });
     const pct = (n) => total ? Math.round((n / total) * 100) : 0;
-    const segs = sMapKeys.filter(k => counts[k]).map(k => `<span style="flex:${counts[k]};--c:${statusColorMapV3[k]}"></span>`).join('');
-    const resumo = sMapKeys.filter(k => counts[k]).map(k => `${statusMap[k]}: ${counts[k]}`).join(', ');
-    el.innerHTML = `<div class="sb-bar" role="img" aria-label="${sanitizeHTML(resumo || 'Nenhum processo cadastrado')}">${segs}</div>
-        <ul class="sb-list">${sMapKeys.map(k => `<li><button type="button" class="sb-row${counts[k] ? '' : ' is-zero'}" data-status="${k}">
-            <span class="sb-dot" style="--c:${statusColorMapV3[k]}"></span>
+    el.innerHTML = `<ul class="sb-list">${sMapKeys.map(k => { const n = counts[k] || 0; return `<li><button type="button" class="sb-row${n ? '' : ' is-zero'}" data-status="${k}" style="--c:${statusColorMapV3[k]}">
+            <span class="sb-dot"></span>
             <span class="sb-label">${sanitizeHTML(statusMap[k])}</span>
-            <span class="sb-count">${counts[k] || 0}</span>
-            <span class="sb-pct">${pct(counts[k] || 0)}%</span>
-        </button></li>`).join('')}</ul>`;
+            <span class="sb-count">${n}</span>
+            <span class="sb-pct">${pct(n)}%</span>
+            <span class="sb-track" aria-hidden="true"><span style="width:${pct(n)}%"></span></span>
+        </button></li>`; }).join('')}</ul>`;
     el.onclick = (e) => { const row = e.target.closest('[data-status]'); if (row) showTab('proc', { filterBy: { status: row.dataset.status } }); };
   }
   function calculateGlobalStats(){
