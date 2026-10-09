@@ -123,7 +123,7 @@ async function movimentosDatajud(numero, tribunal) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ query: { match: { numeroProcesso: digitos } }, size: 3 }),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(60000),
   });
   if (!resp.ok) throw new Error(`Datajud respondeu ${resp.status}`);
   return normalizarDatajudMovimentos(await resp.json(), tribunal);
@@ -139,14 +139,14 @@ async function buscarDatajud(numero, tribunal) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ query: { match: { numeroProcesso: digitos } }, size: 5 }),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(60000),
   });
   if (!resp.ok) throw new Error(`Datajud respondeu ${resp.status}`);
   return normalizarDatajud(await resp.json(), tribunal);
 }
 
 exports.juris = onRequest(
-  { region: 'us-central1', maxInstances: 2, timeoutSeconds: 30, memory: '256MiB' },
+  { region: 'us-central1', maxInstances: 2, timeoutSeconds: 70, memory: '256MiB' },
   async (req, res) => {
     aplicarCors(req, res);
     if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
