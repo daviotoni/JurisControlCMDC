@@ -57,7 +57,10 @@ export function ProcessoFormScreen() {
       return;
     }
     setBusy(true);
+    // Parte do registro existente: campos que esta tela não edita (anotações,
+    // cálculo do prazo feito no site) não se perdem ao salvar.
     const rec: Processo = {
+      ...(existing ?? {}),
       id: existing ? existing.id : Date.now(),
       num: num.trim(),
       int: int.trim(),
@@ -73,6 +76,8 @@ export function ProcessoFormScreen() {
       emissorId,
       docId: existing?.docId ?? null,
     };
+    // Prazo alterado à mão aqui: o cálculo salvo no site deixa de valer.
+    if (existing && existing.prazo !== prazo) rec.prazoDias = '';
     try {
       await saveProcesso(rec, existing);
       navigation.goBack();

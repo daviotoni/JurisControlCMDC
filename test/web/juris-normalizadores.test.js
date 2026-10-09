@@ -7,6 +7,7 @@ import {
   formatarNumeroCNJ,
   normalizarDataJuris,
   normalizarDatajud,
+  normalizarDatajudMovimentos,
   normalizarJurisai,
   normalizarLexml,
   tribunalDaUrn,
@@ -179,5 +180,48 @@ describe('auxiliares', () => {
   it('tribunalDaUrn deduz a sigla', () => {
     expect(tribunalDaUrn('urn:lex:br:superior.tribunal.justica:x')).toBe('STJ');
     expect(tribunalDaUrn('urn:lex:br:camara.municipal:x')).toBe('');
+  });
+});
+
+describe('normalizarDatajudMovimentos', () => {
+  const resp = {
+    hits: { hits: [
+      { _source: {
+        numeroProcesso: '00123456720248190021', grau: 'G1', tribunal: 'TJRJ',
+        classe: { nome: 'Mandado de Segurança' }, orgaoJulgador: { nome: '2ª Vara Cível de Duque de Caxias' },
+        dataHoraUltimaAtualizacao: '2026-10-05T10:00:00.000Z',
+        movimentos: [
+          { nome: 'Conclusão', dataHora: '2026-10-01T12:00:00.000Z' },
+          { nome: 'Juntada de Petição', dataHora: '2026-10-05T09:00:00.000Z', complementosTabelados: [{ nome: 'Petição' }] },
+        ],
+      } },
+      { _source: {
+        numeroProcesso: '00123456720248190021', grau: 'G2',
+        dataHoraUltimaAtualizacao: '2026-10-07T10:00:00.000Z', orgaoJulgador: { nome: '5ª Câmara de Direito Público' },
+        movimentos: [
+          { nome: 'Distribuição', dataHora: '2026-10-07T08:00:00.000Z' },
+          { nome: 'Conclusão', dataHora: '2026-10-01T12:00:00.000Z' }, // repetida
+        ],
+      } },
+    ] },
+  };
+
+  it('junta os graus, remove repetidas e ordena da mais recente', () => {
+    const r = normalizarDatajudMovimentos(resp, 'tjrj');
+    expect(r.numero).toBe('0012345-67.2024.8.19.0021');
+    expect(r.tribunal).toBe('TJRJ');
+    expect(r.orgao).toBe('5ª Câmara de Direito Público'); // grau atualizado por último
+    expect(r.movimentos.map((m) => m.nome)).toEqual(['Distribuição', 'Juntada de Petição', 'Conclusão']);
+    expect(r.movimentos[1].complemento).toBe('Petição');
+  });
+
+  it('devolve null sem resultados ou com resposta estranha', () => {
+    expect(normalizarDatajudMovimentos({ hits: { hits: [] } }, 'tjrj')).toBeNull();
+    expect(normalizarDatajudMovimentos(null, 'tjrj')).toBeNull();
+  });
+
+  it('usa a sigla em maiúsculas para tribunais sem nome cadastrado', () => {
+    const r = normalizarDatajudMovimentos({ hits: { hits: [{ _source: { numeroProcesso: '1', movimentos: [] } }] } }, 'trt1');
+    expect(r.tribunal).toBe('TRT1');
   });
 });

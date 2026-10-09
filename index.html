@@ -37,7 +37,7 @@
             if (localStorage.getItem('jc-ui') !== 'classico') document.documentElement.classList.add('ui-v3');
         } catch (e) { document.documentElement.classList.add('ui-v3'); }
     </script>
-        <link rel="stylesheet" href="style.css?v=1af160a209">
+        <link rel="stylesheet" href="style.css?v=f6ee1db56e">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -176,6 +176,11 @@
                 <h2 id="page-title" class="page-title">Dashboard</h2>
             </div>
             <div class="header-right">
+                <button type="button" id="btnBuscaGlobal" class="busca-trigger" aria-haspopup="dialog" aria-keyshortcuts="Control+K">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <span class="busca-trigger-label">Buscar</span>
+                    <kbd class="busca-kbd">Ctrl K</kbd>
+                </button>
                 <span id="welcomeMsg"></span>
                 <div class="theme-switch-wrapper">
                     <button class="theme-toggle-btn" id="theme-toggle-btn" aria-haspopup="true" aria-expanded="false" aria-label="Alterar tema: claro, escuro ou automático">
@@ -221,7 +226,13 @@
         <div class="main-content">
             <main>
                 <section id="secDashboard" style="display:block;">
-                    <div id="dashHello" class="dash-hello" aria-live="polite"></div>
+                    <div class="dash-top">
+                        <div id="dashHello" class="dash-hello" aria-live="polite"></div>
+                        <button type="button" id="btnRelatorio" class="btn secondary dash-relatorio-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+                            Relatório do mês
+                        </button>
+                    </div>
                     <div class="dash-grid">
                         <div id="dashboard-kpis" class="dash-kpis"></div>
                         <div class="card dash-radar-card">
@@ -246,6 +257,7 @@
                                 <ul class="alert-list" id="dashboard-alertas"></ul>
                             </div>
                         </div>
+                        <div class="card dash-mov-card" id="dashMov" hidden></div>
                         <div class="dash-row dash-row-wide">
                             <div class="card dash-chart-card">
                                 <h3>Entradas por Mês</h3>
@@ -508,6 +520,31 @@
                         </label>
                         <p class="cfg-note" style="margin-top:0.5rem;">Volta ao acabamento anterior das páginas internas (barra azul e cartões). Vale só para este navegador.</p>
                     </div>
+                     <div class="card cfg-feriados" style="grid-column: 1 / -1;">
+                        <h3>Feriados e pontos facultativos</h3>
+                        <p class="cfg-note">Ficam fora da contagem dos prazos em dias úteis. Os feriados nacionais, os do Estado do RJ (São Jorge e terça de Carnaval) e o de Duque de Caxias (Santo Antônio) já vêm incluídos. Pontos facultativos e outras datas só contam se forem cadastrados aqui: na dúvida, o dia conta como útil.</p>
+                        <div class="feriados-grid">
+                            <div>
+                                <div class="feriados-head">
+                                    <button type="button" id="ferAnoPrev" class="icon-btn" aria-label="Ano anterior"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                                    <strong id="ferAno" class="feriados-ano"></strong>
+                                    <button type="button" id="ferAnoNext" class="icon-btn" aria-label="Próximo ano"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+                                </div>
+                                <ul id="ferLista" class="feriados-lista"></ul>
+                            </div>
+                            <div class="feriados-edit">
+                                <p class="feriados-sub">Pontos facultativos (valem todos os anos)</p>
+                                <div id="ferPontos" class="feriados-pontos"></div>
+                                <p class="feriados-sub">Outra data sem expediente</p>
+                                <div class="feriado-add">
+                                    <input type="date" id="ferData" class="input" aria-label="Data">
+                                    <input id="ferDesc" class="input" placeholder="Motivo (ex.: Decreto nº 1.234/2026)" aria-label="Motivo">
+                                    <button type="button" id="ferAdd" class="btn secondary">Adicionar</button>
+                                </div>
+                                <p id="ferMsg" class="cfg-note" aria-live="polite"></p>
+                            </div>
+                        </div>
+                    </div>
                      <div class="card">
                         <h3>Gerenciamento de Emissores</h3>
                         <div id="emissorList" class="list"></div>
@@ -579,6 +616,16 @@
                                 <div class="form-group"><label for="fp_saida">Saída</label><input id="fp_saida" name="saida" type="date" class="input"></div>
                                 <div class="form-group"><label for="fp_stat">Status</label><select id="fp_stat" name="stat" class="select"><option value="pendente">Pendente</option><option value="em-analise">Em Análise</option><option value="aguardando-documentacao">Aguardando Documentação</option><option value="em-diligencia">Em Diligência</option><option value="finalizado">Finalizado</option><option value="arquivado">Arquivado</option></select></div>
                                 <div class="form-group" style="grid-column: span 2;"><label for="fp_emissor">Emissor da Ficha</label><select id="fp_emissor" name="emissorId" class="select"><option value="">Usuário Logado</option></select></div>
+                            </div>
+                            <div class="prazo-calc" id="prazoCalc">
+                                <p class="prazo-calc-title">Calcular o prazo final</p>
+                                <div class="prazo-calc-row">
+                                    <div class="form-group"><label for="fp_pini">Início da contagem</label><input id="fp_pini" name="prazoInicio" type="date" class="input"></div>
+                                    <div class="form-group"><label for="fp_pdias">Dias</label><input id="fp_pdias" name="prazoDias" type="number" min="1" max="3650" step="1" inputmode="numeric" class="input" placeholder="Ex.: 15"></div>
+                                    <div class="form-group"><label for="fp_pcont">Contagem</label><select id="fp_pcont" name="prazoContagem" class="select"><option value="uteis">Dias úteis</option><option value="corridos">Dias corridos</option></select></div>
+                                </div>
+                                <label class="prazo-calc-check"><input type="checkbox" id="fp_precesso" name="prazoRecesso" value="1"> Suspender no recesso forense (20/12 a 20/01)</label>
+                                <p class="prazo-calc-result" id="prazoCalcResult" aria-live="polite">O dia do início não conta. Feriados nacionais, do Estado do RJ e de Duque de Caxias ficam fora da contagem.</p>
                             </div>
                         </fieldset>
                     </div>
@@ -842,11 +889,38 @@
 
     <div id="toast-container"></div>
 
-    <script src="js/utils.js?v=265311a4e1"></script>
+    <div id="m_relatorio" class="modal">
+        <div class="dialog" style="max-width: 760px;">
+            <div class="dialog-header"><h3>Relatório mensal</h3></div>
+            <div class="dialog-body">
+                <div class="rel-controles">
+                    <label for="relMes">Mês</label>
+                    <select id="relMes" class="select"></select>
+                </div>
+                <div id="relPreview" class="rel-preview" aria-live="polite"></div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="btn secondary" data-close-rel>Fechar</button>
+                <button type="button" id="relPdf" class="btn primary">Baixar PDF</button>
+            </div>
+        </div>
+    </div>
+    <dialog id="buscaGlobal" class="busca-dialog" aria-label="Busca global">
+        <div class="busca-campo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="buscaGlobalInput" type="text" placeholder="Buscar processo, parecer, lei, compromisso ou tela…" autocomplete="off" spellcheck="false"
+                   role="combobox" aria-expanded="true" aria-controls="buscaGlobalLista" aria-autocomplete="list">
+            <kbd class="busca-kbd">Esc</kbd>
+        </div>
+        <ul id="buscaGlobalLista" class="busca-lista" role="listbox" aria-label="Resultados"></ul>
+        <div class="busca-rodape"><span><kbd class="busca-kbd">↑</kbd><kbd class="busca-kbd">↓</kbd> navegar</span><span><kbd class="busca-kbd">Enter</kbd> abrir</span></div>
+    </dialog>
+    <script src="js/prazos.js?v=e5bae30bc2"></script>
+    <script src="js/utils.js?v=c65bffc7e8"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
     <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
     <script src="js/motion.js?v=0559776488"></script>
-    <script src="js/app.js?v=1785cbcb3e"></script>
+    <script src="js/app.js?v=97876f327a"></script>
 
 </body>
 </html>

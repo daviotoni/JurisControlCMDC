@@ -75,6 +75,7 @@ service cloud.firestore {
     match /modelos/{id}        { allow read, write: if aprovado(); }
     match /leis/{id}           { allow read, write: if aprovado(); }
     match /config/{id}         { allow read, write: if aprovado(); }
+    match /movimentacoes/{id}  { allow read, write: if aprovado(); } // DataJud: últimas movimentações por processo
 
     // ---- Histórico por processo (imutável para não-admin) -------
     match /historico/{id} {

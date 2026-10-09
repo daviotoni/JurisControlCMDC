@@ -284,6 +284,111 @@ function filtrarOrdenarResultadosJuris(lista, opcoes = {}) {
   return out;
 }
 
+// ----- Busca global (Ctrl+K) -----
+// itens: [{ grupo, titulo, sub?, campos?: string[] , ... }]. Todos os termos da
+// consulta precisam aparecer (sem diferenciar acento/maiúscula). Pontua mais
+// quando o termo abre o título, depois quando está no título, depois no resto.
+// Devolve os itens ordenados por grupo (na ordem de `ordemGrupos`) e pontuação,
+// no máximo `porGrupo` de cada grupo.
+function buscaNormalizar(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+function buscarGlobal(itens, consulta, { ordemGrupos = [], porGrupo = 5 } = {}) {
+  const termos = buscaNormalizar(consulta).split(/\s+/).filter(Boolean);
+  if (!termos.length) return [];
+  const grupos = new Map();
+  for (const it of itens || []) {
+    const titulo = buscaNormalizar(it.titulo);
+    const resto = buscaNormalizar([it.sub, ...(it.campos || [])].join(' '));
+    let score = 0, ok = true;
+    for (const t of termos) {
+      if (titulo.startsWith(t)) score += 3;
+      else if (titulo.includes(t)) score += 2;
+      else if (resto.includes(t)) score += 1;
+      else { ok = false; break; }
+    }
+    if (!ok) continue;
+    if (!grupos.has(it.grupo)) grupos.set(it.grupo, []);
+    grupos.get(it.grupo).push({ ...it, score });
+  }
+  const ordem = [...ordemGrupos, ...[...grupos.keys()].filter(g => !ordemGrupos.includes(g))];
+  return ordem.filter(g => grupos.has(g)).flatMap(g =>
+    grupos.get(g).sort((a, b) => b.score - a.score).slice(0, porGrupo));
+}
+
+// ----- Relatório mensal (para a chefia) -----
+// Números do mês `mes` (0-based) de `ano`, a partir dos processos e pareceres.
+// Prazos do mês = processos com prazo final dentro do mês; a situação de cada
+// um sai da data de saída (cumprido no prazo / fora do prazo) ou, sem saída,
+// de hoje (vencido sem saída / a vencer).
+function relatorioMensal({ processos = [], pareceres = [], ano, mes, hoje, statusMap = {} }) {
+  const doMes = (s) => { const d = s ? parse(String(s).slice(0, 10)) : null; return !!d && !isNaN(d) && d.getUTCFullYear() === ano && d.getUTCMonth() === mes; };
+  const encerrado = (p) => p.stat === 'finalizado' || p.stat === 'arquivado';
+  const ref = hoje || todayUTC();
+
+  const entradas = processos.filter(p => doMes(p.ent));
+  const porSetorMap = new Map();
+  entradas.forEach(p => { const k = p.setorOrigem || 'Sem setor informado'; porSetorMap.set(k, (porSetorMap.get(k) || 0) + 1); });
+  const porSetor = [...porSetorMap].map(([setor, n]) => ({ setor, n })).sort((a, b) => b.n - a.n || a.setor.localeCompare(b.setor));
+
+  const saidas = processos.filter(p => doMes(p.saida));
+  const tempos = saidas.filter(p => p.ent).map(p => diffDays(parse(p.ent), parse(p.saida))).filter(n => n >= 0).sort((a, b) => a - b);
+  const media = tempos.length ? Math.round(tempos.reduce((a, b) => a + b, 0) / tempos.length) : null;
+  const mediana = tempos.length ? (tempos.length % 2 ? tempos[(tempos.length - 1) / 2] : Math.round((tempos[tempos.length / 2 - 1] + tempos[tempos.length / 2]) / 2)) : null;
+
+  // Mesma regra do gráfico "Pareceres emitidos por mês": soma os dois cadastros.
+  const pareceresEmitidos = processos.filter(p => p.docId && doMes(p.saida)).length
+    + pareceres.filter(pz => pz.status === 'emitido' && doMes(pz.emitidoEm)).length;
+
+  const comPrazo = processos.filter(p => doMes(p.prazo));
+  const situacaoPrazo = (p) => {
+    if (p.saida) return parse(p.saida) <= parse(p.prazo) ? 'no-prazo' : 'fora-do-prazo';
+    if (encerrado(p)) return 'sem-data';
+    return parse(p.prazo) < ref ? 'vencido' : 'a-vencer';
+  };
+  const prazos = { total: comPrazo.length, 'no-prazo': 0, 'fora-do-prazo': 0, vencido: 0, 'a-vencer': 0, 'sem-data': 0, atencao: [] };
+  comPrazo.forEach(p => {
+    const sit = situacaoPrazo(p); prazos[sit]++;
+    if (sit === 'fora-do-prazo' || sit === 'vencido') prazos.atencao.push({ num: p.num, int: p.int || '', prazo: p.prazo, saida: p.saida || '', situacao: sit });
+  });
+  prazos.atencao.sort((a, b) => a.prazo.localeCompare(b.prazo));
+
+  const situacaoAtual = Object.keys(statusMap).map(k => ({ stat: k, rotulo: statusMap[k], n: processos.filter(p => p.stat === k).length }));
+  return {
+    ano, mes,
+    entradas: { total: entradas.length, administrativo: entradas.filter(p => p.tipo === 'administrativo').length, judicial: entradas.filter(p => p.tipo !== 'administrativo').length, porSetor },
+    saidas: saidas.length,
+    pareceresEmitidos,
+    tramitacao: { media, mediana, n: tempos.length },
+    prazos,
+    emAberto: processos.filter(p => !encerrado(p)).length,
+    situacaoAtual,
+  };
+}
+
+// ----- Número CNJ → tribunal no Datajud -----
+// NNNNNNN-DD.AAAA.J.TR.OOOO (Res. CNJ 65/2008). Confere o dígito verificador
+// (módulo 97) e devolve o índice do Datajud ('tjrj', 'trf2', 'trt1', 'stj'…),
+// ou null se o número não for CNJ válido ou o ramo não estiver no Datajud.
+const UF_TJ_CNJ = ['ac', 'al', 'ap', 'am', 'ba', 'ce', 'dft', 'es', 'go', 'ma', 'mt', 'ms', 'mg', 'pa', 'pb', 'pr', 'pe', 'pi', 'rj', 'rn', 'rs', 'ro', 'rr', 'sc', 'se', 'sp', 'to'];
+function numeroCNJValido(num) {
+  const d = String(num || '').replace(/\D/g, '');
+  if (d.length !== 20) return false;
+  const base = BigInt(d.slice(0, 7) + d.slice(9) + '00');
+  return 98n - (base % 97n) === BigInt(d.slice(7, 9));
+}
+function tribunalDoCNJ(num) {
+  if (!numeroCNJValido(num)) return null;
+  const d = String(num).replace(/\D/g, '');
+  const j = d[13], tr = Number(d.slice(14, 16));
+  if (j === '8') return tr >= 1 && tr <= 27 ? `tj${UF_TJ_CNJ[tr - 1]}` : null;
+  if (j === '4') return tr >= 1 && tr <= 6 ? `trf${tr}` : null;
+  if (j === '5') return tr === 0 ? 'tst' : (tr <= 24 ? `trt${tr}` : null);
+  if (j === '3') return 'stj';
+  if (j === '1') return 'stf';
+  return null;
+}
+
 // ----- Janela dos últimos 12 meses (gráficos do Dashboard) -----
 // Devolve os `n` meses que terminam no mês de `hoje` (o mais antigo primeiro),
 // cada um com { ano, mes (0-based), chave 'YYYY-MM' }. Os gráficos agrupam por
@@ -303,7 +408,7 @@ function ultimosMeses(hoje, n = 12) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
-    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, ultimosMeses,
+    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, ultimosMeses, buscarGlobal, buscaNormalizar, relatorioMensal, numeroCNJValido, tribunalDoCNJ,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
     normalizarConsultaJuris, expandirConsultaJuris, filtrarOrdenarResultadosJuris,
     VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,

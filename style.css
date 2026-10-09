@@ -1341,6 +1341,127 @@
         @keyframes toast-slide-in { to { opacity: 1; transform: translateX(0); } }
         @keyframes toast-fade-out { from { opacity: 1; } to { opacity: 0; transform: translateY(1rem); height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; } }
 
+        /* ===== Dashboard: saudação + botão do relatório ===== */
+        .dash-top { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; margin-bottom: 1.5rem; }
+        .dash-top .dash-hello { flex: 1; margin: 0 !important; }
+        .dash-relatorio-btn { flex-shrink: 0; align-self: stretch; }
+        @media (max-width: 600px) { .dash-top { flex-direction: column; align-items: stretch; } }
+
+        /* ===== Movimentações judiciais (DataJud) ===== */
+        .dash-mov-card[hidden], .mov-section[hidden] { display: none !important; }
+        .mov-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+        .mov-head h3 { margin: 0 0 0.25rem !important; }
+        .mov-status { margin: 0; font-size: 0.8125rem; color: var(--text-muted); }
+        .mov-acoes { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .mov-acoes .btn { padding: 0.45rem 0.8rem; font-size: 0.8125rem; }
+        .mov-aviso { margin: 0.25rem 0 0.75rem; padding: 0.65rem 0.8rem; border-radius: 8px; font-size: 0.875rem; line-height: 1.5;
+            background: var(--warning-bg); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); color: var(--text-primary); }
+        .mov-aviso code { font-size: 0.8125rem; }
+        .mov-lista { list-style: none; margin: 0.5rem 0 1rem; padding: 0; }
+        .mov-lista li { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) auto; gap: 0.75rem; align-items: baseline; padding: 0.45rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+        .mov-lista li:last-child { border-bottom: 0; }
+        .mov-data { color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+        .mov-nome { color: var(--text-primary); }
+        .mov-comp { color: var(--text-muted); }
+        .mov-lista li.is-nova .mov-nome { font-weight: 600; }
+        .mov-tag { font-size: 0.75rem; font-weight: 600; color: var(--warning); }
+
+        /* ===== Relatório mensal (prévia) ===== */
+        .rel-controles { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; }
+        .rel-controles label { font-weight: 600; margin: 0; }
+        .rel-controles .select { max-width: 240px; }
+        .rel-aviso { margin: 0 0 1rem; font-size: 0.875rem; color: var(--text-muted); }
+        .rel-resumo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+        .rel-num { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.85rem 1rem; border-radius: 10px; background: var(--bg-color-only); }
+        .rel-num .v { font-size: 1.5rem; font-weight: 700; line-height: 1.1; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+        .rel-num .l { font-size: 0.8125rem; color: var(--text-secondary); }
+        .rel-preview h4 { margin: 1.4rem 0 0.5rem; font-size: 1rem; color: var(--text-primary); }
+        .rel-preview p { margin: 0 0 0.6rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .rel-sub { font-weight: 600; color: var(--text-primary) !important; margin-top: 0.9rem !important; }
+        .rel-tabela { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-bottom: 0.5rem; }
+        .rel-tabela th, .rel-tabela td { padding: 0.45rem 0.25rem; border-bottom: 1px solid var(--border-color); text-align: left; position: static; background: none; }
+        .rel-tabela th { font-weight: 500; color: var(--text-muted); font-size: 0.8125rem; text-transform: none; letter-spacing: 0; }
+        .rel-tabela .num { text-align: right; font-variant-numeric: tabular-nums; }
+        @media (max-width: 600px) { .rel-resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+        /* ===== Busca global (Ctrl+K) ===== */
+        .busca-trigger {
+            display: inline-flex; align-items: center; gap: 0.5rem; height: 36px; padding: 0 0.5rem 0 0.7rem;
+            border: 1px solid var(--border-color); border-radius: 9px; background: var(--card-bg); color: var(--text-muted);
+            font: inherit; font-size: 0.875rem; cursor: pointer; min-width: 200px;
+        }
+        .busca-trigger:hover { color: var(--text-primary); border-color: var(--brand-200); }
+        .busca-trigger-label { flex: 1; text-align: left; }
+        .busca-kbd {
+            display: inline-flex; align-items: center; padding: 1px 6px; border: 1px solid var(--border-color); border-radius: 5px;
+            font: inherit; font-size: 0.75rem; line-height: 1.4; color: var(--text-muted); background: var(--bg-color-only); white-space: nowrap;
+        }
+        @media (max-width: 992px) {
+            .busca-trigger { min-width: 0; width: 36px; padding: 0; justify-content: center; }
+            .busca-trigger-label, .busca-trigger .busca-kbd { display: none; }
+        }
+        .busca-dialog {
+            width: min(640px, calc(100vw - 2rem)); max-height: min(560px, calc(100vh - 6rem)); margin: 12vh auto auto; padding: 0;
+            border: 0; border-radius: 14px; background: var(--card-bg); color: var(--text-primary);
+            box-shadow: 0 24px 60px -20px rgba(var(--shadow-rgb), 0.45); overflow: hidden;
+        }
+        .busca-dialog[open] { display: flex; flex-direction: column; }
+        .busca-dialog::backdrop { background: rgba(12, 16, 22, 0.45); }
+        body[data-theme="dark"] .busca-dialog { border: 1px solid var(--border-color); }
+        .busca-campo { display: flex; align-items: center; gap: 0.7rem; padding: 0.9rem 1rem; border-bottom: 1px solid var(--border-color); color: var(--text-muted); }
+        .busca-campo input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 1rem; color: var(--text-primary); }
+        .busca-campo input::-webkit-search-cancel-button { display: none; }
+        .busca-lista { list-style: none; margin: 0; padding: 0.4rem; overflow-y: auto; flex: 1; }
+        .busca-grupo { padding: 0.65rem 0.6rem 0.3rem; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+        .busca-item { display: flex; flex-direction: column; gap: 1px; padding: 0.55rem 0.6rem; border-radius: 8px; cursor: pointer; }
+        .busca-item.is-ativo { background: var(--bg-color-only); }
+        .busca-item-titulo { font-weight: 500; font-size: 0.9375rem; }
+        .busca-item-sub { font-size: 0.8125rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .busca-vazio { padding: 1.25rem 0.6rem; color: var(--text-muted); font-size: 0.9rem; }
+        .busca-rodape { display: flex; gap: 1.25rem; padding: 0.55rem 1rem; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted); }
+        .busca-rodape .busca-kbd { margin-right: 2px; }
+
+        /* ===== Cálculo do prazo (formulário do processo) ===== */
+        .prazo-calc { margin-top: 1rem; padding: 0.9rem 1rem 0.8rem; border-radius: 10px; background: var(--bg-color-only); }
+        .prazo-calc-title { margin: 0 0 0.6rem; font-weight: 600; font-size: 0.875rem; color: var(--text-primary); }
+        .prazo-calc-row { display: grid; grid-template-columns: 1.2fr 0.7fr 1fr; gap: 0.75rem; }
+        .prazo-calc-row .form-group { margin: 0; }
+        .prazo-calc-check { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.7rem; font-size: 0.875rem; color: var(--text-secondary); cursor: pointer; }
+        .prazo-calc-check input { width: auto; margin: 0; accent-color: var(--brand-600); }
+        .prazo-calc-result { margin: 0.6rem 0 0; font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary); }
+        .prazo-calc-result strong { color: var(--text-primary); }
+        .prazo-calc-result.is-erro { color: var(--warning); }
+        @media (max-width: 600px) { .prazo-calc-row { grid-template-columns: 1fr 1fr; } .prazo-calc-row .form-group:first-child { grid-column: 1 / -1; } }
+
+        /* Calendário: dia sem expediente */
+        .cal-feriado { font-size: 0.75rem; line-height: 1.3; color: var(--text-muted); margin: 0.1rem 0 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cell.is-feriado .dnum { color: var(--text-muted); }
+        .ui-v3 .cal-feriado { color: var(--t-muted); font-style: italic; }
+        .ui-v3 .cell.is-feriado { background: var(--t-paper); }
+
+        /* ===== Configurações → Feriados ===== */
+        .feriados-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 2rem; }
+        .feriados-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .feriados-ano { font-size: 1.1rem; min-width: 3.5em; text-align: center; font-variant-numeric: tabular-nums; }
+        .feriados-lista { list-style: none; margin: 0; padding: 0; }
+        .feriados-lista li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) auto auto; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.875rem; }
+        .feriados-lista li:last-child { border-bottom: 0; }
+        .fer-data { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+        .fer-nome { color: var(--text-primary); font-weight: 500; }
+        .fer-esfera { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; }
+        .fer-remover { width: 28px; height: 28px; }
+        .feriados-sub { margin: 0 0 0.5rem; font-weight: 600; font-size: 0.875rem; color: var(--text-primary); }
+        .feriados-sub + * { margin-bottom: 1.25rem; }
+        .feriados-pontos { display: grid; gap: 0.55rem; }
+        .feriados-pontos .cfg-switch { font-weight: 400; }
+        .feriado-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "desc desc" "data btn"; gap: 0.5rem; margin-bottom: 0.25rem !important; }
+        .feriado-add #ferDesc { grid-area: desc; } .feriado-add #ferData { grid-area: data; } .feriado-add #ferAdd { grid-area: btn; }
+        @media (max-width: 992px) {
+            .feriados-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+            .feriados-lista li { grid-template-columns: 1fr auto; row-gap: 0.15rem; }
+            .fer-nome { grid-column: 1; } .fer-esfera { grid-column: 1; }
+        }
+
         /* ===== Empty States ===== */
         .empty-state {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -2125,6 +2246,49 @@
         .ui-v3 .tag-pill.r, .ui-v3 .tag-pill.g { --tg: #5a7190; }
         .ui-v3 .tag-pill.o { --tg: #b39448; }
         .ui-v3 .tag-pill.e { --tg: #8a8f96; }
+
+        /* Movimentações */
+        .ui-v3 .mov-status, .ui-v3 .mov-data, .ui-v3 .mov-comp { color: var(--t-muted); }
+        .ui-v3 .mov-nome { color: var(--t-ink); }
+        .ui-v3 .mov-lista li { border-bottom-color: var(--t-line); }
+        .ui-v3 .mov-lista li.is-nova .mov-nome { font-weight: 500; }
+        .ui-v3 .mov-tag { color: var(--t-warning); font-weight: 500; }
+        .ui-v3 .mov-aviso { background: color-mix(in srgb, var(--t-warning) 7%, var(--t-canvas)); border-color: color-mix(in srgb, var(--t-warning) 28%, var(--t-line)); color: var(--t-ink); }
+
+        /* Relatório mensal */
+        .ui-v3 .dash-relatorio-btn { border-radius: 12px; }
+        .ui-v3 .rel-num { background: var(--t-paper); }
+        .ui-v3 .rel-num .v { font-family: var(--t-serif); font-weight: 400; font-size: 2rem; color: var(--t-ink); font-variant-numeric: lining-nums tabular-nums; }
+        .ui-v3 .rel-num .l, .ui-v3 .rel-aviso, .ui-v3 .rel-tabela th { color: var(--t-muted); }
+        .ui-v3 .rel-preview h4 { font-weight: 600; color: var(--t-ink); }
+        .ui-v3 .rel-preview p { color: var(--t-ink-2); }
+        .ui-v3 .rel-tabela td { color: var(--t-ink-2); border-bottom-color: var(--t-line); }
+        .ui-v3 .rel-tabela th, .ui-v3 .rel-tabela thead th:first-child, .ui-v3 .rel-tabela thead th:last-child { border-bottom: 1px solid var(--t-line); background: none; border-radius: 0; padding: 0.45rem 0.25rem; font-size: 0.8125rem; }
+        .ui-v3 .rel-tabela td { padding: 0.5rem 0.25rem; font-size: 0.875rem; }
+        .ui-v3 .rel-tabela tbody tr:hover { background: none; }
+
+        /* Busca global */
+        .ui-v3 .busca-trigger { border-color: var(--t-line); background: var(--t-canvas); color: var(--t-muted); }
+        .ui-v3 .busca-trigger:hover { color: var(--t-ink); border-color: var(--t-line-strong); background: var(--t-paper); }
+        .ui-v3 .busca-kbd { border-color: var(--t-line); background: var(--t-paper); color: var(--t-muted); }
+        .ui-v3 .busca-dialog { background: var(--t-canvas); color: var(--t-ink); }
+        .ui-v3 .busca-campo, .ui-v3 .busca-rodape { border-color: var(--t-line); }
+        .ui-v3 .busca-campo input { color: var(--t-ink); }
+        .ui-v3 .busca-grupo, .ui-v3 .busca-item-sub, .ui-v3 .busca-vazio, .ui-v3 .busca-rodape { color: var(--t-muted); }
+        .ui-v3 .busca-item.is-ativo { background: var(--t-paper); }
+
+        /* Cálculo do prazo e feriados */
+        .ui-v3 .prazo-calc { background: var(--t-paper); }
+        .ui-v3 .prazo-calc-title, .ui-v3 .feriados-sub { color: var(--t-ink); font-weight: 500; }
+        .ui-v3 .prazo-calc-check, .ui-v3 .prazo-calc-result { color: var(--t-ink-2); }
+        .ui-v3 .prazo-calc-result strong { color: var(--t-ink); font-weight: 500; }
+        .ui-v3 .prazo-calc-result.is-erro { color: var(--t-warning); }
+        .ui-v3 .prazo-calc-check input { accent-color: var(--t-action); }
+        .ui-v3 .feriados-ano { font-family: var(--t-serif); font-weight: 500; font-size: 1.375rem; }
+        .ui-v3 .feriados-lista li { border-bottom-color: var(--t-line); }
+        .ui-v3 .fer-data { color: var(--t-muted); }
+        .ui-v3 .fer-nome { color: var(--t-ink); }
+        .ui-v3 .fer-esfera { color: var(--t-faint); }
 
         /* ---------- Janelas (modais) ---------- */
         .ui-v3 .dialog { border-radius: 16px; background: var(--t-canvas); }

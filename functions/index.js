@@ -15,7 +15,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const { getFirestore } = require('firebase-admin/firestore');
-const { normalizarLexml, normalizarDatajud, normalizarJurisai } = require('./normalizadores');
+const { normalizarLexml, normalizarDatajud, normalizarDatajudMovimentos, normalizarJurisai } = require('./normalizadores');
 
 initializeApp();
 
@@ -35,8 +35,10 @@ const ORIGENS_PERMITIDAS = [
 const DATAJUD_API_KEY = 'cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
 const TRIBUNAIS_DATAJUD = new Set([
   'stf', 'stj', 'tst', 'trf1', 'trf2', 'trf3', 'trf4', 'trf5', 'trf6',
-  'tjrj', 'tjsp', 'tjmg', 'tjrs', 'tjpr', 'tjsc', 'tjba', 'tjce', 'tjgo',
-  'tjma', 'tjmt', 'tjpe', 'tjdft',
+  'tjac', 'tjal', 'tjam', 'tjap', 'tjba', 'tjce', 'tjdft', 'tjes', 'tjgo',
+  'tjma', 'tjmg', 'tjms', 'tjmt', 'tjpa', 'tjpb', 'tjpe', 'tjpi', 'tjpr',
+  'tjrj', 'tjrn', 'tjro', 'tjrr', 'tjrs', 'tjsc', 'tjse', 'tjsp', 'tjto',
+  ...Array.from({ length: 24 }, (_, i) => `trt${i + 1}`),
 ]);
 
 // Bases indexadas pelo Jurisprudências.ai (GET /api/v1/courts confirma a lista).
@@ -109,6 +111,24 @@ async function buscarJurisai(q, tribunal) {
   return normalizarJurisai(await resp.json(), tribunal);
 }
 
+// Movimentações de UM processo (nº CNJ completo, 20 dígitos) — usado pelo
+// acompanhamento automático dos processos judiciais no painel.
+async function movimentosDatajud(numero, tribunal) {
+  const digitos = String(numero).replace(/\D/g, '');
+  if (digitos.length !== 20) throw erroCliente(400, 'Informe o número CNJ completo (20 dígitos).');
+  const resp = await fetch(`https://api-publica.datajud.cnj.br/api_publica_${tribunal}/_search`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `APIKey ${DATAJUD_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query: { match: { numeroProcesso: digitos } }, size: 3 }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!resp.ok) throw new Error(`Datajud respondeu ${resp.status}`);
+  return normalizarDatajudMovimentos(await resp.json(), tribunal);
+}
+
 async function buscarDatajud(numero, tribunal) {
   const digitos = String(numero).replace(/\D/g, '');
   if (digitos.length < 7) return [];
@@ -154,6 +174,10 @@ exports.juris = onRequest(
       } else if (fonte === 'datajud') {
         if (!TRIBUNAIS_DATAJUD.has(tribunal)) { res.status(400).json({ erro: `Tribunal não suportado: ${tribunal}` }); return; }
         resultados = await buscarDatajud(q, tribunal);
+      } else if (fonte === 'datajud-mov') {
+        if (!TRIBUNAIS_DATAJUD.has(tribunal)) { res.status(400).json({ erro: `Tribunal não suportado: ${tribunal}` }); return; }
+        res.status(200).json({ processo: await movimentosDatajud(q, tribunal) });
+        return;
       } else if (fonte === 'lexml') {
         resultados = await buscarLexml(q);
       } else {

@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Variáveis de dados em memória
   let DB_PERFIS = [], DB = [], CAL = [], DB_DOCS = [], DB_VERSOES = [], DB_MODELOS = [], DB_EMISSORES = [], DB_LEIS = [];
   let DB_PARECERES = [], DB_PARECER_VERSOES = [];
+  let DB_MOV = []; // movimentações do Datajud por processo (coleção 'movimentacoes')
   let CFG;
   let allNotifications = [];
   
@@ -142,6 +143,10 @@ document.addEventListener('DOMContentLoaded', () => {
       DB_LEIS = await dbHelper.getAll('leis');
       DB_PARECERES = await dbHelper.getAll('pareceres');
       DB_PARECER_VERSOES = await dbHelper.getAll('parecerVersoes');
+      // Coleção nova: se as regras do Firestore ainda não foram publicadas, a
+      // leitura é negada — o resto do sistema carrega normalmente.
+      try { DB_MOV = await dbHelper.getAll('movimentacoes'); movStatus.regras = 'ok'; }
+      catch (e) { DB_MOV = []; movStatus.regras = 'pendente'; console.warn('Movimentações indisponíveis (regras do Firestore?):', e); }
       
       const loadedCfg = await dbHelper.get('config', 'main_cfg');
       CFG = loadedCfg ? { ...defaultConfig, ...loadedCfg.value } : defaultConfig;
@@ -229,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebar && CFG.sidebarCollapsed) sidebar.classList.add('collapsed');
     renderDashboard();
     showTab('dashboard');
+    setTimeout(() => verificarMovimentacoes(), 1500);
   }
 
   // Esconde os recursos de administrador (gestão de usuários, restauração de
@@ -1796,7 +1802,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(key==='leis') renderLeis();
     if(key==='juris') { initJurisAba(); $('#jr_tema_aba')?.focus(); }
-    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); }
+    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); renderFeriadosCfg(); }
   }
 
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
@@ -2370,6 +2376,456 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
+  // ----- Cálculo do prazo final (dias úteis/corridos, feriados BR/RJ/Caxias) -----
+  // Opções vindas de Configurações → Feriados e pontos facultativos.
+  function opcoesPrazo(extra = {}) {
+      const cfg = (CFG && CFG.prazos) || {};
+      return { pontos: cfg.pontos || {}, extras: cfg.extras || [], ...extra };
+  }
+  const fmtDiaSemana = (s) => { const d = parse(s); return d ? d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }) : ''; };
+  const fmtDiaMes = (s) => { const [, m, d] = String(s).split('-'); return `${d}/${m}`; };
+  // Texto que explica a conta: quando vence e o que ficou fora da contagem.
+  function descreverPrazo(r, inicio, dias, contagem) {
+      const tipo = contagem === 'corridos' ? (dias == 1 ? 'dia corrido' : 'dias corridos') : (dias == 1 ? 'dia útil' : 'dias úteis');
+      let txt = `Vence em <strong>${sanitizeHTML(fmtDiaSemana(r.vencimento))}</strong>: ${dias} ${tipo} a partir de ${fmtDiaMes(inicio)}.`;
+      const recesso = r.pulados.some(p => p.motivo === 'Recesso forense');
+      // Dentro do recesso, feriados e fins de semana já estão cobertos por ele.
+      const fora = recesso ? r.pulados.filter(p => !Prazos.emRecessoForense(parse(p.data))) : r.pulados;
+      const feriados = fora.filter(p => p.motivo !== 'fim de semana' && p.motivo !== 'Recesso forense');
+      const fds = fora.filter(p => p.motivo === 'fim de semana').length;
+      const partes = feriados.map(p => `${fmtDiaMes(p.data)} (${sanitizeHTML(p.motivo)})`);
+      if (recesso) partes.push('recesso forense');
+      if (fds && contagem !== 'corridos') partes.push(`${fds} ${fds === 1 ? 'dia' : 'dias'} de fim de semana`);
+      if (contagem === 'corridos' && r.prorrogado) txt += ' O último dia caiu sem expediente, então o prazo foi para o próximo dia útil.';
+      if (partes.length) txt += ` Fora da contagem: ${partes.join(', ')}.`;
+      return txt;
+  }
+  function ligarCalculoPrazo(form, proc) {
+      const ini = $('#fp_pini'), dias = $('#fp_pdias'), cont = $('#fp_pcont'), rec = $('#fp_precesso');
+      const prazo = $('#fp_prazo'), tipo = $('#fp_tipo'), ent = $('#fp_ent'), out = $('#prazoCalcResult');
+      if (!ini || !dias || !prazo) return;
+      const ajuda = 'O dia do início não conta. Feriados nacionais, do Estado do RJ e de Duque de Caxias ficam fora da contagem.';
+      rec.checked = proc ? proc.prazoRecesso === '1' : tipo.value === 'judicial';
+      let recessoTocado = !!proc;
+      cont.value = (proc && proc.prazoContagem) || 'uteis';
+      // aplicar=false (ao abrir um processo salvo): só explica a conta, sem mexer no
+      // prazo gravado — se o calendário mudou desde então, avisa a diferença.
+      const recalcular = (aplicar = true) => {
+          out.classList.remove('is-erro');
+          if (!dias.value) { out.innerHTML = ajuda; return; }
+          if (!ini.value) ini.value = ent.value || ymd(new Date());
+          const r = Prazos.calcularPrazo(ini.value, dias.value, cont.value, opcoesPrazo({ recesso: rec.checked }));
+          if (!r) { out.textContent = 'Informe um número de dias entre 1 e 3650.'; out.classList.add('is-erro'); return; }
+          if (!aplicar && prazo.value && prazo.value !== r.vencimento) {
+              out.innerHTML = `Pelo calendário atual este prazo venceria em <strong>${sanitizeHTML(fmtDiaSemana(r.vencimento))}</strong>; o prazo salvo é ${sanitizeHTML(fmtBR(prazo.value))}. Altere qualquer campo acima para recalcular.`;
+              out.classList.add('is-erro');
+              return;
+          }
+          prazo.value = r.vencimento;
+          out.innerHTML = descreverPrazo(r, ini.value, Number(dias.value), cont.value);
+      };
+      [ini, dias, cont, rec].forEach(el => { el.oninput = el.onchange = () => { if (el === rec) recessoTocado = true; recalcular(); }; });
+      tipo.onchange = () => { if (!recessoTocado) { rec.checked = tipo.value === 'judicial'; recalcular(); } };
+      // Data digitada à mão: o cálculo deixa de valer.
+      prazo.oninput = () => { if (dias.value) { dias.value = ''; out.innerHTML = 'Prazo informado à mão (sem cálculo).'; } };
+      if (dias.value) recalcular(false); else out.innerHTML = ajuda;
+  }
+
+  // Configurações → Feriados e pontos facultativos (CFG.prazos, compartilhado).
+  // Qualquer usuário vê a lista; só administradores ligam pontos ou cadastram datas.
+  let ferAnoVisto = new Date().getFullYear();
+  function renderFeriadosCfg() {
+      const lista = $('#ferLista'); if (!lista) return;
+      const ehAdmin = (() => { try { return (JSON.parse(sessionStorage.getItem('loggedInUser')) || {}).role === 'admin'; } catch { return false; } })();
+      CFG.prazos = CFG.prazos || { pontos: {}, extras: [] };
+      const cfgP = CFG.prazos; cfgP.pontos = cfgP.pontos || {}; cfgP.extras = cfgP.extras || [];
+      $('#ferAno').textContent = String(ferAnoVisto);
+      const feriados = Prazos.feriadosDoAno(ferAnoVisto, cfgP);
+      lista.innerHTML = feriados.map(f => {
+          const extra = f.esfera === 'Cadastrado';
+          return `<li><span class="fer-data">${sanitizeHTML(fmtDiaSemana(f.data))}</span>
+              <span class="fer-nome">${sanitizeHTML(f.nome)}</span>
+              <span class="fer-esfera">${sanitizeHTML(f.esfera)}</span>
+              ${extra && ehAdmin ? `<button type="button" class="icon-btn fer-remover" data-data="${f.data}" aria-label="Remover ${sanitizeHTML(f.nome)}"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}</li>`;
+      }).join('');
+      const edit = $('.feriados-edit'); if (edit) edit.style.display = ehAdmin ? '' : 'none';
+      $('#ferPontos').innerHTML = Prazos.PONTOS_FACULTATIVOS.map(pf => `<label class="cfg-switch"><input type="checkbox" data-ponto="${pf.id}" ${cfgP.pontos[pf.id] ? 'checked' : ''}> ${sanitizeHTML(pf.nome)}</label>`).join('');
+      const salvar = async (msg) => { await saveCFG(); $('#ferMsg').textContent = msg; renderFeriadosCfg(); };
+      $('#ferAnoPrev').onclick = () => { ferAnoVisto--; renderFeriadosCfg(); };
+      $('#ferAnoNext').onclick = () => { ferAnoVisto++; renderFeriadosCfg(); };
+      $('#ferPontos').onchange = (e) => { const id = e.target.dataset.ponto; if (!id) return; cfgP.pontos[id] = e.target.checked; salvar('Salvo. Vale para os próximos cálculos.'); };
+      lista.onclick = (e) => {
+          const b = e.target.closest('.fer-remover'); if (!b) return;
+          cfgP.extras = cfgP.extras.filter(x => x.data !== b.dataset.data);
+          salvar('Data removida.');
+      };
+      $('#ferAdd').onclick = () => {
+          const data = $('#ferData').value, desc = $('#ferDesc').value.trim();
+          if (!data) { $('#ferMsg').textContent = 'Escolha a data.'; return; }
+          if (cfgP.extras.some(x => x.data === data)) { $('#ferMsg').textContent = 'Essa data já está cadastrada.'; return; }
+          cfgP.extras.push({ data, desc: desc || 'Sem expediente' });
+          cfgP.extras.sort((x, y) => x.data.localeCompare(y.data));
+          $('#ferData').value = ''; $('#ferDesc').value = '';
+          ferAnoVisto = Number(data.slice(0, 4));
+          salvar('Data cadastrada.');
+      };
+  }
+
+  // ----- Movimentações dos processos judiciais (Datajud/CNJ) -----
+  // Processos judiciais com nº CNJ válido são consultados uma vez por dia (pela
+  // Cloud Function `juris`, fonte datajud-mov). O que chegou depois de
+  // `vistoAte` é "novo": aparece no Dashboard, no sininho e no detalhe.
+  // Na primeira consulta de um processo nada é novo (só marca o ponto de partida).
+  const movStatus = { servidor: 'ok', regras: 'ok', verificando: false, erro: '', ultima: null };
+  const MOV_MAX_POR_RODADA = 25;
+  const movDoProcesso = (id) => DB_MOV.find(m => String(m.id) === String(id));
+  const processosAcompanhados = () => DB.filter(p => p.tipo === 'judicial' && p.stat !== 'arquivado' && tribunalDoCNJ(p.num));
+  function novasMovimentacoes(reg) { return (reg && reg.movimentos || []).filter(m => m.data > (reg.vistoAte || '')); }
+  async function consultarMovimentos(num, tribunal) {
+      const usuarioFb = window.auth?.currentUser;
+      if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
+      const token = await usuarioFb.getIdToken();
+      const url = `${JURIS_FUNCTION_URL}?fonte=datajud-mov&q=${encodeURIComponent(num)}&tribunal=${encodeURIComponent(tribunal)}`;
+      const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      const corpo = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+          const e = new Error(corpo.erro || `HTTP_${resp.status}`);
+          // Função ainda na versão antiga: não conhece a fonte nova.
+          if (resp.status === 400 && /fonte desconhecida/i.test(corpo.erro || '')) e.servidorPendente = true;
+          throw e;
+      }
+      return corpo.processo || null;
+  }
+  async function salvarMov(reg) {
+      const i = DB_MOV.findIndex(m => String(m.id) === String(reg.id));
+      if (i > -1) DB_MOV[i] = reg; else DB_MOV.push(reg);
+      if (movStatus.regras === 'pendente') return;
+      try { await dbHelper.put('movimentacoes', reg); }
+      catch (e) { movStatus.regras = 'pendente'; console.warn('Não foi possível gravar movimentações:', e); }
+  }
+  async function verificarUm(p) {
+      const tribunal = tribunalDoCNJ(p.num);
+      const r = await consultarMovimentos(p.num, tribunal);
+      const antigo = movDoProcesso(p.id);
+      const maisRecente = (r && r.movimentos[0] && r.movimentos[0].data) || '';
+      await salvarMov({
+          id: String(p.id), processoId: p.id, num: p.num, tribunal,
+          verificadoEm: ymd(new Date()), verificadoAs: new Date().toISOString(),
+          encontrado: !!r, classe: (r && r.classe) || '', orgao: (r && r.orgao) || '',
+          movimentos: (r && r.movimentos) || [],
+          vistoAte: antigo ? (antigo.vistoAte || '') : maisRecente,
+      });
+  }
+  async function verificarMovimentacoes({ forcar = false } = {}) {
+      if (movStatus.verificando) return;
+      const hoje = ymd(new Date());
+      const fila = processosAcompanhados().filter(p => forcar || movDoProcesso(p.id)?.verificadoEm !== hoje).slice(0, MOV_MAX_POR_RODADA);
+      if (!fila.length) { renderMovimentacoes(); return; }
+      movStatus.verificando = true; movStatus.erro = ''; renderMovimentacoes();
+      for (const p of fila) {
+          try { await verificarUm(p); movStatus.servidor = 'ok'; }
+          catch (e) {
+              if (e.servidorPendente) { movStatus.servidor = 'pendente'; break; }
+              movStatus.erro = e.message; console.warn(`Datajud (${p.num}):`, e);
+          }
+      }
+      movStatus.verificando = false; movStatus.ultima = new Date();
+      renderMovimentacoes(); updateAllNotifications();
+  }
+  async function marcarMovVistas(ids) {
+      for (const id of ids) {
+          const reg = movDoProcesso(id); if (!reg || !reg.movimentos.length) continue;
+          await salvarMov({ ...reg, vistoAte: reg.movimentos[0].data });
+      }
+      renderMovimentacoes(); updateAllNotifications();
+  }
+  const fmtDataHora = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
+  function renderMovimentacoes() {
+      const card = $('#dashMov'); if (!card) return;
+      const acompanhados = processosAcompanhados();
+      card.hidden = !acompanhados.length;
+      if (!acompanhados.length) return;
+      const regs = acompanhados.map(p => movDoProcesso(p.id)).filter(Boolean);
+      const comNovas = regs.map(r => ({ r, novas: novasMovimentacoes(r) })).filter(x => x.novas.length)
+          .sort((a, b) => b.novas[0].data.localeCompare(a.novas[0].data));
+      const verificados = regs.filter(r => r.verificadoAs).map(r => r.verificadoAs).sort();
+      const ultima = verificados.length ? new Date(verificados[verificados.length - 1]) : null;
+      const status = movStatus.verificando ? 'Verificando no DataJud…'
+          : ultima ? `Verificado ${ymd(ultima) === ymd(new Date()) ? 'hoje' : `em ${ultima.toLocaleDateString('pt-BR')}`} às ${ultima.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+          : 'Ainda não verificado';
+      let corpo = '';
+      if (movStatus.servidor === 'pendente') {
+          corpo = `<p class="mov-aviso">A consulta ao DataJud depende de uma atualização do servidor que ainda não foi publicada (<code>firebase deploy --only functions</code>). Até lá, nada é verificado.</p>`;
+      } else if (comNovas.length) {
+          corpo = `<ul class="prazos-list">${comNovas.map(({ r, novas }) => dashItemHTML({
+              nav: 'proc', valor: r.num, titulo: `Processo ${r.num}`,
+              meta: `${String(r.tribunal).toUpperCase()} · ${novas[0].nome}${novas[0].complemento ? ` (${novas[0].complemento})` : ''} · ${fmtDataHora(novas[0].data)}`,
+              quando: novas.length === 1 ? '1 nova' : `${novas.length} novas`, tom: 'is-warning',
+          })).join('')}</ul>`;
+      } else {
+          corpo = `<p class="dash-empty">${regs.length ? 'Nenhuma movimentação nova desde a última vez.' : 'As movimentações aparecem aqui depois da primeira verificação.'}</p>`;
+      }
+      const naoAchados = regs.filter(r => r.encontrado === false).length;
+      card.innerHTML = `
+          <div class="mov-head">
+              <div><h3>Movimentações judiciais</h3>
+              <p class="mov-status">${plural(acompanhados.length, 'processo acompanhado', 'processos acompanhados')} no DataJud (CNJ) · ${status}${naoAchados ? ` · ${plural(naoAchados, 'não encontrado', 'não encontrados')}` : ''}</p></div>
+              <div class="mov-acoes">
+                  ${comNovas.length ? '<button type="button" class="btn secondary" data-mov-vistas>Marcar como vistas</button>' : ''}
+                  <button type="button" class="btn secondary" data-mov-verificar ${movStatus.verificando ? 'disabled' : ''}>Verificar agora</button>
+              </div>
+          </div>
+          ${movStatus.regras === 'pendente' && movStatus.servidor !== 'pendente' ? '<p class="mov-aviso">As movimentações não estão sendo guardadas: falta publicar as regras do Firestore (<code>firebase deploy --only firestore:rules</code>).</p>' : ''}
+          ${corpo}`;
+      card.onclick = (e) => {
+          if (e.target.closest('[data-mov-verificar]')) { verificarMovimentacoes({ forcar: true }); return; }
+          if (e.target.closest('[data-mov-vistas]')) { marcarMovVistas(comNovas.map(x => x.r.id)); return; }
+          const item = e.target.closest('.dash-item'); if (!item) return;
+          const p = DB.find(x => x.num === item.dataset.valor); if (p) openProcDetails(p.id);
+      };
+  }
+  // Seção "Movimentações (DataJud)" no detalhe do processo; abrir marca como vistas.
+  function renderMovProcesso(p) {
+      const sec = $('#details-mov'); if (!sec) return;
+      const tribunal = p.tipo === 'judicial' ? tribunalDoCNJ(p.num) : null;
+      sec.hidden = !tribunal; if (!tribunal) return;
+      const reg = movDoProcesso(p.id);
+      const novas = new Set(novasMovimentacoes(reg).map(m => m.data + m.nome));
+      const lista = reg && reg.movimentos.length
+          ? `<ol class="mov-lista">${reg.movimentos.slice(0, 10).map(m => `<li class="${novas.has(m.data + m.nome) ? 'is-nova' : ''}"><span class="mov-data">${fmtDataHora(m.data)}</span><span class="mov-nome">${sanitizeHTML(m.nome)}${m.complemento ? ` <span class="mov-comp">(${sanitizeHTML(m.complemento)})</span>` : ''}</span>${novas.has(m.data + m.nome) ? '<span class="mov-tag">nova</span>' : ''}</li>`).join('')}</ol>`
+          : `<p class="cfg-note">${reg && reg.encontrado === false ? `Processo não encontrado no DataJud do ${tribunal.toUpperCase()}.` : 'Ainda não verificado.'}</p>`;
+      sec.innerHTML = `<h4>Movimentações (DataJud · ${tribunal.toUpperCase()})</h4>
+          ${reg ? `<p class="cfg-note">${sanitizeHTML([reg.classe, reg.orgao].filter(Boolean).join(' · '))}${reg.verificadoAs ? `${reg.classe || reg.orgao ? '. ' : ''}Verificado em ${new Date(reg.verificadoAs).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.` : ''}</p>` : ''}
+          ${lista}
+          <button type="button" class="btn secondary" id="btnMovVerificar">Verificar agora</button>`;
+      $('#btnMovVerificar').onclick = async () => {
+          const b = $('#btnMovVerificar'); b.disabled = true; b.textContent = 'Verificando…';
+          try { await verificarUm(p); }
+          catch (e) { showToast(e.servidorPendente ? 'A consulta ao DataJud ainda não foi publicada no servidor.' : `DataJud: ${e.message}`, 'danger'); }
+          renderMovProcesso(p); renderMovimentacoes(); updateAllNotifications();
+      };
+      if (novas.size) marcarMovVistas([reg.id]);
+  }
+
+  // ----- Relatório mensal (Dashboard → "Relatório do mês") -----
+  const MESES_EXTENSO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const nomeMes = (ano, mes) => `${MESES_EXTENSO[mes].charAt(0).toUpperCase()}${MESES_EXTENSO[mes].slice(1)} de ${ano}`;
+  const SITUACAO_PRAZO = { 'no-prazo': 'Cumpridos no prazo', 'fora-do-prazo': 'Cumpridos fora do prazo', vencido: 'Vencidos sem saída', 'a-vencer': 'A vencer', 'sem-data': 'Concluídos sem data de saída' };
+  const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+  function dadosRelatorio(ano, mes) {
+      return relatorioMensal({ processos: DB, pareceres: DB_PARECERES, ano, mes, hoje: todayUTC(), statusMap });
+  }
+  function resumoRelatorio(r) {
+      const cumpridos = r.prazos['no-prazo'];
+      return [
+          { v: r.entradas.total, l: 'Entradas' },
+          { v: r.saidas, l: 'Saídas' },
+          { v: r.pareceresEmitidos, l: 'Pareceres emitidos' },
+          { v: r.tramitacao.media === null ? '—' : plural(r.tramitacao.media, 'dia', 'dias'), l: 'Tempo médio de tramitação' },
+          { v: r.prazos.total ? `${cumpridos} de ${r.prazos.total}` : '—', l: 'Prazos do mês cumpridos no prazo' },
+          { v: r.emAberto, l: 'Em aberto hoje' },
+      ];
+  }
+  function renderRelatorioPreview(r) {
+      const el = $('#relPreview'); if (!el) return;
+      const hoje = todayUTC(), mesCorrente = hoje.getUTCFullYear() === r.ano && hoje.getUTCMonth() === r.mes;
+      const linhas = (arr) => arr.map(c => `<tr>${c.map((x, i) => `<td${i ? ' class="num"' : ''}>${sanitizeHTML(String(x))}</td>`).join('')}</tr>`).join('');
+      el.innerHTML = `
+          ${mesCorrente ? '<p class="rel-aviso">Mês em andamento: números até hoje.</p>' : ''}
+          <div class="rel-resumo">${resumoRelatorio(r).map(k => `<div class="rel-num"><span class="v">${sanitizeHTML(String(k.v))}</span><span class="l">${k.l}</span></div>`).join('')}</div>
+          <h4>Entradas</h4>
+          <p>${plural(r.entradas.total, 'processo', 'processos')}: ${plural(r.entradas.administrativo, 'administrativo', 'administrativos')} e ${plural(r.entradas.judicial, 'judicial', 'judiciais')}.</p>
+          ${r.entradas.porSetor.length ? `<table class="rel-tabela"><thead><tr><th>Setor de origem</th><th class="num">Processos</th></tr></thead><tbody>${linhas(r.entradas.porSetor.slice(0, 8).map(x => [x.setor, x.n]))}</tbody></table>` : ''}
+          <h4>Prazos com vencimento no mês</h4>
+          ${r.prazos.total ? `<table class="rel-tabela"><tbody>${linhas(Object.keys(SITUACAO_PRAZO).filter(k => r.prazos[k]).map(k => [SITUACAO_PRAZO[k], r.prazos[k]]))}</tbody></table>` : '<p>Nenhum prazo venceu neste mês.</p>'}
+          ${r.prazos.atencao.length ? `<p class="rel-sub">Pedem atenção</p><table class="rel-tabela"><thead><tr><th>Processo</th><th>Interessado</th><th>Prazo</th><th>Saída</th></tr></thead><tbody>${r.prazos.atencao.map(a => `<tr><td>${sanitizeHTML(a.num)}</td><td>${sanitizeHTML(a.int)}</td><td>${fmtBR(a.prazo)}</td><td>${a.saida ? fmtBR(a.saida) : 'sem saída'}</td></tr>`).join('')}</tbody></table>` : ''}
+          <h4>Carteira hoje, por status</h4>
+          <table class="rel-tabela"><tbody>${linhas(r.situacaoAtual.map(x => [x.rotulo, x.n]))}</tbody></table>`;
+  }
+  async function generateRelatorioPDF(r) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+      const fonte = registrarFonteParecer(doc);
+      const P = PDF_PARECER, pageW = doc.internal.pageSize.getWidth(), pageH = doc.internal.pageSize.getHeight();
+      const L = P.left, R = pageW - P.right, W = R - L, maxY = pageH - P.fundo;
+      let y = drawParecerTimbre(doc, fonte);
+      const novaPagina = () => { doc.addPage(); y = drawParecerTimbre(doc, fonte); };
+      const garantir = (h) => { if (y + h > maxY) novaPagina(); };
+      const cinza = () => doc.setTextColor(95, 95, 95), tinta = () => doc.setTextColor(22, 25, 29);
+
+      tinta(); doc.setFont(fonte, 'bold'); doc.setFontSize(18);
+      doc.text(`Relatório mensal — ${nomeMes(r.ano, r.mes)}`, L, y); y += 6;
+      cinza(); doc.setFont(fonte, 'normal'); doc.setFontSize(11);
+      const hoje = todayUTC(), mesCorrente = hoje.getUTCFullYear() === r.ano && hoje.getUTCMonth() === r.mes;
+      const agora = new Date();
+      doc.text(`Gerado em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} por ${currentUserName()}.${mesCorrente ? ' Mês em andamento: números até hoje.' : ''}`, L, y); y += 9;
+
+      // Resumo: 3 colunas × 2 linhas
+      const colW = W / 3, boxH = 22;
+      resumoRelatorio(r).forEach((k, i) => {
+          const cx = L + (i % 3) * colW, cy = y + Math.floor(i / 3) * (boxH + 3);
+          doc.setDrawColor(216, 211, 202); doc.setLineWidth(0.3); doc.roundedRect(cx, cy, colW - 3, boxH, 2, 2, 'S');
+          tinta(); doc.setFont(fonte, 'normal'); doc.setFontSize(19); doc.text(String(k.v), cx + 4, cy + 9);
+          cinza(); doc.setFontSize(10.5); doc.text(doc.splitTextToSize(k.l, colW - 10).slice(0, 2), cx + 4, cy + 14.5);
+      });
+      y += 2 * (boxH + 3) + 6;
+
+      const secao = (titulo) => {
+          y += 4; garantir(18); tinta(); doc.setFont(fonte, 'bold'); doc.setFontSize(13); doc.text(titulo, L, y);
+          doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3); doc.line(L, y + 1.8, R, y + 1.8); y += 7;
+          doc.setFont(fonte, 'normal'); doc.setFontSize(11.5);
+      };
+      const paragrafo = (txt) => { tinta(); doc.setFont(fonte, 'normal'); doc.setFontSize(11.5); const ls = doc.splitTextToSize(txt, W); garantir(ls.length * 5.2); doc.text(ls, L, y); y += ls.length * 5.2 + 1.5; };
+      // Tabela simples: colunas [{ t, w (fração), num }]; corta texto longo em uma linha.
+      const tabela = (cols, rows, cabecalho = true) => {
+          const xs = []; let acc = L; cols.forEach(c => { xs.push(acc); acc += c.w * W; });
+          const linha = (vals, bold) => {
+              garantir(7);
+              doc.setFont(fonte, bold ? 'bold' : 'normal'); doc.setFontSize(bold ? 10.5 : 11); bold ? cinza() : tinta();
+              vals.forEach((v, i) => {
+                  const larg = cols[i].w * W - 3; let t = String(v ?? '');
+                  while (t.length > 1 && doc.getTextWidth(t) > larg) t = t.slice(0, -2) + '…';
+                  if (cols[i].num) doc.text(t, xs[i] + cols[i].w * W - 1, y, { align: 'right' }); else doc.text(t, xs[i], y);
+              });
+              doc.setDrawColor(232, 229, 223); doc.setLineWidth(0.2); doc.line(L, y + 2.2, R, y + 2.2); y += 6.6;
+          };
+          if (cabecalho) linha(cols.map(c => c.t), true);
+          rows.forEach(rw => linha(rw, false));
+          y += 3;
+      };
+
+      secao('Entradas');
+      paragrafo(`${plural(r.entradas.total, 'processo', 'processos')}: ${plural(r.entradas.administrativo, 'administrativo', 'administrativos')} e ${plural(r.entradas.judicial, 'judicial', 'judiciais')}.`);
+      if (r.entradas.porSetor.length) tabela([{ t: 'Setor de origem', w: 0.8 }, { t: 'Processos', w: 0.2, num: true }], r.entradas.porSetor.slice(0, 10).map(x => [x.setor, x.n]));
+      if (r.tramitacao.n) paragrafo(`Tempo de tramitação ${r.tramitacao.n === 1 ? 'do processo que saiu' : `dos ${r.tramitacao.n} processos que saíram`} no mês: média de ${plural(r.tramitacao.media, 'dia', 'dias')}, mediana de ${plural(r.tramitacao.mediana, 'dia', 'dias')}.`);
+
+      secao('Prazos com vencimento no mês');
+      if (!r.prazos.total) paragrafo('Nenhum prazo venceu neste mês.');
+      else tabela([{ t: 'Situação', w: 0.8 }, { t: 'Processos', w: 0.2, num: true }], Object.keys(SITUACAO_PRAZO).filter(k => r.prazos[k]).map(k => [SITUACAO_PRAZO[k], r.prazos[k]]));
+      if (r.prazos.atencao.length) {
+          garantir(14); tinta(); doc.setFont(fonte, 'bold'); doc.setFontSize(11.5); doc.text('Pedem atenção', L, y); y += 6;
+          tabela([{ t: 'Processo', w: 0.2 }, { t: 'Interessado', w: 0.44 }, { t: 'Prazo', w: 0.17 }, { t: 'Saída', w: 0.19 }],
+              r.prazos.atencao.map(a => [a.num, a.int, fmtBR(a.prazo), a.saida ? fmtBR(a.saida) : 'sem saída']));
+      }
+
+      secao('Carteira hoje, por status');
+      tabela([{ t: 'Status', w: 0.8 }, { t: 'Processos', w: 0.2, num: true }], r.situacaoAtual.map(x => [x.rotulo, x.n]));
+
+      const total = doc.getNumberOfPages();
+      for (let i = 1; i <= total; i++) {
+          doc.setPage(i); cinza(); doc.setFont(fonte, 'normal'); doc.setFontSize(10);
+          doc.text(`Relatório mensal · ${nomeMes(r.ano, r.mes)} · página ${i} de ${total}`, R, pageH - 10, { align: 'right' });
+      }
+      doc.save(`relatorio-mensal_${r.ano}-${String(r.mes + 1).padStart(2, '0')}.pdf`);
+  }
+  function openRelatorio() {
+      const m = $('#m_relatorio'), sel = $('#relMes'); if (!m || !sel) return;
+      const meses = ultimosMeses(todayUTC(), 12).reverse();
+      sel.innerHTML = meses.map(x => `<option value="${x.chave}">${nomeMes(x.ano, x.mes)}</option>`).join('');
+      const atual = () => { const [a, mm] = sel.value.split('-').map(Number); return dadosRelatorio(a, mm - 1); };
+      sel.onchange = () => renderRelatorioPreview(atual());
+      renderRelatorioPreview(atual());
+      m.style.display = 'flex';
+      const fechar = () => { m.style.display = 'none'; };
+      $$('[data-close-rel]').forEach(b => b.onclick = fechar);
+      m.onclick = (e) => { if (e.target === m) fechar(); };
+      $('#relPdf').onclick = async () => {
+          const btn = $('#relPdf'); btn.disabled = true;
+          try { await generateRelatorioPDF(atual()); showToast('Relatório gerado.'); }
+          catch (err) { console.error('Erro ao gerar relatório:', err); showToast('Não foi possível gerar o relatório.', 'danger'); }
+          finally { btn.disabled = false; }
+      };
+  }
+
+  // ----- Busca global (Ctrl+K ou "/") -----
+  // Junta processos, pareceres, documentos, leis, compromissos e as telas num
+  // índice simples montado na hora (os dados já estão em memória).
+  const BUSCA_GRUPOS = ['Ações', 'Telas', 'Processos', 'Pareceres', 'Documentos', 'Leis', 'Compromissos'];
+  function itensBuscaGlobal() {
+      const itens = [];
+      Object.entries(tabTitles).forEach(([key, nome]) => itens.push({ grupo: 'Telas', titulo: nome, abrir: () => showTab(key) }));
+      itens.push({ grupo: 'Ações', titulo: 'Novo processo', campos: ['adicionar', 'cadastrar'], abrir: () => { showTab('proc'); openProc('new'); } });
+      itens.push({ grupo: 'Ações', titulo: 'Novo compromisso', campos: ['agenda', 'evento', 'adicionar'], abrir: () => { showTab('cal'); $('#new_evt')?.click(); } });
+      DB.forEach(p => itens.push({
+          grupo: 'Processos', titulo: `Processo ${p.num}`, sub: [p.int, statusMap[p.stat]].filter(Boolean).join(' · '),
+          campos: [p.obj, p.setorOrigem, p.dest, p.acao, p.prazo ? `prazo ${fmtBR(p.prazo)}` : ''],
+          abrir: () => { showTab('proc', { filterBy: { text: p.num } }); openProcDetails(p.id); },
+      }));
+      DB_PARECERES.forEach(pz => {
+          const proc = DB.find(p => String(p.id) === String(pz.processoId));
+          itens.push({
+              grupo: 'Pareceres', titulo: `Parecer — Processo ${pz.processoNum || (proc && proc.num) || 's/ nº'}`,
+              sub: [proc && proc.int, pz.status === 'emitido' ? 'Emitido' : pz.status === 'em-revisao' ? 'Em revisão' : 'Rascunho'].filter(Boolean).join(' · '),
+              campos: [proc && proc.obj],
+              abrir: () => { if (proc) { showTab('docs'); openParecerModal(proc); } else { showTab('docs'); showToast('Processo vinculado não encontrado.', 'danger'); } },
+          });
+      });
+      DB_DOCS.forEach(d => itens.push({ grupo: 'Documentos', titulo: d.nomePrincipal || 'Documento', sub: d.criadoEm ? `Enviado em ${fmtBR(String(d.criadoEm).slice(0, 10))}` : '', abrir: () => showTab('docs') }));
+      DB_LEIS.forEach(l => itens.push({
+          grupo: 'Leis', titulo: `${l.tipo || 'Lei'} nº ${l.numero || ''}${l.ano ? `/${l.ano}` : ''}`, sub: l.ementa || '',
+          abrir: () => { const q = $('#qLeis'); if (q) q.value = String(l.numero || ''); showTab('leis'); },
+      }));
+      CAL.forEach(c => itens.push({
+          grupo: 'Compromissos', titulo: c.desc || 'Compromisso', sub: `${fmtBR(c.data)}${c.hora ? ` às ${c.hora}` : ''}`,
+          abrir: () => { showTab('cal'); navigateToDate(c.data); },
+      }));
+      return itens;
+  }
+  function ligarBuscaGlobal() {
+      const dlg = $('#buscaGlobal'), input = $('#buscaGlobalInput'), lista = $('#buscaGlobalLista'), trigger = $('#btnBuscaGlobal');
+      if (!dlg || typeof dlg.showModal !== 'function') { if (trigger) trigger.style.display = 'none'; return; }
+      let itens = [], resultados = [], ativo = 0;
+      const desenhar = () => {
+          const q = input.value;
+          resultados = q.trim()
+              ? buscarGlobal(itens, q, { ordemGrupos: BUSCA_GRUPOS, porGrupo: 6 })
+              : itens.filter(i => i.grupo === 'Ações' || i.grupo === 'Telas');
+          ativo = Math.min(ativo, Math.max(resultados.length - 1, 0));
+          if (!resultados.length) { lista.innerHTML = `<li class="busca-vazio">Nada encontrado para “${sanitizeHTML(q.trim())}”.</li>`; input.removeAttribute('aria-activedescendant'); return; }
+          let grupoAtual = '';
+          lista.innerHTML = resultados.map((r, i) => {
+              const cab = r.grupo !== grupoAtual ? `<li class="busca-grupo" role="presentation">${sanitizeHTML(r.grupo)}</li>` : '';
+              grupoAtual = r.grupo;
+              return `${cab}<li id="busca-op-${i}" class="busca-item${i === ativo ? ' is-ativo' : ''}" role="option" aria-selected="${i === ativo}" data-i="${i}">
+                  <span class="busca-item-titulo">${sanitizeHTML(r.titulo)}</span>${r.sub ? `<span class="busca-item-sub">${sanitizeHTML(r.sub)}</span>` : ''}</li>`;
+          }).join('');
+          input.setAttribute('aria-activedescendant', `busca-op-${ativo}`);
+          lista.querySelector('.is-ativo')?.scrollIntoView({ block: 'nearest' });
+      };
+      const abrir = () => {
+          if ($('.app-layout')?.style.display === 'none' || dlg.open) return;
+          itens = itensBuscaGlobal(); ativo = 0; input.value = '';
+          dlg.showModal(); desenhar(); input.focus();
+      };
+      const escolher = (i) => { const r = resultados[i]; if (!r) return; dlg.close(); r.abrir(); };
+      if (trigger) trigger.onclick = abrir;
+      input.oninput = () => { ativo = 0; desenhar(); };
+      input.onkeydown = (e) => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); ativo = Math.min(ativo + 1, resultados.length - 1); desenhar(); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); ativo = Math.max(ativo - 1, 0); desenhar(); }
+          else if (e.key === 'Enter') { e.preventDefault(); escolher(ativo); }
+      };
+      lista.onclick = (e) => { const li = e.target.closest('.busca-item'); if (li) escolher(Number(li.dataset.i)); };
+      lista.onmousemove = (e) => { const li = e.target.closest('.busca-item'); if (li && Number(li.dataset.i) !== ativo) { ativo = Number(li.dataset.i); desenhar(); } };
+      dlg.onclick = (e) => { if (e.target === dlg) dlg.close(); }; // clique fora da caixa
+      document.addEventListener('keydown', (e) => {
+          const emCampo = e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"], .ql-editor');
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); abrir(); }
+          else if (e.key === '/' && !emCampo && !document.querySelector('.modal[style*="flex"]')) { e.preventDefault(); abrir(); }
+      });
+      // No Mac, mostra ⌘K no lugar de Ctrl K.
+      if (/Mac|iPhone|iPad/.test(navigator.platform || '')) $$('.busca-trigger .busca-kbd').forEach(k => { k.textContent = '⌘K'; });
+  }
+
+  // Nome do feriado (ou ponto facultativo/data cadastrada) num dia 'YYYY-MM-DD'.
+  const cacheFeriados = new Map();
+  function feriadoNoDia(ds) {
+      const ano = Number(String(ds).slice(0, 4)); if (!ano || typeof Prazos === 'undefined') return null;
+      const sig = `${ano}|${JSON.stringify((CFG && CFG.prazos) || {})}`;
+      if (!cacheFeriados.has(sig)) cacheFeriados.set(sig, new Map(Prazos.feriadosDoAno(ano, opcoesPrazo()).map(f => [f.data, f.nome])));
+      return cacheFeriados.get(sig).get(ds) || null;
+  }
+
   function openProc(mode, id) {
     const m = $('#m_proc'); m.style.display = 'flex';
     $('#m_proc_t').textContent = mode === 'new' ? 'Novo Processo' : 'Editar Processo';
@@ -2382,16 +2838,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = $('#f_proc'), del = $('#fp_del');
     form.reset();
 
+    let procAtual = null;
     if (mode === 'edit') {
         const p = DB.find(x => x.id == id); if (!p) return;
+        procAtual = p;
         for (const key in p) {
-            if (form.elements[key]) form.elements[key].value = p[key];
+            if (form.elements[key] && form.elements[key].type !== 'checkbox') form.elements[key].value = p[key];
         }
         del.style.display = 'inline-flex';
     } else {
         form.elements.id.value = '';
         del.style.display = 'none';
     }
+    ligarCalculoPrazo(form, procAtual);
     
     form.onsubmit = async (e) => {
         e.preventDefault();
@@ -2402,11 +2861,16 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let [key, value] of formData.entries()) {
             if (key !== 'id') rec[key] = value.trim();
         }
+        // Checkbox desmarcado não entra no FormData: grava explicitamente.
+        rec.prazoRecesso = $('#fp_precesso')?.checked ? '1' : '';
         
         try { const idx = DB.findIndex(p => p.id == rec.id);
         if (idx > -1) {
             const oldRec = { ...DB[idx] };
-            rec.docId = DB[idx].docId ?? null;
+            // Parte do registro antigo e sobrepõe o formulário: campos que o
+            // formulário não tem (anotações, docId…) não se perdem ao editar.
+            Object.assign(rec, { ...oldRec, ...rec });
+            rec.docId = oldRec.docId ?? null;
             DB[idx] = rec;
             await dbHelper.put('processos', rec);
             await logHistorico(rec.id, rec.num, 'editado', getChanges(oldRec, rec));
@@ -2475,6 +2939,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <h4>Tramitação e Parecer</h4>
         <div class="view-grid" id="details-tramitacao"></div>
       </div>
+      <div class="view-section mov-section" id="details-mov" hidden></div>
       <div class="view-section anotacoes-section">
         <h4>Anotações e Pendências</h4>
         <div class="anotacoes-timeline" id="anotacoes-timeline"></div>
@@ -2485,6 +2950,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
 
+    renderMovProcesso(p);
     const idGrid = $('#details-identificacao');
     idGrid.appendChild(createViewItem('Nº Processo', p.num)).style.gridColumn = '1 / -1';
     idGrid.appendChild(createViewItem('Tipo', p.tipo === 'administrativo' ? 'Administrativo' : 'Judicial'));
@@ -2494,7 +2960,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tramGrid = $('#details-tramitacao');
     tramGrid.appendChild(createViewItemHTML('Status', `<span class="status ${safeCSSClass(p.stat, VALID_STATS)}">${sanitizeHTML(statusMap[p.stat]) || '—'}</span>`));
-    tramGrid.appendChild(createViewItem('Prazo Final', fmtBR(p.prazo)));
+    const comoContou = p.prazo && p.prazoDias ? ` (${p.prazoDias} ${p.prazoContagem === 'corridos' ? 'dias corridos' : 'dias úteis'} a partir de ${fmtBR(p.prazoInicio)})` : '';
+    tramGrid.appendChild(createViewItem('Prazo Final', fmtBR(p.prazo) + comoContou));
     tramGrid.appendChild(createViewItem('Setor de Origem', p.setorOrigem));
     tramGrid.appendChild(createViewItem('Setor Enviado', p.dest));
     tramGrid.appendChild(createViewItem('Data de Entrada', fmtBR(p.ent)));
@@ -3886,7 +4353,8 @@ ${corpo}
         const c=document.createElement('div');c.className='cell';if(p.getMonth()!==m)c.classList.add('dim');
         const dn=document.createElement('div');dn.className='dnum';const tdy=ymd(new Date())===ymd(p);dn.innerHTML=`<span class="${tdy?'today':''}">${p.getDate()}</span>`; c.appendChild(dn);
         const eventsWrapper = document.createElement('div'); eventsWrapper.className = 'events-wrapper';
-        const ds=ymd(p);const evts=list.filter(e=>e.data===ds); const initialsMap = { g: 'G', a: 'A', r: 'R', p: 'TP', u: 'U', e: 'E', o: 'OAB' };
+        const ds=ymd(p);const evts=list.filter(e=>e.data===ds);
+        const fer = feriadoNoDia(ds); if (fer) { c.classList.add('is-feriado'); const fl=document.createElement('div'); fl.className='cal-feriado'; fl.textContent=fer; fl.title=`Sem expediente: ${fer}`; c.appendChild(fl); } const initialsMap = { g: 'G', a: 'A', r: 'R', p: 'TP', u: 'U', e: 'E', o: 'OAB' };
         const dotsContainer = document.createElement('div'); dotsContainer.className = 'event-dots-container';
         evts.forEach(evt => {
             const dot = document.createElement('div'); dot.className = `event-dot ${safeCSSClass(evt.cat, VALID_CAT)}`; dot.textContent = initialsMap[evt.cat] || '?'; dot.title = sanitizeHTML(evt.desc); dot.dataset.label = evt.curto || evt.desc || '';
@@ -4155,7 +4623,7 @@ ${corpo}
           showTab('proc', { filterBy });
       };
       renderSaudacao(kpiData);
-      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderStatusBreakdown(); renderRadarPrazos(); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
+      const chartConfigs = getChartConfigs(DB); renderCharts(chartConfigs); renderStatusBreakdown(); renderMovimentacoes(); renderRadarPrazos(); renderProximosPrazos(); renderAlertasInteligentes(); renderUltimasAtividades(); updateAllNotifications();
   }
 
   // Resumo do dia no topo do Dashboard (exibido no visual novo).
@@ -4229,6 +4697,10 @@ ${corpo}
         DB.filter(p => p.prazo && (p.stat !== 'finalizado' && p.stat !== 'arquivado')).forEach(p => { const prazoDate = parse(p.prazo); const df = diffDays(hoje, prazoDate); if (df < 0) { notifications.push({ id: `alert-vencido-${p.id}`, type: 'alerta', date: p.prazo, title: `Processo ${p.num}`, subtitle: `Vencido há ${Math.abs(df)} dia(s)`, navInfo: { type: 'proc', num: p.num } }); } else if (df === 0) { notifications.push({ id: `alert-fatal-${p.id}`, type: 'alerta', date: p.prazo, title: `Processo ${p.num}`, subtitle: 'Prazo fatal (hoje!)', navInfo: { type: 'proc', num: p.num } }); } else if (df > 0 && df <= 5) { notifications.push({ id: `proc-${p.id}`, type: 'prazo', date: p.prazo, title: `Processo ${p.num}`, subtitle: `Prazo em ${df} dia(s)`, navInfo: { type: 'proc', num: p.num } }); } });
         const futuroEventos = new Date(hoje); futuroEventos.setDate(hoje.getDate() + 7);
         CAL.filter(e => e.cat !== 'p').forEach(e => { const eventDate = parse(e.data); if (eventDate >= hoje && eventDate <= futuroEventos) { notifications.push({ id: `cal-${e.id}`, type: 'evento', date: e.data, title: e.desc, subtitle: `Dia ${fmtBR(e.data)}${e.hora ? ` às ${e.hora}` : ''}`, navInfo: { type: 'cal', date: e.data } }); } });
+        DB_MOV.forEach(reg => {
+            const novas = novasMovimentacoes(reg); if (!novas.length) return;
+            notifications.push({ id: `mov-${reg.id}-${novas[0].data}`, type: 'alerta', date: novas[0].data.slice(0, 10), title: `Processo ${reg.num}`, subtitle: `${novas.length === 1 ? 'Nova movimentação' : `${novas.length} movimentações novas`}: ${novas[0].nome}`, navInfo: { type: 'proc', num: reg.num } });
+        });
         return notifications.filter(n => !CFG.dismissedNotifications?.includes(n.id)).sort((a,b) => a.date.localeCompare(b.date));
     }
     function updateAllNotifications(filter = 'all') {
@@ -4419,6 +4891,8 @@ ${corpo}
     if (btnGeminiTk) btnGeminiTk.onclick = salvarGeminiToken;
 
     setupEnhancedNav();
+    ligarBuscaGlobal();
+    $('#btnRelatorio')?.addEventListener('click', openRelatorio);
 
     $$('.tab').forEach(b => b.onclick = (e) => { e.preventDefault(); showTab(b.dataset.tab); if (window.closeMobileMenu) window.closeMobileMenu(); });
     $('#userList').onclick = async (e) => {
