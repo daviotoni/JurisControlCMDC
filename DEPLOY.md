@@ -127,3 +127,18 @@ firebase deploy --only hosting --token "<TOKEN>" --project juriscontrolcmdc
 O `firebase.json` está configurado como multi-site (array com `juriscontrolcmdc`
 e `procuradoriacmdc`), então um único `firebase deploy` publica nos dois sites
 `web.app` de uma vez.
+
+### Publicando pela rede da Câmara (proxy)
+
+A rede da CMDC só sai para a internet pelo proxy `10.1.0.253:3128`. O Windows
+e o navegador já usam esse proxy, mas o Firebase CLI (Node) **não** lê a
+configuração do Windows: sem as variáveis abaixo, `firebase login` falha com
+"Failed to make request to https://auth.firebase.tools/attest" e o deploy não
+alcança o Google. No mesmo terminal, antes de `firebase login`/`firebase deploy`:
+
+```powershell
+$env:HTTPS_PROXY = 'http://10.1.0.253:3128'; $env:HTTP_PROXY = 'http://10.1.0.253:3128'; $env:NO_PROXY = 'localhost,127.0.0.1'
+```
+
+O `NO_PROXY` mantém o retorno do login (`localhost:9005`) fora do proxy. As
+variáveis valem só para aquela janela do terminal.
