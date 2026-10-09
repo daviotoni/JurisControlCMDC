@@ -116,7 +116,7 @@ Notas:
 - Os normalizadores de resposta têm testes offline em
   `test/web/juris-normalizadores.test.js`; a primeira chamada real às fontes
   externas deve ser validada após o deploy (o sandbox de desenvolvimento não
-  alcança lexml.gov.br / datajud.cnj.br).
+  alcança lexml.gov.br / datajud.cnj.jus.br).
 
 ## Deploy no Firebase (manual)
 

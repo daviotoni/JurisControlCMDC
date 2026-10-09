@@ -116,14 +116,14 @@ async function buscarJurisai(q, tribunal) {
 async function movimentosDatajud(numero, tribunal) {
   const digitos = String(numero).replace(/\D/g, '');
   if (digitos.length !== 20) throw erroCliente(400, 'Informe o número CNJ completo (20 dígitos).');
-  const resp = await fetch(`https://api-publica.datajud.cnj.br/api_publica_${tribunal}/_search`, {
+  const resp = await fetch(`https://api-publica.datajud.cnj.jus.br/api_publica_${tribunal}/_search`, {
     method: 'POST',
     headers: {
       'Authorization': `APIKey ${DATAJUD_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ query: { match: { numeroProcesso: digitos } }, size: 3 }),
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(25000),
   });
   if (!resp.ok) throw new Error(`Datajud respondeu ${resp.status}`);
   return normalizarDatajudMovimentos(await resp.json(), tribunal);
@@ -132,14 +132,14 @@ async function movimentosDatajud(numero, tribunal) {
 async function buscarDatajud(numero, tribunal) {
   const digitos = String(numero).replace(/\D/g, '');
   if (digitos.length < 7) return [];
-  const resp = await fetch(`https://api-publica.datajud.cnj.br/api_publica_${tribunal}/_search`, {
+  const resp = await fetch(`https://api-publica.datajud.cnj.jus.br/api_publica_${tribunal}/_search`, {
     method: 'POST',
     headers: {
       'Authorization': `APIKey ${DATAJUD_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ query: { match: { numeroProcesso: digitos } }, size: 5 }),
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(25000),
   });
   if (!resp.ok) throw new Error(`Datajud respondeu ${resp.status}`);
   return normalizarDatajud(await resp.json(), tribunal);
