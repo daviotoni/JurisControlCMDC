@@ -2737,6 +2737,60 @@ document.addEventListener('DOMContentLoaded', () => {
       };
   }
 
+  // ----- Janelas (modais): clicar fora ou apertar Esc fecha -----
+  // Vale para todas as .modal (menos a de confirmação, que tem regra própria).
+  // Se o usuário digitou ou mudou algo desde que a janela abriu, pergunta antes
+  // de descartar. Fecha pelo próprio botão Cancelar/Fechar da janela, para
+  // manter a limpeza que cada uma faz; sem botão, só esconde.
+  function ligarFecharModais() {
+      const modais = $$('.modal').filter(m => m.id !== 'm_confirm');
+      const aberta = (m) => !!m && m.style.display !== '' && m.style.display !== 'none';
+      const alterada = new WeakMap();
+      // Abriu agora (estava escondida): zera o "alterado". Preenchimento feito
+      // pelo código não dispara input/change, então só conta o que o usuário fez.
+      const obs = new MutationObserver(muts => muts.forEach(mu => {
+          const m = mu.target, antes = mu.oldValue || '';
+          if (aberta(m) && (!/display\s*:/.test(antes) || /display\s*:\s*none/.test(antes))) alterada.set(m, false);
+      }));
+      modais.forEach(m => {
+          obs.observe(m, { attributes: true, attributeFilter: ['style'], attributeOldValue: true });
+          m.addEventListener('input', () => alterada.set(m, true));
+          m.addEventListener('change', () => alterada.set(m, true));
+      });
+      const botaoFechar = (m) => [...m.querySelectorAll('button')].find(b => [...b.attributes].some(a => a.name.startsWith('data-close')));
+      let fechando = false;
+      const fechar = async (m) => {
+          if (fechando) return;
+          fechando = true;
+          try {
+              if (alterada.get(m)) {
+                  const ok = await confirmDialog('Há alterações que ainda não foram salvas. Fechar mesmo assim?', { title: 'Descartar alterações?', confirmLabel: 'Descartar' });
+                  if (!ok) return;
+              }
+              const b = botaoFechar(m);
+              if (b) b.click();
+              if (aberta(m)) m.style.display = 'none';
+          } finally { fechando = false; }
+      };
+      // Só fecha se o clique começou E terminou no fundo (selecionar texto e
+      // soltar o mouse fora da caixa não fecha nada).
+      let inicioNoFundo = null;
+      document.addEventListener('pointerdown', (e) => { inicioNoFundo = modais.includes(e.target) ? e.target : null; }, true);
+      document.addEventListener('click', (e) => {
+          const m = e.target;
+          if (!modais.includes(m) || inicioNoFundo !== m || aberta($('#m_confirm'))) return;
+          e.stopImmediatePropagation(); // as janelas que já fechavam ao clicar fora passam a perguntar antes
+          fechar(m);
+      }, true);
+      document.addEventListener('keydown', (e) => {
+          if (e.key !== 'Escape' || aberta($('#m_confirm')) || $('#buscaGlobal')?.open) return;
+          const abertas = modais.filter(aberta);
+          if (!abertas.length) return;
+          e.preventDefault();
+          fechar(abertas[abertas.length - 1]); // a de cima (a última no HTML)
+      });
+  }
+
   // ----- Busca global (Ctrl+K ou "/") -----
   // Junta processos, pareceres, documentos, leis, compromissos e as telas num
   // índice simples montado na hora (os dados já estão em memória).
@@ -4892,6 +4946,7 @@ ${corpo}
 
     setupEnhancedNav();
     ligarBuscaGlobal();
+    ligarFecharModais();
     $('#btnRelatorio')?.addEventListener('click', openRelatorio);
 
     $$('.tab').forEach(b => b.onclick = (e) => { e.preventDefault(); showTab(b.dataset.tab); if (window.closeMobileMenu) window.closeMobileMenu(); });
