@@ -45,6 +45,30 @@ document.addEventListener('DOMContentLoaded', () => {
       'parecer-devolvido': {
           icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`,
           label: 'Parecer devolvido para ajustes'
+      },
+      'termo-enviado': {
+          icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+          label: 'Termo enviado ao gabinete'
+      },
+      'termo-cobrado': {
+          icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+          label: 'Gabinete cobrado'
+      },
+      'termo-recebido': {
+          icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`,
+          label: 'Guia de remessa assinada'
+      },
+      'termo-devolvido': {
+          icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`,
+          label: 'Termo devolvido pelo gabinete'
+      },
+      'termo-editado': {
+          icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+          label: 'Envio ao gabinete corrigido'
+      },
+      'termo-cancelado': {
+          icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+          label: 'Envio ao gabinete cancelado'
       }
   };
 
@@ -131,7 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
           readNotifications: [],
           dismissedNotifications: [],
           sidebarCollapsed: false,
-          procItemsPerPage: 10
+          procItemsPerPage: 10,
+          vereadores: []
       };
       
       DB = await dbHelper.getAll('processos');
@@ -1759,8 +1784,8 @@ document.addEventListener('DOMContentLoaded', () => {
       drawPareceres(true);
   };
 
-  const sections={dashboard: $('#secDashboard'), proc:$('#secProc'), cal:$('#secCal'), docs:$('#secDoc'), leis: $('#secLeis'), juris: $('#secJuris'), cfg:$('#secCfg')};
-  const tabTitles = { dashboard: 'Dashboard', proc: 'Processos', cal: 'Calendário', docs: 'Documentos', leis: 'Banco de Leis', juris: 'Jurisprudência', cfg: 'Configurações' };
+  const sections={dashboard: $('#secDashboard'), proc:$('#secProc'), termos:$('#secTermos'), cal:$('#secCal'), docs:$('#secDoc'), leis: $('#secLeis'), juris: $('#secJuris'), cfg:$('#secCfg')};
+  const tabTitles = { dashboard: 'Dashboard', proc: 'Processos', termos: 'Termos de Concordância', cal: 'Calendário', docs: 'Documentos', leis: 'Banco de Leis', juris: 'Jurisprudência', cfg: 'Configurações' };
 
   const mobileMenuToggle = $('#mobile-menu-toggle');
   const sidebar = $('#sidebar');
@@ -1794,6 +1819,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(key==='dashboard') renderDashboard();
     if(key==='proc') renderProc(true, options.filterBy);
+    if(key==='termos') renderTermos();
     if(key==='cal') drawView();
     if(key==='docs') {
         currentlyDisplayedPareceres = buildPareceresListaCombinada();
@@ -1802,10 +1828,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(key==='leis') renderLeis();
     if(key==='juris') { initJurisAba(); $('#jr_tema_aba')?.focus(); }
-    if(key==='cfg') { renderUsers(); renderEmissores(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); renderFeriadosCfg(); }
+    if(key==='cfg') { renderUsers(); renderEmissores(); renderVereadoresCfg(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); renderFeriadosCfg(); }
   }
 
-  const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
+  const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','aguardando-gabinete':'Aguardando gabinete','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
   const fieldLabels = { num: 'Nº Processo', int: 'Interessado', tipo: 'Tipo', obj: 'Objeto', acao: 'Ação Tomada', stat: 'Status', setorOrigem: 'Setor de Origem', dest: 'Setor Enviado', ent: 'Data de Entrada', prazo: 'Prazo Final', saida: 'Data de Saída' };
 
   // getChanges foi movido para js/utils.js (função pura, testável). Continua
@@ -1827,7 +1853,7 @@ document.addEventListener('DOMContentLoaded', () => {
           console.warn('Erro ao registrar histórico:', e);
       }
       // Espelha no log central de auditoria (Configurações → Log de Auditoria).
-      const modulo = String(acao).startsWith('parecer') ? 'pareceres' : 'processos';
+      const modulo = String(acao).startsWith('parecer') ? 'pareceres' : String(acao).startsWith('termo') ? 'termos' : 'processos';
       const detalhes = (changes || []).map(c => `${fieldLabels[c.campo] || c.campo}: "${c.de ?? ''}" → "${c.para ?? ''}"`).join('; ');
       await logAuditoria(modulo, acao, `Processo ${processoNum || processoId}`, detalhes || null);
   }
@@ -2107,6 +2133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'pendente',                label: 'Pendente',               color: '#b42323' },
         { key: 'em-analise',              label: 'Em Análise',             color: '#b25e09' },
         { key: 'aguardando-documentacao', label: 'Aguard. Documentação',   color: '#0a3d73' },
+        { key: 'aguardando-gabinete',     label: 'Aguard. Gabinete',       color: '#8a6a2f' },
         { key: 'em-diligencia',           label: 'Em Diligência',          color: '#7c3aad' },
         { key: 'finalizado',              label: 'Finalizado',             color: '#2f855a' },
         { key: 'arquivado',               label: 'Arquivado',              color: '#8194ab' },
@@ -2993,6 +3020,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <h4>Tramitação e Parecer</h4>
         <div class="view-grid" id="details-tramitacao"></div>
       </div>
+      <div class="view-section termo-section" id="details-termo"></div>
       <div class="view-section mov-section" id="details-mov" hidden></div>
       <div class="view-section anotacoes-section">
         <h4>Anotações e Pendências</h4>
@@ -3005,6 +3033,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     renderMovProcesso(p);
+    renderTermoNaFicha(p);
     const idGrid = $('#details-identificacao');
     idGrid.appendChild(createViewItem('Nº Processo', p.num)).style.gridColumn = '1 / -1';
     idGrid.appendChild(createViewItem('Tipo', p.tipo === 'administrativo' ? 'Administrativo' : 'Judicial'));
@@ -3278,6 +3307,763 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error('Erro ao carregar histórico:', e);
           timeline.innerHTML = `<div class="empty-state"><p>Não foi possível carregar o histórico. Verifique a conexão.</p></div>`;
       }
+  }
+
+  // ===== TERMOS DE CONCORDÂNCIA (envio da Análise Prévia ao gabinete) =====
+  // A via da Análise Prévia e o termo vão ao gabinete do vereador autor; o
+  // processo fica na Procuradoria. Os envios moram no próprio processo
+  // (`proc.termos`) — a lógica pura (guias, sugestões, correções com rastro)
+  // está em js/termos.js. Aqui: a aba, as janelas, o bloco na ficha do
+  // processo, a guia de remessa em PDF e o cadastro de vereadores.
+  const hojeISO = () => ymd(new Date());
+  const fmtCarimbo = (iso) => {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      if (isNaN(d)) return '—';
+      return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  };
+  const diasTxt = (n) => n === null ? '' : n <= 0 ? 'hoje' : n === 1 ? 'há 1 dia' : `há ${n} dias`;
+  const vereadoresAtivos = () => (CFG.vereadores || []).filter(v => v && v.ativo !== false)
+      .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+  const vereadorPorId = (id) => (CFG.vereadores || []).find(v => String(v.id) === String(id));
+  const TERMO_SIT_CLASSE = { aguardando: 'termo-aguardando', devolvido: 'termo-devolvido', cancelado: 'termo-cancelado' };
+  function termoSituacaoTexto(envio) {
+      const s = Termos.situacao(envio);
+      if (s === 'devolvido') return `Devolvido · ${Termos.RESPOSTAS[envio.devolucao.resposta] || ''}`;
+      return Termos.SITUACOES[s] || '';
+  }
+  const termoPill = (envio) => `<span class="status ${TERMO_SIT_CLASSE[Termos.situacao(envio)]}">${sanitizeHTML(termoSituacaoTexto(envio))}</span>`;
+  // Valor de um campo do envio em texto de gente (datas, desfecho, resposta).
+  function termoValorLegivel(campo, v) {
+      if (!v) return '';
+      if (['dataEnvio', 'apData', 'recebidoEm', 'devolucao.data'].includes(campo)) return fmtBR(v);
+      if (campo === 'desfecho') return Termos.DESFECHOS[v] || v;
+      if (campo === 'devolucao.resposta') return Termos.RESPOSTAS[v] || v;
+      return v;
+  }
+  function acharEnvio(procId, envioId) {
+      const proc = DB.find(p => String(p.id) === String(procId));
+      const envio = proc && (proc.termos || []).find(e => String(e.id) === String(envioId));
+      return proc && envio ? { proc, envio } : null;
+  }
+
+  // Grava o processo; se falhar, desfaz a mudança feita em memória.
+  async function salvarTermo(proc, mudar) {
+      const antes = { termos: JSON.parse(JSON.stringify(proc.termos || [])), stat: proc.stat };
+      try {
+          mudar();
+          await dbHelper.put('processos', proc);
+          return true;
+      } catch (e) {
+          proc.termos = antes.termos; proc.stat = antes.stat;
+          console.error('Erro ao salvar envio ao gabinete:', e);
+          showToast('Não foi possível salvar. Verifique a conexão e tente de novo.', 'danger');
+          return false;
+      }
+  }
+
+  // Redesenha o que estiver na tela depois de uma mudança num envio.
+  function atualizarAposTermo(proc) {
+      const visivel = (sel) => $(sel)?.style.display === 'block';
+      if (visivel('#secTermos')) renderTermos();
+      if (visivel('#secProc')) renderProc();
+      if (visivel('#secDashboard')) renderDashboard();
+      const ficha = $('#m_proc_view');
+      if (proc && ficha && ficha.style.display === 'flex' && String(ficha.dataset.procId) === String(proc.id)) openProcDetails(proc.id);
+  }
+
+  // A janela fecha perguntando "descartar alterações?" se o usuário digitou
+  // algo desde que ela abriu (ligarFecharModais). Depois de salvar uma ação
+  // dentro dela, a janela volta a contar como "sem alterações".
+  function marcarJanelaLimpa(m) { m.style.display = 'none'; m.style.display = 'flex'; }
+
+  // ----- Aba "Termos" -----
+  function renderTermos() {
+      const lista = $('#termosLista'); if (!lista) return;
+      const hoje = hojeISO();
+
+      const aviso = $('#termosAvisoVereadores');
+      if (!vereadoresAtivos().length) {
+          aviso.hidden = false;
+          aviso.innerHTML = 'Nenhum vereador cadastrado ainda. Cadastre em <button type="button" class="link-btn" data-ir-cfg>Configurações → Vereadores</button> ou direto no primeiro envio.';
+      } else aviso.hidden = true;
+
+      const r = Termos.resumo(DB, hoje);
+      const antigo = r.maisAntigo;
+      $('#termosResumo').innerHTML = `
+          <button type="button" class="termos-kpi" data-termos-sit="aguardando">
+              <span class="termos-kpi-label">Aguardando devolução</span>
+              <span class="termos-kpi-v">${r.aguardando}</span>
+          </button>
+          <button type="button" class="termos-kpi" data-termos-sit="devolvido">
+              <span class="termos-kpi-label">Devolvidos neste mês</span>
+              <span class="termos-kpi-v">${r.devolvidosMes}</span>
+          </button>
+          <button type="button" class="termos-kpi" ${antigo ? `data-termo-abrir="${antigo.proc.id}|${antigo.envio.id}"` : 'disabled'}>
+              <span class="termos-kpi-label">Pendente há mais tempo</span>
+              <span class="termos-kpi-v">${antigo ? `${antigo.dias}<small>${antigo.dias === 1 ? 'dia' : 'dias'}</small>` : '—'}</span>
+              ${antigo ? `<span class="termos-kpi-sub">Proc. ${sanitizeHTML(antigo.proc.num)} · ${sanitizeHTML(antigo.envio.vereadorNome || '')}</span>` : ''}
+          </button>`;
+
+      const selVer = $('#termosVereador'), atual = selVer.value;
+      const nomes = new Map();
+      (CFG.vereadores || []).forEach(v => nomes.set(String(v.id), v.nome));
+      selVer.innerHTML = '<option value="">Todos os vereadores</option>' + [...nomes.entries()]
+          .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR'))
+          .map(([id, nome]) => `<option value="${sanitizeHTML(id)}">${sanitizeHTML(nome)}</option>`).join('');
+      if (atual && nomes.has(atual)) selVer.value = atual;
+
+      const itens = Termos.filtrarEnvios(Termos.listarEnvios(DB), {
+          busca: $('#termosBusca').value, situacao: $('#termosSituacao').value, vereadorId: selVer.value,
+      });
+      if (!itens.length) {
+          const nenhumAinda = !Termos.listarEnvios(DB).length;
+          lista.innerHTML = `<tr><td colspan="6"><div class="empty-state">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>
+              <h3>${nenhumAinda ? 'Nenhum envio registrado' : 'Nenhum envio encontrado'}</h3>
+              <p>${nenhumAinda ? 'Quando a via da Análise Prévia e o termo forem ao gabinete, clique em “Registrar envio”.' : 'Tente outra busca ou outro filtro.'}</p>
+          </div></td></tr>`;
+          return;
+      }
+      lista.innerHTML = itens.map(({ proc, envio }) => {
+          const sit = Termos.situacao(envio);
+          const dias = sit === 'aguardando' ? Termos.diasEntre(envio.dataEnvio, hoje) : null;
+          const quando = sit === 'aguardando' ? `<div class="termo-sub termo-dias">${diasTxt(dias)}</div>`
+              : sit === 'devolvido' ? `<div class="termo-sub">voltou em ${fmtBR(envio.devolucao.data)}</div>` : '';
+          const receb = envio.recebidoPor ? `<div class="termo-sub">assinada por ${sanitizeHTML(envio.recebidoPor)}</div>`
+              : sit === 'aguardando' ? '<div class="termo-sub">assinatura não registrada</div>' : '';
+          return `<tr class="termo-row" data-termo-abrir="${proc.id}|${envio.id}" tabindex="0">
+              <td><div class="termo-proc-num">${sanitizeHTML(proc.num)}</div>${proc.obj ? `<div class="termo-proc-obj">${sanitizeHTML(proc.obj)}</div>` : ''}</td>
+              <td>${sanitizeHTML(envio.vereadorNome || '—')}</td>
+              <td>${sanitizeHTML(Termos.DESFECHOS[envio.desfecho] || '—')}${envio.apNumero ? `<div class="termo-sub">AP ${sanitizeHTML(envio.apNumero)}</div>` : ''}</td>
+              <td><div>${fmtBR(envio.dataEnvio)}</div>${quando}</td>
+              <td>${sanitizeHTML(envio.guiaNumero || '—')}${receb}</td>
+              <td>${termoPill(envio)}</td>
+          </tr>`;
+      }).join('');
+  }
+
+  // ----- Janela do envio (detalhes, andamento e ações) -----
+  let termoAtual = null; // { procId, envioId }
+  function abrirEnvio(procId, envioId) {
+      const achado = acharEnvio(procId, envioId); if (!achado) return;
+      termoAtual = { procId: achado.proc.id, envioId: achado.envio.id };
+      desenharEnvio();
+      $('#m_termo_view').style.display = 'flex';
+  }
+
+  function desenharEnvio(acao = null) {
+      const achado = termoAtual && acharEnvio(termoAtual.procId, termoAtual.envioId); if (!achado) return;
+      const { proc, envio } = achado;
+      const sit = Termos.situacao(envio), hoje = hojeISO();
+      const esc = (v) => sanitizeHTML(v || '') || '—';
+      $('#m_termo_view_t').textContent = `Envio ao gabinete — Processo ${proc.num}`;
+
+      let destaque;
+      if (sit === 'aguardando') {
+          const dias = Termos.diasEntre(envio.dataEnvio, hoje) ?? 0;
+          destaque = `<div class="termo-destaque"><span class="termo-destaque-n">${dias}</span><span class="termo-destaque-t">${dias === 1 ? 'dia' : 'dias'} aguardando o gabinete<small>Enviado em ${fmtBR(envio.dataEnvio)} · ${termoPill(envio)}</small></span></div>`;
+      } else if (sit === 'devolvido') {
+          const dias = Termos.diasEntre(envio.dataEnvio, envio.devolucao.data);
+          destaque = `<div class="termo-destaque"><span class="termo-destaque-n">${dias ?? '—'}</span><span class="termo-destaque-t">${dias === 1 ? 'dia' : 'dias'} até a devolução<small>Devolvido em ${fmtBR(envio.devolucao.data)} · ${termoPill(envio)}</small></span></div>`;
+      } else {
+          destaque = `<div class="termo-destaque is-cancelado"><span class="termo-destaque-t">Envio cancelado<small>Em ${fmtCarimbo(envio.cancelamento.em)}, por ${esc(envio.cancelamento.por)}. Motivo: ${esc(envio.cancelamento.motivo)}</small></span></div>`;
+      }
+
+      const item = (rotulo, valor, largo = false) => `<div class="view-item"${largo ? ' style="grid-column:1 / -1"' : ''}><strong>${rotulo}</strong><p>${valor}</p></div>`;
+      const ver = vereadorPorId(envio.vereadorId);
+      const daGuia = Termos.itensDaGuia(DB, envio.guiaNumero);
+      const outrosNaGuia = daGuia.filter(({ proc: p }) => String(p.id) !== String(proc.id)).map(({ proc: p }) => p.num);
+      const guiaTxt = envio.guiaNumero
+          ? `${esc(envio.guiaNumero)}${outrosNaGuia.length ? ` <span class="termo-sub-inline">(junto com ${sanitizeHTML(outrosNaGuia.join(', '))})</span>` : ''}${envio.guiaImpressaEm ? '' : ' <span class="termo-sub-inline">ainda não impressa</span>'}`
+          : '—';
+      const dados = [
+          item('Processo', `${esc(proc.num)}${proc.obj ? `<span class="termo-sub-bloco">${sanitizeHTML(proc.obj)}</span>` : ''}`, true),
+          item('Vereador', `${esc(envio.vereadorNome)}${ver && ver.gabinete ? `<span class="termo-sub-bloco">${sanitizeHTML(ver.gabinete)}</span>` : ''}`),
+          item('Desfecho proposto', esc(Termos.DESFECHOS[envio.desfecho])),
+          item('Análise Prévia', envio.apNumero ? `${esc(envio.apNumero)}${envio.apData ? `, de ${fmtBR(envio.apData)}` : ''}` : '—'),
+          item('Fundamento', esc(envio.fundamento)),
+          item('Data do envio', fmtBR(envio.dataEnvio)),
+          item('Registrado no sistema', `${fmtCarimbo(envio.registradoEm)}<span class="termo-sub-bloco">por ${esc(envio.registradoPor)}</span>`),
+          item('Guia de remessa', guiaTxt),
+          item('Recebido no gabinete por', envio.recebidoPor ? `${esc(envio.recebidoPor)}${envio.recebidoEm ? `<span class="termo-sub-bloco">em ${fmtBR(envio.recebidoEm)}</span>` : ''}` : 'Ainda não registrado'),
+      ];
+      if (envio.obs) dados.push(item('Observações', esc(envio.obs), true));
+
+      // Andamento em ordem de data.
+      const eventos = [{ data: envio.dataEnvio, ordem: 0, titulo: 'Enviado ao gabinete', texto: `Registrado por ${envio.registradoPor || '—'} em ${fmtCarimbo(envio.registradoEm)}.` }];
+      if (envio.recebidoPor) eventos.push({ data: envio.recebidoEm || envio.dataEnvio, ordem: 1, titulo: 'Guia assinada no gabinete', texto: `Recebido por ${envio.recebidoPor}.` });
+      (envio.cobrancas || []).forEach(c => eventos.push({ data: c.data, ordem: 2, titulo: 'Cobrança ao gabinete', texto: c.obs || '', meta: `Registrada por ${c.registradoPor || '—'} em ${fmtCarimbo(c.registradoEm)}` }));
+      if (envio.devolucao) eventos.push({ data: envio.devolucao.data, ordem: 3, titulo: `Termo devolvido — ${Termos.RESPOSTAS[envio.devolucao.resposta] || ''}`, texto: envio.devolucao.obs || '', meta: `Registrada por ${envio.devolucao.registradoPor || '—'} em ${fmtCarimbo(envio.devolucao.registradoEm)}` });
+      if (envio.cancelamento) eventos.push({ data: String(envio.cancelamento.em || '').slice(0, 10), ordem: 4, titulo: 'Envio cancelado', texto: envio.cancelamento.motivo || '', meta: `Por ${envio.cancelamento.por || '—'} em ${fmtCarimbo(envio.cancelamento.em)}` });
+      eventos.sort((a, b) => String(a.data).localeCompare(String(b.data)) || a.ordem - b.ordem);
+      const andamento = `<ol class="termo-linha">${eventos.map(ev => `<li>
+          <span class="termo-linha-data">${fmtBR(ev.data)}</span>
+          <div class="termo-linha-corpo"><strong>${sanitizeHTML(ev.titulo)}</strong>${ev.texto ? `<p>${sanitizeHTML(ev.texto)}</p>` : ''}${ev.meta ? `<span class="termo-linha-meta">${sanitizeHTML(ev.meta)}</span>` : ''}</div>
+      </li>`).join('')}</ol>`;
+
+      const correcoes = (envio.alteracoes || []).length ? `<div class="view-section"><h4>Correções feitas depois do registro</h4><ul class="termo-correcoes">${envio.alteracoes.slice().reverse().map(a => `<li>
+          <span class="termo-linha-meta">${fmtCarimbo(a.em)} · ${sanitizeHTML(a.por || '—')}</span>
+          <span><strong>${sanitizeHTML(Termos.CAMPOS_EDITAVEIS[a.campo] || a.campo)}:</strong> <s>${sanitizeHTML(termoValorLegivel(a.campo, a.de)) || '—'}</s> → ${sanitizeHTML(termoValorLegivel(a.campo, a.para)) || '—'}</span>
+      </li>`).join('')}</ul></div>` : '';
+
+      const podeRecebimento = sit !== 'cancelado' && !envio.recebidoPor;
+      const botoes = [
+          sit === 'aguardando' ? '<button type="button" class="btn primary" data-termo-acao="devolucao">Registrar devolução do termo</button>' : '',
+          sit === 'aguardando' ? '<button type="button" class="btn secondary" data-termo-acao="cobranca">Registrar cobrança</button>' : '',
+          podeRecebimento ? '<button type="button" class="btn secondary" data-termo-acao="recebimento">Registrar quem assinou a guia</button>' : '',
+      ].join('');
+
+      $('#termoViewBody').innerHTML = `
+          ${destaque}
+          ${botoes ? `<div class="termo-acoes">${botoes}</div>` : ''}
+          <div id="termoAcaoPainel" class="termo-acao-painel" hidden></div>
+          <div class="view-section"><h4>Dados do envio</h4><div class="view-grid">${dados.join('')}</div></div>
+          <div class="view-section"><h4>Andamento</h4>${andamento}</div>
+          ${correcoes}`;
+
+      $('#btnTermoCancelar').hidden = sit === 'cancelado';
+      $('#btnTermoEditar').hidden = sit === 'cancelado';
+      $('#btnTermoGuia').hidden = sit === 'cancelado' || !envio.guiaNumero;
+      if (acao) mostrarAcaoTermo(acao);
+  }
+
+  // Formulários curtos dentro da janela do envio.
+  function mostrarAcaoTermo(acao) {
+      const achado = termoAtual && acharEnvio(termoAtual.procId, termoAtual.envioId); if (!achado) return;
+      const { proc, envio } = achado;
+      const painel = $('#termoAcaoPainel');
+      const hoje = hojeISO();
+      const rodape = (rotulo, perigo = false) => `<div class="termo-acao-botoes"><button type="button" class="btn secondary" data-termo-acao-fechar>Voltar</button><button type="submit" class="btn ${perigo ? 'danger' : 'primary'}">${rotulo}</button></div>`;
+      let html = '';
+      if (acao === 'cobranca') {
+          html = `<h4>Cobrança ao gabinete</h4>
+              <div class="form-grid two-cols">
+                  <div class="form-group"><label for="ta_data">Data</label><input id="ta_data" type="date" class="input" value="${hoje}" required></div>
+                  <div class="form-group full-width"><label for="ta_obs">Como foi feita</label><textarea id="ta_obs" class="input" rows="2" placeholder="Ex.: liguei para o gabinete e falei com a assessora Maria; reenviei a via" required></textarea></div>
+              </div>${rodape('Registrar cobrança')}`;
+      } else if (acao === 'recebimento') {
+          const outros = Termos.itensDaGuia(DB, envio.guiaNumero).length - 1;
+          html = `<h4>Quem assinou a guia de remessa</h4>
+              <p class="cfg-note">Copie da guia assinada que ficou com a Procuradoria.${outros > 0 ? ` Vale para os ${outros + 1} processos da guia nº ${sanitizeHTML(envio.guiaNumero)}.` : ''}</p>
+              <div class="form-grid two-cols">
+                  <div class="form-group"><label for="ta_nome">Recebido por</label><input id="ta_nome" class="input" required placeholder="Nome de quem assinou"></div>
+                  <div class="form-group"><label for="ta_data">Data do recebimento</label><input id="ta_data" type="date" class="input" value="${sanitizeHTML(envio.dataEnvio || hoje)}" required></div>
+              </div>${rodape('Registrar')}`;
+      } else if (acao === 'devolucao') {
+          const sug = Termos.sugerirStatusDevolucao(envio.desfecho, 'concorda');
+          html = `<h4>Devolução do termo</h4>
+              <div class="form-grid two-cols">
+                  <div class="form-group"><label for="ta_data">Data em que voltou</label><input id="ta_data" type="date" class="input" value="${hoje}" required></div>
+                  <fieldset class="form-group termo-resposta"><legend>Resposta do vereador</legend>
+                      <label><input type="radio" name="ta_resp" value="concorda" checked> Concorda</label>
+                      <label><input type="radio" name="ta_resp" value="nao-concorda"> Não concorda</label>
+                  </fieldset>
+                  <div class="form-group full-width"><label for="ta_obs">Observações (opcional)</label><textarea id="ta_obs" class="input" rows="2" placeholder="Ex.: motivos da discordância"></textarea></div>
+                  <div class="form-group full-width"><label for="ta_stat">Status do processo</label>
+                      <select id="ta_stat" class="select">
+                          <option value="">Manter como está (${sanitizeHTML(statusMap[proc.stat] || proc.stat || '—')})</option>
+                          ${Object.entries(statusMap).map(([k, l]) => `<option value="${k}">${sanitizeHTML(l)}</option>`).join('')}
+                      </select>
+                      <p id="ta_stat_dica" class="cfg-note termo-dica"></p>
+                  </div>
+              </div>${rodape('Registrar devolução')}`;
+          painel.dataset.sugestao = sug;
+      } else if (acao === 'cancelar') {
+          html = `<h4>Cancelar este envio</h4>
+              <p class="cfg-note">O envio não é apagado: fica guardado como cancelado, com o motivo, fora da lista de pendentes.${proc.stat === 'aguardando-gabinete' && envio.statusAnterior ? ` O processo volta para “${sanitizeHTML(statusMap[envio.statusAnterior] || envio.statusAnterior)}”.` : ''}</p>
+              <div class="form-group"><label for="ta_obs">Motivo</label><textarea id="ta_obs" class="input" rows="2" required placeholder="Ex.: registrado no processo errado"></textarea></div>
+              ${rodape('Cancelar envio', true)}`;
+      }
+      painel.innerHTML = `<form id="termoAcaoForm" data-acao="${acao}">${html}</form>`;
+      painel.hidden = false;
+      if (acao === 'devolucao') {
+          const atualizarSugestao = () => {
+              const resp = painel.querySelector('input[name="ta_resp"]:checked').value;
+              const s = Termos.sugerirStatusDevolucao(envio.desfecho, resp);
+              $('#ta_stat').value = s;
+              $('#ta_stat_dica').textContent = `Sugestão para ${resp === 'concorda' ? 'quem concorda' : 'quem não concorda'} com ${envio.desfecho === 'conversao' ? 'a conversão em indicação' : 'o arquivamento'}: ${statusMap[s]}. Confira antes de registrar.`;
+          };
+          painel.querySelectorAll('input[name="ta_resp"]').forEach(r => r.addEventListener('change', atualizarSugestao));
+          atualizarSugestao();
+      }
+      painel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      painel.querySelector('input:not([type=radio]), textarea')?.focus();
+  }
+
+  async function executarAcaoTermo(form) {
+      const achado = termoAtual && acharEnvio(termoAtual.procId, termoAtual.envioId); if (!achado) return;
+      const { proc, envio } = achado;
+      const acao = form.dataset.acao;
+      const usuario = currentUserName(), agora = new Date().toISOString();
+      const val = (id) => (form.querySelector('#' + id)?.value || '').trim();
+      let ok = false;
+      if (acao === 'cobranca') {
+          const c = { id: Date.now(), data: val('ta_data'), obs: val('ta_obs'), registradoEm: agora, registradoPor: usuario };
+          ok = await salvarTermo(proc, () => { envio.cobrancas = [...(envio.cobrancas || []), c]; });
+          if (ok) {
+              await logHistorico(proc.id, proc.num, 'termo-cobrado', [{ campo: 'Cobrança ao gabinete', de: '', para: `${fmtBR(c.data)} — ${c.obs}` }]);
+              showToast('Cobrança registrada.');
+          }
+      } else if (acao === 'recebimento') {
+          const nome = val('ta_nome'), data = val('ta_data');
+          const daGuia = Termos.itensDaGuia(DB, envio.guiaNumero);
+          const alvos = daGuia.length ? daGuia : [{ proc, envio }];
+          ok = true;
+          for (const { proc: p, envio: e } of alvos) {
+              if (e.recebidoPor && String(e.id) !== String(envio.id)) continue;
+              const salvo = await salvarTermo(p, () => { e.recebidoPor = nome; e.recebidoEm = data; });
+              if (salvo) await logHistorico(p.id, p.num, 'termo-recebido', [{ campo: 'Guia de remessa assinada', de: '', para: `${e.guiaNumero || ''} — ${nome}, em ${fmtBR(data)}` }]);
+              ok = ok && salvo;
+          }
+          if (ok) showToast('Recebimento da guia registrado.');
+      } else if (acao === 'devolucao') {
+          const resposta = form.querySelector('input[name="ta_resp"]:checked').value;
+          const novoStat = $('#ta_stat').value;
+          const statAntes = proc.stat;
+          const dev = { data: val('ta_data'), resposta, obs: val('ta_obs'), registradoEm: agora, registradoPor: usuario };
+          ok = await salvarTermo(proc, () => { envio.devolucao = dev; if (novoStat && VALID_STATS.has(novoStat)) proc.stat = novoStat; });
+          if (ok) {
+              const campos = [{ campo: 'Resposta do vereador', de: '', para: `${Termos.RESPOSTAS[resposta]} (devolvido em ${fmtBR(dev.data)})` }];
+              if (proc.stat !== statAntes) campos.push({ campo: 'stat', de: statAntes, para: proc.stat });
+              await logHistorico(proc.id, proc.num, 'termo-devolvido', campos);
+              showToast(proc.stat !== statAntes ? `Devolução registrada. Processo agora em “${statusMap[proc.stat]}”.` : 'Devolução registrada.');
+          }
+      } else if (acao === 'cancelar') {
+          const motivo = val('ta_obs');
+          const statAntes = proc.stat;
+          // Volta o status só se ele ainda é o que o envio pôs e não há outro envio ativo.
+          ok = await salvarTermo(proc, () => {
+              envio.cancelamento = { motivo, em: agora, por: usuario };
+              if (proc.stat === 'aguardando-gabinete' && envio.statusAnterior && !Termos.envioAtivo(proc)) proc.stat = envio.statusAnterior;
+          });
+          if (ok) {
+              const campos = [{ campo: 'Motivo do cancelamento', de: '', para: motivo }];
+              if (proc.stat !== statAntes) campos.push({ campo: 'stat', de: statAntes, para: proc.stat });
+              await logHistorico(proc.id, proc.num, 'termo-cancelado', campos);
+              showToast('Envio cancelado. O registro continua guardado.', 'info');
+          }
+      }
+      if (!ok) return;
+      desenharEnvio();
+      marcarJanelaLimpa($('#m_termo_view'));
+      atualizarAposTermo(proc);
+  }
+
+  // ----- Formulário: registrar envio / corrigir dados -----
+  let termoForm = null; // { modo: 'novo' | 'editar', procId, envioId }
+  function preencherSelectVereador(selecionado) {
+      const sel = $('#ft_ver');
+      const lista = vereadoresAtivos();
+      const atual = selecionado && vereadorPorId(selecionado);
+      if (atual && atual.ativo === false) lista.push(atual); // vereador removido do cadastro, mas é o deste envio
+      sel.innerHTML = '<option value="">Selecione…</option>'
+          + lista.map(v => `<option value="${sanitizeHTML(String(v.id))}">${sanitizeHTML(v.nome)}</option>`).join('')
+          + '<option value="__novo">+ Cadastrar outro vereador…</option>';
+      sel.value = selecionado && lista.some(v => String(v.id) === String(selecionado)) ? String(selecionado) : '';
+      $('#ft_ver_novo').hidden = true;
+      $('#ft_ver_novo').required = false;
+  }
+
+  // Mostra o processo escolhido e sugere vereador e Análise Prévia.
+  function aplicarProcNoForm(proc) {
+      const info = $('#ft_proc_info'), dica = $('#ft_ver_dica');
+      if (!proc) { info.textContent = ''; dica.textContent = ''; return; }
+      info.innerHTML = `<strong>${sanitizeHTML(proc.num)}</strong>${proc.int ? ` · ${sanitizeHTML(proc.int)}` : ''}${proc.obj ? `<br>${sanitizeHTML(proc.obj)}` : ''}`;
+      if (termoForm.modo !== 'novo') return;
+      const sug = Termos.sugerirVereador(proc.int, CFG.vereadores);
+      if (sug) {
+          $('#ft_ver').value = String(sug.id);
+          dica.textContent = `Sugerido a partir do interessado (“${proc.int}”). Confira.`;
+      } else {
+          $('#ft_ver').value = '';
+          dica.textContent = proc.int ? `Interessado: “${proc.int}”. Escolha o vereador na lista ou cadastre.` : '';
+      }
+      const pz = getParecer(proc.id);
+      if (pz && pz.status === 'emitido' && pz.numero && !$('#ft_ap').value) {
+          $('#ft_ap').value = pz.numero;
+          if (pz.emitidoEm) $('#ft_apdata').value = ymd(new Date(pz.emitidoEm));
+      }
+  }
+
+  function abrirFormEnvio({ procId = null, envioId = null } = {}) {
+      const editar = envioId !== null;
+      const achado = editar ? acharEnvio(procId, envioId) : null;
+      if (editar && !achado) return;
+      termoForm = { modo: editar ? 'editar' : 'novo', procId, envioId };
+      const form = $('#f_termo'); form.reset();
+      const fixo = procId !== null ? DB.find(p => String(p.id) === String(procId)) : null;
+
+      $('#m_termo_t').textContent = editar ? 'Corrigir dados do envio' : 'Registrar envio ao gabinete';
+      $('#ft_salvar').textContent = editar ? 'Salvar correções' : 'Registrar envio';
+      $('#ft_aviso_edicao').hidden = !editar;
+      $('#ft_guia_grupo').hidden = editar;
+      form.querySelectorAll('[data-so-edicao]').forEach(el => { el.hidden = !editar; });
+      const temDevolucao = editar && !!achado.envio.devolucao;
+      form.querySelectorAll('[data-so-devolucao]').forEach(el => { el.hidden = !temDevolucao; });
+
+      // Processo: fixo (veio da ficha ou é correção) ou escolhido na lista.
+      const procInput = $('#ft_proc');
+      procInput.readOnly = !!fixo;
+      procInput.required = !fixo;
+      $('#ft_proc_grupo').classList.toggle('is-fixo', !!fixo);
+      if (!fixo) {
+          const livres = DB.filter(p => !Termos.envioAtivo(p))
+              .sort((a, b) => String(b.ent || '').localeCompare(String(a.ent || '')));
+          $('#ft_proc_lista').innerHTML = livres.map(p => `<option value="${sanitizeHTML(p.num)}">${sanitizeHTML([p.int, p.obj].filter(Boolean).join(' — ').slice(0, 120))}</option>`).join('');
+      }
+      procInput.value = fixo ? fixo.num : '';
+
+      if (editar) {
+          const e = achado.envio;
+          preencherSelectVereador(e.vereadorId);
+          $('#ft_desfecho').value = e.desfecho || 'arquivamento';
+          $('#ft_envio').value = e.dataEnvio || '';
+          $('#ft_fund').value = e.fundamento || '';
+          $('#ft_ap').value = e.apNumero || '';
+          $('#ft_apdata').value = e.apData || '';
+          $('#ft_receb').value = e.recebidoPor || '';
+          $('#ft_recebem').value = e.recebidoEm || '';
+          $('#ft_obs').value = e.obs || '';
+          if (e.devolucao) {
+              $('#ft_devdata').value = e.devolucao.data || '';
+              $('#ft_devresp').value = e.devolucao.resposta || 'concorda';
+              $('#ft_devobs').value = e.devolucao.obs || '';
+          }
+          $('#ft_ver_dica').textContent = '';
+          aplicarProcNoForm(achado.proc);
+      } else {
+          preencherSelectVereador(null);
+          $('#ft_envio').value = hojeISO();
+          $('#ft_guia').checked = true;
+          aplicarProcNoForm(fixo);
+      }
+      $('#m_termo').style.display = 'flex';
+      (fixo ? $('#ft_ver') : procInput).focus();
+  }
+
+  async function salvarFormEnvio() {
+      const procNum = $('#ft_proc').value.trim();
+      const proc = termoForm.procId !== null
+          ? DB.find(p => String(p.id) === String(termoForm.procId))
+          : DB.find(p => String(p.num).trim() === procNum);
+      if (!proc) { showToast('Escolha um processo da lista.', 'info'); $('#ft_proc').focus(); return; }
+
+      // Vereador: da lista ou cadastrado agora.
+      let verId = $('#ft_ver').value, verNome = '';
+      if (verId === '__novo') {
+          const nome = $('#ft_ver_novo').value.trim();
+          if (!nome) { showToast('Digite o nome do vereador.', 'info'); $('#ft_ver_novo').focus(); return; }
+          const existente = (CFG.vereadores || []).find(v => Termos.normalizar(v.nome) === Termos.normalizar(nome));
+          if (existente) { existente.ativo = true; verId = String(existente.id); verNome = existente.nome; }
+          else {
+              const novo = { id: `v${Date.now()}`, nome, gabinete: '', ativo: true };
+              CFG.vereadores = [...(CFG.vereadores || []), novo];
+              verId = novo.id; verNome = nome;
+          }
+          try { await saveCFG(); } catch (e) { console.error('Erro ao salvar vereador:', e); showToast('Não foi possível cadastrar o vereador.', 'danger'); return; }
+      } else {
+          const v = vereadorPorId(verId);
+          if (!v) { showToast('Escolha o vereador.', 'info'); $('#ft_ver').focus(); return; }
+          verNome = v.nome;
+      }
+
+      const dados = {
+          desfecho: $('#ft_desfecho').value,
+          dataEnvio: $('#ft_envio').value,
+          fundamento: $('#ft_fund').value.trim(),
+          apNumero: $('#ft_ap').value.trim(),
+          apData: $('#ft_apdata').value,
+          obs: $('#ft_obs').value.trim(),
+      };
+      const usuario = currentUserName(), agora = new Date().toISOString();
+
+      if (termoForm.modo === 'novo') {
+          if (Termos.envioAtivo(proc)) { showToast(`O processo ${proc.num} já tem um envio em aberto.`, 'info'); return; }
+          const guia = Termos.guiaReaproveitavel(DB, verId, dados.dataEnvio) || Termos.proximaGuia(DB, Number(dados.dataEnvio.slice(0, 4)) || new Date().getFullYear());
+          const envio = {
+              id: Date.now(), ...dados, vereadorId: verId, vereadorNome: verNome,
+              registradoEm: agora, registradoPor: usuario, statusAnterior: proc.stat || '',
+              guiaNumero: guia.numero, guiaSeq: guia.seq, guiaAno: guia.ano, guiaImpressaEm: null,
+              recebidoPor: '', recebidoEm: '', cobrancas: [], devolucao: null, cancelamento: null, alteracoes: [],
+          };
+          const statAntes = proc.stat;
+          const ok = await salvarTermo(proc, () => {
+              proc.termos = [...(proc.termos || []), envio];
+              proc.stat = 'aguardando-gabinete';
+          });
+          if (!ok) return;
+          const campos = [
+              { campo: 'Gabinete', de: '', para: verNome },
+              { campo: 'Desfecho proposto', de: '', para: Termos.DESFECHOS[dados.desfecho] },
+              { campo: 'Guia de remessa', de: '', para: `${guia.numero}, enviada em ${fmtBR(dados.dataEnvio)}` },
+          ];
+          if (statAntes !== proc.stat) campos.push({ campo: 'stat', de: statAntes, para: proc.stat });
+          await logHistorico(proc.id, proc.num, 'termo-enviado', campos);
+          $('#m_termo').style.display = 'none';
+          showToast(`Envio registrado na guia nº ${guia.numero}. Processo agora em “Aguardando gabinete”.`);
+          if ($('#ft_guia').checked) await gerarGuiaPDF(guia.numero);
+          atualizarAposTermo(proc);
+          return;
+      }
+
+      // Correção: grava de/para, quem e quando (o carimbo de registro não muda).
+      const achado = acharEnvio(termoForm.procId, termoForm.envioId); if (!achado) return;
+      const { envio } = achado;
+      const novos = { ...dados, vereadorNome: verNome, recebidoPor: $('#ft_receb').value.trim(), recebidoEm: $('#ft_recebem').value };
+      if (envio.devolucao) {
+          novos['devolucao.data'] = $('#ft_devdata').value;
+          novos['devolucao.resposta'] = $('#ft_devresp').value;
+          novos['devolucao.obs'] = $('#ft_devobs').value.trim();
+      }
+      let feitas = [];
+      const ok = await salvarTermo(proc, () => {
+          feitas = Termos.aplicarCorrecoes(envio, novos, usuario, agora);
+          envio.vereadorId = verId;
+      });
+      if (!ok) return;
+      $('#m_termo').style.display = 'none';
+      if (!feitas.length) { showToast('Nada foi alterado.', 'info'); return; }
+      await logHistorico(proc.id, proc.num, 'termo-editado', feitas.map(f => ({
+          campo: Termos.CAMPOS_EDITAVEIS[f.campo] || f.campo, de: termoValorLegivel(f.campo, f.de), para: termoValorLegivel(f.campo, f.para),
+      })));
+      showToast('Correção registrada.');
+      if ($('#m_termo_view').style.display === 'flex') desenharEnvio();
+      atualizarAposTermo(proc);
+  }
+
+  // ----- Guia de remessa (PDF) -----
+  // Uma folha por guia, com os processos que foram ao mesmo gabinete no mesmo
+  // dia. O assessor assina e ela fica com a Procuradoria.
+  async function gerarGuiaPDF(guiaNumero) {
+      const itens = Termos.itensDaGuia(DB, guiaNumero)
+          .sort((a, b) => String(a.envio.registradoEm || '').localeCompare(String(b.envio.registradoEm || '')));
+      if (!itens.length) { showToast('Guia não encontrada.', 'danger'); return; }
+      const agora = new Date().toISOString();
+      for (const { proc, envio } of itens) {
+          if (!envio.guiaImpressaEm) await salvarTermo(proc, () => { envio.guiaImpressaEm = agora; });
+      }
+      try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+          const fonte = registrarFonteParecer(doc);
+          let y = drawParecerTimbre(doc, fonte);
+          const L = PDF_PARECER.left, R = doc.internal.pageSize.getWidth() - PDF_PARECER.right, W = R - L;
+          const primeiro = itens[0].envio;
+          const ver = vereadorPorId(primeiro.vereadorId);
+
+          doc.setTextColor(20, 20, 20);
+          doc.setFont(fonte, 'bold'); doc.setFontSize(16);
+          doc.text(`GUIA DE REMESSA Nº ${guiaNumero}`, (L + R) / 2, y + 2, { align: 'center' }); y += 8;
+          doc.setFont(fonte, 'normal'); doc.setFontSize(12);
+          doc.text('Análise Prévia e Termo de Concordância', (L + R) / 2, y, { align: 'center' }); y += 13;
+
+          const linha = (rotulo, valor) => {
+              doc.setFont(fonte, 'bold'); doc.text(rotulo, L, y);
+              const x = L + doc.getTextWidth(rotulo) + 2;
+              doc.setFont(fonte, 'normal');
+              const partes = doc.splitTextToSize(valor, R - x);
+              doc.text(partes, x, y); y += partes.length * 6 + 1;
+          };
+          doc.setFontSize(12);
+          linha('Destino:', `Gabinete do Vereador ${primeiro.vereadorNome || ''}${ver && ver.gabinete ? ` (${ver.gabinete})` : ''}`);
+          linha('Remetente:', 'Procuradoria-Geral');
+          linha('Data do envio:', fmtBR(primeiro.dataEnvio));
+          y += 5;
+
+          // Tabela dos processos.
+          const cols = [{ t: 'Processo', w: 32 }, { t: 'Análise Prévia', w: 46 }, { t: 'Documentos entregues', w: W - 78 }];
+          doc.setFontSize(11);
+          doc.setFillColor(238, 236, 231); doc.rect(L, y, W, 8, 'F');
+          doc.setDrawColor(170, 170, 170); doc.setLineWidth(0.3); doc.rect(L, y, W, 8);
+          doc.setFont(fonte, 'bold');
+          let x = L; cols.forEach(c => { doc.text(c.t, x + 2, y + 5.5); x += c.w; });
+          y += 8;
+          doc.setFont(fonte, 'normal');
+          itens.forEach(({ proc, envio }) => {
+              const textos = [
+                  doc.splitTextToSize(proc.num || '—', cols[0].w - 4),
+                  doc.splitTextToSize(`${envio.apNumero || '—'}${envio.apData ? `, de ${fmtBR(envio.apData)}` : ''}`, cols[1].w - 4),
+                  doc.splitTextToSize(`Via da Análise Prévia e Termo de Concordância (${envio.desfecho === 'conversao' ? 'conversão em indicação' : 'arquivamento'})`, cols[2].w - 4),
+              ];
+              const h = Math.max(...textos.map(t => t.length)) * 5 + 4;
+              if (y + h > 250) { doc.addPage(); y = drawParecerTimbre(doc, fonte); doc.setFont(fonte, 'normal'); doc.setFontSize(11); }
+              x = L;
+              textos.forEach((t, i) => { doc.text(t, x + 2, y + 5.5); doc.rect(x, y, cols[i].w, h); x += cols[i].w; });
+              y += h;
+          });
+          y += 12;
+
+          if (y > 225) { doc.addPage(); y = drawParecerTimbre(doc, fonte); }
+          doc.setFontSize(12);
+          doc.text('Declaro ter recebido os documentos acima relacionados.', L, y); y += 16;
+          doc.text('Recebido por (nome legível): ______________________________________', L, y); y += 13;
+          doc.text('Assinatura: ______________________________________', L, y); y += 13;
+          doc.text('Data: ____/____/________          Hora: ____:____', L, y); y += 16;
+
+          doc.setFontSize(9); doc.setTextColor(110, 110, 110);
+          doc.text(doc.splitTextToSize(`Envio registrado no JurisControl em ${fmtCarimbo(primeiro.registradoEm)}, por ${primeiro.registradoPor || '—'}. Esta guia assinada fica arquivada na Procuradoria-Geral; o termo de concordância segue para o gabinete e retorna ao processo.`, W), L, y);
+          doc.save(`guia-remessa_${guiaNumero.replace(/\//g, '-')}.pdf`);
+      } catch (e) {
+          console.error('Erro ao gerar a guia de remessa:', e);
+          showToast('Não foi possível gerar a guia de remessa.', 'danger');
+      }
+  }
+
+  // ----- Bloco "Envio ao gabinete" na ficha do processo -----
+  function renderTermoNaFicha(p) {
+      const el = $('#details-termo'); if (!el) return;
+      const envio = Termos.envioAtivo(p);
+      const cancelados = (p.termos || []).filter(e => e.cancelamento).length;
+      const notaCanc = cancelados ? `<p class="cfg-note termo-ficha-nota">${cancelados === 1 ? '1 envio cancelado guardado' : `${cancelados} envios cancelados guardados`} — <button type="button" class="link-btn" data-termo-cancelados>ver na aba Termos</button></p>` : '';
+      if (!envio) {
+          el.innerHTML = `<h4>Envio ao gabinete</h4>
+              <div class="termo-ficha-vazio"><p>Nenhum termo de concordância enviado ao gabinete.</p>
+              <button type="button" class="btn secondary" data-termo-novo>Registrar envio ao gabinete</button></div>${notaCanc}`;
+      } else {
+          const sit = Termos.situacao(envio);
+          const dias = sit === 'aguardando' ? Termos.diasEntre(envio.dataEnvio, hojeISO()) : null;
+          const item = (rotulo, valor) => `<div class="view-item"><strong>${rotulo}</strong><p>${valor}</p></div>`;
+          el.innerHTML = `<h4>Envio ao gabinete</h4>
+              <div class="view-grid">
+                  ${item('Situação', termoPill(envio))}
+                  ${item('Vereador', sanitizeHTML(envio.vereadorNome || '—'))}
+                  ${item('Desfecho proposto', sanitizeHTML(Termos.DESFECHOS[envio.desfecho] || '—'))}
+                  ${item('Enviado em', `${fmtBR(envio.dataEnvio)}${dias !== null ? ` <span class="termo-sub-inline">(${diasTxt(dias)})</span>` : ''}`)}
+                  ${item('Guia de remessa', sanitizeHTML(envio.guiaNumero || '—'))}
+                  ${item('Recebido por', sanitizeHTML(envio.recebidoPor || '—'))}
+                  ${sit === 'devolvido' ? item('Devolvido em', fmtBR(envio.devolucao.data)) : ''}
+                  ${(envio.cobrancas || []).length ? item('Cobranças', String(envio.cobrancas.length)) : ''}
+              </div>
+              <div class="termo-ficha-acoes"><button type="button" class="btn primary" data-termo-abrir="${p.id}|${envio.id}">Abrir envio</button></div>${notaCanc}`;
+      }
+      el.onclick = (e) => {
+          if (e.target.closest('[data-termo-novo]')) { abrirFormEnvio({ procId: p.id }); return; }
+          const abrir = e.target.closest('[data-termo-abrir]');
+          if (abrir) { const [pid, eid] = abrir.dataset.termoAbrir.split('|'); abrirEnvio(pid, eid); return; }
+          if (e.target.closest('[data-termo-cancelados]')) {
+              $('#m_proc_view').style.display = 'none';
+              $('#termosSituacao').value = 'cancelado';
+              $('#termosBusca').value = p.num;
+              showTab('termos');
+          }
+      };
+  }
+
+  // ----- Vereadores (Configurações) -----
+  function renderVereadoresCfg() {
+      const ul = $('#vereadorList'); if (!ul) return;
+      const lista = vereadoresAtivos();
+      ul.innerHTML = lista.length ? lista.map(v => `<li>
+          <span class="vereador-nome">${sanitizeHTML(v.nome)}</span>
+          ${v.gabinete ? `<span class="vereador-gab">${sanitizeHTML(v.gabinete)}</span>` : ''}
+          <button type="button" class="icon-btn" data-ver-del="${sanitizeHTML(String(v.id))}" title="Remover" aria-label="Remover ${sanitizeHTML(v.nome)}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </li>`).join('') : '<li class="vereador-vazio">Nenhum vereador cadastrado.</li>';
+  }
+
+  async function adicionarVereador() {
+      const nome = $('#vereadorNome').value.trim(), gabinete = $('#vereadorGabinete').value.trim();
+      if (!nome) { showToast('Digite o nome do vereador.', 'info'); $('#vereadorNome').focus(); return; }
+      const existente = (CFG.vereadores || []).find(v => Termos.normalizar(v.nome) === Termos.normalizar(nome));
+      if (existente && existente.ativo !== false) { showToast('Esse vereador já está cadastrado.', 'info'); return; }
+      if (existente) { existente.ativo = true; if (gabinete) existente.gabinete = gabinete; }
+      else CFG.vereadores = [...(CFG.vereadores || []), { id: `v${Date.now()}`, nome, gabinete, ativo: true }];
+      try { await saveCFG(); } catch (e) { console.error('Erro ao salvar vereador:', e); showToast('Não foi possível salvar.', 'danger'); return; }
+      logAuditoria('termos', 'criado', `Vereador ${nome}`);
+      $('#vereadorNome').value = ''; $('#vereadorGabinete').value = '';
+      renderVereadoresCfg();
+      showToast('Vereador cadastrado.');
+  }
+
+  async function removerVereador(id) {
+      const v = vereadorPorId(id); if (!v) return;
+      const usado = Termos.listarEnvios(DB).some(({ envio }) => String(envio.vereadorId) === String(id));
+      const ok = await confirmDialog(`Remover <strong>${sanitizeHTML(v.nome)}</strong> da lista?${usado ? ' Os envios já registrados continuam com o nome dele.' : ''}`, { title: 'Remover vereador', confirmLabel: 'Remover' });
+      if (!ok) return;
+      // Quem já tem envio só sai da lista (o filtro da aba continua achando).
+      if (usado) v.ativo = false;
+      else CFG.vereadores = (CFG.vereadores || []).filter(x => String(x.id) !== String(id));
+      try { await saveCFG(); } catch (e) { console.error('Erro ao remover vereador:', e); showToast('Não foi possível salvar.', 'danger'); return; }
+      logAuditoria('termos', 'excluido', `Vereador ${v.nome}`);
+      renderVereadoresCfg();
+      showToast('Vereador removido.', 'info');
+  }
+
+  // ----- Ligações (uma vez, na inicialização) -----
+  function ligarTermos() {
+      const rerender = () => renderTermos();
+      $('#termosBusca')?.addEventListener('input', rerender);
+      $('#termosSituacao')?.addEventListener('change', rerender);
+      $('#termosVereador')?.addEventListener('change', rerender);
+      $('#btnNovoEnvio')?.addEventListener('click', () => abrirFormEnvio());
+
+      const abrirDe = (alvo) => { const [pid, eid] = alvo.dataset.termoAbrir.split('|'); abrirEnvio(pid, eid); };
+      $('#termosLista')?.addEventListener('click', (e) => { const tr = e.target.closest('[data-termo-abrir]'); if (tr) abrirDe(tr); });
+      $('#termosLista')?.addEventListener('keydown', (e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          const tr = e.target.closest('[data-termo-abrir]'); if (!tr) return;
+          e.preventDefault(); abrirDe(tr);
+      });
+      $('#termosResumo')?.addEventListener('click', (e) => {
+          const sit = e.target.closest('[data-termos-sit]');
+          if (sit) { $('#termosSituacao').value = sit.dataset.termosSit; renderTermos(); return; }
+          const abrir = e.target.closest('[data-termo-abrir]'); if (abrir) abrirDe(abrir);
+      });
+      $('#termosAvisoVereadores')?.addEventListener('click', (e) => { if (e.target.closest('[data-ir-cfg]')) showTab('cfg'); });
+
+      // Janela do envio
+      const view = $('#m_termo_view');
+      $$('[data-close-termo-view]').forEach(b => b.addEventListener('click', () => { view.style.display = 'none'; termoAtual = null; }));
+      $('#termoViewBody')?.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-termo-acao]');
+          if (b) { mostrarAcaoTermo(b.dataset.termoAcao); return; }
+          if (e.target.closest('[data-termo-acao-fechar]')) { const p = $('#termoAcaoPainel'); p.hidden = true; p.innerHTML = ''; }
+      });
+      $('#termoViewBody')?.addEventListener('submit', async (e) => {
+          if (e.target.id !== 'termoAcaoForm') return;
+          e.preventDefault();
+          const btn = e.target.querySelector('[type=submit]'); if (btn) btn.disabled = true;
+          try { await executarAcaoTermo(e.target); } finally { if (btn && btn.isConnected) btn.disabled = false; }
+      });
+      $('#btnTermoCancelar')?.addEventListener('click', () => mostrarAcaoTermo('cancelar'));
+      $('#btnTermoEditar')?.addEventListener('click', () => { if (termoAtual) abrirFormEnvio({ procId: termoAtual.procId, envioId: termoAtual.envioId }); });
+      $('#btnTermoGuia')?.addEventListener('click', async () => {
+          const achado = termoAtual && acharEnvio(termoAtual.procId, termoAtual.envioId);
+          if (!achado) return;
+          await gerarGuiaPDF(achado.envio.guiaNumero);
+          desenharEnvio();
+      });
+      $('#btnTermoAbrirProc')?.addEventListener('click', () => {
+          if (!termoAtual) return;
+          const pid = termoAtual.procId;
+          view.style.display = 'none'; termoAtual = null;
+          const ficha = $('#m_proc_view');
+          if (!(ficha.style.display === 'flex' && String(ficha.dataset.procId) === String(pid))) openProcDetails(pid);
+      });
+
+      // Formulário
+      $$('[data-close-termo]').forEach(b => b.addEventListener('click', () => { $('#m_termo').style.display = 'none'; }));
+      $('#ft_proc')?.addEventListener('input', () => {
+          if (!termoForm || termoForm.procId !== null) return;
+          const v = $('#ft_proc').value.trim();
+          aplicarProcNoForm(DB.find(p => String(p.num).trim() === v && !Termos.envioAtivo(p)) || null);
+      });
+      $('#ft_ver')?.addEventListener('change', () => {
+          const novo = $('#ft_ver').value === '__novo';
+          $('#ft_ver_novo').hidden = !novo; $('#ft_ver_novo').required = novo;
+          if (novo) $('#ft_ver_novo').focus();
+          $('#ft_ver_dica').textContent = '';
+      });
+      $('#f_termo')?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const btn = $('#ft_salvar'); btn.disabled = true;
+          try { await salvarFormEnvio(); } finally { btn.disabled = false; }
+      });
+
+      // Configurações → Vereadores
+      $('#btnAddVereador')?.addEventListener('click', adicionarVereador);
+      [$('#vereadorNome'), $('#vereadorGabinete')].forEach(i => i?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); adicionarVereador(); } }));
+      $('#vereadorList')?.addEventListener('click', (e) => { const b = e.target.closest('[data-ver-del]'); if (b) removerVereador(b.dataset.verDel); });
   }
 
   // Brasão (base64) do timbre do PDF foi movido para js/assets.js — ver a const BRASAO_DUQUE_DE_CAXIAS_B64.
@@ -3772,6 +4558,7 @@ ${corpo}
                 'pendente':                  { bg: 'FFEF4444', fg: 'FFFFFFFF', bold: true },
                 'em-analise':                { bg: 'FFF59E0B', fg: 'FF1C1917', bold: true },
                 'aguardando-documentacao':   { bg: 'FF3B82F6', fg: 'FFFFFFFF', bold: true },
+                'aguardando-gabinete':       { bg: 'FFB7791F', fg: 'FFFFFFFF', bold: true },
                 'em-diligencia':             { bg: 'FF8B5CF6', fg: 'FFFFFFFF', bold: true },
                 'finalizado':                { bg: 'FF22C55E', fg: 'FFFFFFFF', bold: true },
                 'arquivado':                 { bg: 'FF94A3B8', fg: 'FFFFFFFF', bold: true },
@@ -4139,8 +4926,8 @@ ${corpo}
 
   // ===== Painel do Log de Auditoria (Configurações, admin) =====
   let AUD_ENTRIES = [];
-  const AUD_MODULOS = { processos: 'Processos', pareceres: 'Pareceres', usuarios: 'Usuários', emissores: 'Emissores', leis: 'Banco de Leis', modelos: 'Modelos', calendario: 'Calendário', backup: 'Backup', auth: 'Acesso', integracoes: 'Integrações' };
-  const AUD_ACOES = { criado: 'criou', editado: 'editou', excluido: 'excluiu', aprovado: 'aprovou', 'promovido-a-admin': 'promoveu a admin', 'rebaixado-a-usuario': 'rebaixou a usuário', 'acesso-revogado': 'revogou o acesso de', login: 'entrou no sistema', logout: 'saiu do sistema', exportado: 'exportou', restaurado: 'restaurou', 'parecer-criado': 'criou parecer —', 'parecer-editado': 'editou parecer —', 'parecer-emitido': 'emitiu parecer —', 'parecer-reaberto': 'reabriu parecer —', 'parecer-enviado-revisao': 'enviou p/ revisão —', 'parecer-devolvido': 'devolveu p/ ajustes —' };
+  const AUD_MODULOS = { processos: 'Processos', pareceres: 'Pareceres', usuarios: 'Usuários', emissores: 'Emissores', leis: 'Banco de Leis', modelos: 'Modelos', calendario: 'Calendário', backup: 'Backup', auth: 'Acesso', integracoes: 'Integrações', termos: 'Termos de Concordância' };
+  const AUD_ACOES = { criado: 'criou', editado: 'editou', excluido: 'excluiu', aprovado: 'aprovou', 'promovido-a-admin': 'promoveu a admin', 'rebaixado-a-usuario': 'rebaixou a usuário', 'acesso-revogado': 'revogou o acesso de', login: 'entrou no sistema', logout: 'saiu do sistema', exportado: 'exportou', restaurado: 'restaurou', 'parecer-criado': 'criou parecer —', 'parecer-editado': 'editou parecer —', 'parecer-emitido': 'emitiu parecer —', 'parecer-reaberto': 'reabriu parecer —', 'parecer-enviado-revisao': 'enviou p/ revisão —', 'parecer-devolvido': 'devolveu p/ ajustes —', 'termo-enviado': 'registrou envio ao gabinete —', 'termo-cobrado': 'registrou cobrança ao gabinete —', 'termo-recebido': 'registrou recebimento da guia —', 'termo-devolvido': 'registrou devolução do termo —', 'termo-editado': 'corrigiu envio ao gabinete —', 'termo-cancelado': 'cancelou envio ao gabinete —' };
 
   // ===== Cartão do token do Jurisprudências.ai (Configurações, admin) =====
   // O token fica em segredos/jurisai (coleção admin-only nas rules); a Cloud
@@ -4437,12 +5224,12 @@ ${corpo}
   }
 
   let chartInstances = {};
-  const statusColorMap = {'pendente': '#b42323', 'em-analise': '#b25e09', 'aguardando-documentacao': '#0a3d73', 'em-diligencia': '#7c3aad', 'finalizado': '#2f855a', 'arquivado': '#8194ab'};
+  const statusColorMap = {'pendente': '#b42323', 'em-analise': '#b25e09', 'aguardando-documentacao': '#0a3d73', 'aguardando-gabinete': '#8a6a2f', 'em-diligencia': '#7c3aad', 'finalizado': '#2f855a', 'arquivado': '#8194ab'};
   const colorPalette = ['#0a3d73', '#b25e09', '#2f855a', '#b42323', '#7c3aad', '#8194ab', '#1c5f9e', '#c2a14d', '#0e4a89', '#245f43'];
   const mesesMap = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const sMapKeys = Object.keys(statusMap);
    // Visual novo: gráficos quase monocromáticos — cor só no que pede atenção.
-   const statusColorMapV3 = {'pendente': '#b3452f', 'em-analise': '#b7802f', 'aguardando-documentacao': '#44566c', 'em-diligencia': '#7d6b91', 'finalizado': '#5b7a63', 'arquivado': '#c9c4ba'};
+   const statusColorMapV3 = {'pendente': '#b3452f', 'em-analise': '#b7802f', 'aguardando-documentacao': '#44566c', 'aguardando-gabinete': '#9b8150', 'em-diligencia': '#7d6b91', 'finalizado': '#5b7a63', 'arquivado': '#c9c4ba'};
    function getChartConfigs(data) {
     const uiV3 = document.documentElement.classList.contains('ui-v3');
     const isDark = document.body.dataset.theme === 'dark', cardColor = getComputedStyle(document.body).getPropertyValue('--card-bg').trim();
@@ -4657,6 +5444,7 @@ ${corpo}
           { filter: 'total',     label: 'Total de Processos',  value: kpiData.total,  color: '#0a3d73', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>` },
           { filter: 'pendente',  label: 'Pendentes',           value: kpiData.pend,   color: '#7c3aad', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
           { filter: 'em-analise',label: 'Em Análise',          value: kpiData.anal,   color: '#b25e09', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>` },
+          { filter: 'termos',    label: 'Aguardando gabinete', value: Termos.resumo(DB, hojeISO()).aguardando, color: '#8a6a2f', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>` },
           { filter: 'finalizado',label: 'Finalizados',         value: kpiData.fin,    color: '#2f855a', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>` },
           { filter: 'alerta',    label: 'Vencendo (≤5 dias)',  value: kpiData.alert,  color: '#c2a14d', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` },
           { filter: 'vencido',   label: 'Vencidos',            value: kpiData.venc,   color: '#b42323', icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>` },
@@ -4673,6 +5461,7 @@ ${corpo}
           const kpi = e.target.closest('[data-kpi-filter]'); if(!kpi) return;
           const filter = kpi.dataset.kpiFilter, filterBy = {};
           if (filter === 'total') { showTab('proc'); return; }
+          if (filter === 'termos') { $('#termosSituacao').value = 'aguardando'; $('#termosBusca').value = ''; showTab('termos'); return; }
           if (filter === 'alerta' || filter === 'vencido') { filterBy.prazo = filter; } else { filterBy.status = filter; }
           showTab('proc', { filterBy });
       };
@@ -4730,7 +5519,7 @@ ${corpo}
               <div class="atividade-item">
                   <div class="atividade-icon ${iconClass(e.acao)}">${acaoIconMap[e.acao] || acaoIconMap['Editado']}</div>
                   <div class="atividade-content">
-                      <div class="atividade-desc">${sanitizeHTML(e.acao)} — Proc. ${sanitizeHTML(e.processoNum || String(e.processoId))}</div>
+                      <div class="atividade-desc">${sanitizeHTML(ACAO_META[e.acao]?.label || e.acao)} — Proc. ${sanitizeHTML(e.processoNum || String(e.processoId))}</div>
                       <div class="atividade-meta">${sanitizeHTML(e.usuario || '')} · ${fmtTS(e.timestamp)}</div>
                   </div>
               </div>`).join('');
@@ -4947,6 +5736,7 @@ ${corpo}
     setupEnhancedNav();
     ligarBuscaGlobal();
     ligarFecharModais();
+    ligarTermos();
     $('#btnRelatorio')?.addEventListener('click', openRelatorio);
 
     $$('.tab').forEach(b => b.onclick = (e) => { e.preventDefault(); showTab(b.dataset.tab); if (window.closeMobileMenu) window.closeMobileMenu(); });
