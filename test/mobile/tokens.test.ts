@@ -1,6 +1,7 @@
 // Testes dos seletores de design tokens (mobile/src/theme/tokens.ts).
 // São puros e a UI depende do comportamento de FALLBACK deles (chave
 // desconhecida → primeiro item), então vale travá-lo.
+import webUtils from '../../js/utils.js';
 import { catByKey, statusByKey, STATUS, CATS } from '../../mobile/src/theme/tokens';
 
 describe('statusByKey', () => {
@@ -31,9 +32,7 @@ describe('integridade das tabelas', () => {
   it('as chaves de STATUS batem com a whitelist VALID_STATS do web', () => {
     // Mesmo conjunto usado em js/utils.js (safeCSSClass). Divergência aqui
     // significa desalinhamento entre mobile e web.
-    expect(STATUS.map((s) => s.key).sort()).toEqual(
-      ['aguardando-documentacao', 'arquivado', 'em-analise', 'em-diligencia', 'finalizado', 'pendente'],
-    );
+    expect(STATUS.map((s) => s.key).sort()).toEqual([...webUtils.VALID_STATS].sort());
   });
 
   it('as chaves de CATS batem com a whitelist VALID_CAT do web', () => {

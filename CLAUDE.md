@@ -41,6 +41,17 @@ grandes em EB Garamond; barra lateral azul-tinta com grupos e usuário no
 rodapé (`#sidebarUser`); quase nenhuma cor (só vencidos/vencendo); sem
 emojis na interface; gráficos com a paleta `statusColorMapV3`.
 
+## Termos de Concordância (aba "Termos")
+
+Controle do envio, ao gabinete do vereador autor, da via da Análise Prévia com
+o termo de concordância (arquivamento ou conversão em indicação). Os envios
+ficam no próprio processo (`proc.termos`, sem coleção nova no Firestore);
+vereadores em `CFG.vereadores`. Lógica pura em `js/termos.js` (testada em
+`test/web/termos.test.js`); tela, janelas e guia de remessa (PDF) no bloco
+"TERMOS DE CONCORDÂNCIA" do `js/app.js`. Registrar o envio põe o processo no
+status `aguardando-gabinete`. Correções guardam de/para em `envio.alteracoes`;
+nada é apagado (envio errado vira "cancelado").
+
 ## App de celular (`mobile/` → `/app`)
 
 Mesma linguagem "tinta": paleta em `mobile/src/theme/tokens.ts` (sincronizar

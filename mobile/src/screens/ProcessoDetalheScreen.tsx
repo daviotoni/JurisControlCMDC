@@ -10,7 +10,7 @@ import { Avatar, Card, GroupLabel, Pill, PrimaryButton, SecondaryButton, StatusP
 import { useData } from '../data/DataContext';
 import { db } from '../lib/firebase';
 import { fmtBR } from '../lib/dates';
-import { prazoInfo } from '../lib/model';
+import { diasDoTermo, prazoInfo, termoAtivo } from '../lib/model';
 import { AcaoHistorico, Anotacao, HistoricoEntry } from '../lib/types';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../theme/ThemeContext';
@@ -27,6 +27,21 @@ const ACAO_LABEL: Record<AcaoHistorico, string> = {
   'parecer-editado': 'Parecer editado',
   'parecer-emitido': 'Parecer emitido',
   'parecer-reaberto': 'Parecer reaberto para edição',
+  'termo-enviado': 'Termo enviado ao gabinete',
+  'termo-cobrado': 'Gabinete cobrado',
+  'termo-recebido': 'Guia de remessa assinada',
+  'termo-devolvido': 'Termo devolvido pelo gabinete',
+  'termo-editado': 'Envio ao gabinete corrigido',
+  'termo-cancelado': 'Envio ao gabinete cancelado',
+};
+
+const DESFECHO_LABEL: Record<string, string> = { arquivamento: 'Arquivamento', conversao: 'Conversão em indicação' };
+const RESPOSTA_LABEL: Record<string, string> = { concorda: 'Concorda', 'nao-concorda': 'Não concorda' };
+const fmtCarimbo = (iso?: string) => {
+  const d = iso ? new Date(iso) : null;
+  return d && !isNaN(d.getTime())
+    ? `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    : '—';
 };
 
 // Rótulos dos campos rastreados (fieldLabels do web).
@@ -134,6 +149,8 @@ export function ProcessoDetalheScreen() {
 
   const info = prazoInfo(p);
   const bannerVermelho = info.vencido || info.alerta;
+  const termo = termoAtivo(p);
+  const termoDias = termo ? diasDoTermo(termo) : null;
 
   const excluir = async () => {
     try {
@@ -275,6 +292,80 @@ export function ProcessoDetalheScreen() {
             </>
           ) : null}
         </Card>
+
+        {termo ? (
+          <>
+            <Text style={{ fontFamily: fonts.bold, fontSize: 15, color: colors.text, marginTop: 20, marginBottom: 10 }}>
+              Envio ao gabinete
+            </Text>
+            <Card>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={{ fontFamily: fonts.serifRegular, fontSize: 40, lineHeight: 44, color: colors.text }}>
+                  {termoDias ?? '—'}
+                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: colors.text }}>
+                    {termo.devolucao
+                      ? `${termoDias === 1 ? 'dia' : 'dias'} até a devolução`
+                      : `${termoDias === 1 ? 'dia' : 'dias'} aguardando o gabinete`}
+                  </Text>
+                  <Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                    {termo.devolucao
+                      ? `Devolvido em ${fmtBR(termo.devolucao.data)} · ${RESPOSTA_LABEL[termo.devolucao.resposta] ?? ''}`
+                      : `Enviado em ${fmtBR(termo.dataEnvio)}`}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.grid}>
+                <View style={styles.gridItem}>
+                  <Text style={[styles.gridLabel, { color: colors.muted }]}>Vereador</Text>
+                  <Text style={[styles.gridValue, { color: colors.text }]}>{termo.vereadorNome || '—'}</Text>
+                </View>
+                <View style={styles.gridItem}>
+                  <Text style={[styles.gridLabel, { color: colors.muted }]}>Desfecho proposto</Text>
+                  <Text style={[styles.gridValue, { color: colors.text }]}>{DESFECHO_LABEL[termo.desfecho] ?? '—'}</Text>
+                </View>
+                <View style={styles.gridItem}>
+                  <Text style={[styles.gridLabel, { color: colors.muted }]}>Guia de remessa</Text>
+                  <Text style={[styles.gridValue, { color: colors.text }]}>{termo.guiaNumero || '—'}</Text>
+                </View>
+                <View style={styles.gridItem}>
+                  <Text style={[styles.gridLabel, { color: colors.muted }]}>Recebido por</Text>
+                  <Text style={[styles.gridValue, { color: colors.text }]}>
+                    {termo.recebidoPor ? `${termo.recebidoPor}${termo.recebidoEm ? ` em ${fmtBR(termo.recebidoEm)}` : ''}` : '—'}
+                  </Text>
+                </View>
+                {termo.apNumero ? (
+                  <View style={styles.gridItem}>
+                    <Text style={[styles.gridLabel, { color: colors.muted }]}>Análise Prévia</Text>
+                    <Text style={[styles.gridValue, { color: colors.text }]}>{termo.apNumero}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.gridItem}>
+                  <Text style={[styles.gridLabel, { color: colors.muted }]}>Registrado no sistema</Text>
+                  <Text style={[styles.gridValue, { color: colors.text }]}>{fmtCarimbo(termo.registradoEm)}</Text>
+                  <Text style={{ fontFamily: fonts.regular, fontSize: 11, color: colors.muted }}>por {termo.registradoPor || '—'}</Text>
+                </View>
+              </View>
+
+              {(termo.cobrancas ?? []).length ? (
+                <>
+                  <GroupLabel label="Cobranças" style={{ marginTop: 14 }} />
+                  {(termo.cobrancas ?? []).map((c) => (
+                    <Text key={c.id} style={{ fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary, marginTop: 4, lineHeight: 18 }}>
+                      {fmtBR(c.data)} — {c.obs}
+                    </Text>
+                  ))}
+                </>
+              ) : null}
+
+              <Text style={{ fontFamily: fonts.regular, fontSize: 11.5, color: colors.muted, marginTop: 14, lineHeight: 16 }}>
+                Envio, cobranças e devolução são registrados na aba Termos do sistema web.
+              </Text>
+            </Card>
+          </>
+        ) : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 10 }}>
           <Text style={{ fontFamily: fonts.bold, fontSize: 15, color: colors.text }}>Anotações e pendências</Text>

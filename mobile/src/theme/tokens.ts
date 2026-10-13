@@ -88,6 +88,7 @@ export type StatusKey =
   | 'pendente'
   | 'em-analise'
   | 'aguardando-documentacao'
+  | 'aguardando-gabinete'
   | 'em-diligencia'
   | 'finalizado'
   | 'arquivado';
@@ -109,6 +110,7 @@ export const STATUS: StatusDef[] = [
   { key: 'pendente', label: 'Pendente', short: 'Pendente', color: '#b3452f', pillBg: '#f1efea', colorDark: '#e0826f', pillBgDark: 'rgba(255,255,255,.06)' },
   { key: 'em-analise', label: 'Em Análise', short: 'Em análise', color: '#b7802f', pillBg: '#f1efea', colorDark: '#d9a45a', pillBgDark: 'rgba(255,255,255,.06)' },
   { key: 'aguardando-documentacao', label: 'Aguardando Documentação', short: 'Aguard. Doc.', color: '#5a7190', pillBg: '#f1efea', colorDark: '#9fb3cc', pillBgDark: 'rgba(255,255,255,.06)' },
+  { key: 'aguardando-gabinete', label: 'Aguardando gabinete', short: 'Aguard. Gab.', color: '#a8874f', pillBg: '#f1efea', colorDark: '#d9b47a', pillBgDark: 'rgba(255,255,255,.06)' },
   { key: 'em-diligencia', label: 'Em Diligência', short: 'Em diligência', color: '#8a74a3', pillBg: '#f1efea', colorDark: '#c0aad6', pillBgDark: 'rgba(255,255,255,.06)' },
   { key: 'finalizado', label: 'Finalizado', short: 'Finalizado', color: '#5b8a68', pillBg: '#f1efea', colorDark: '#8fc09d', pillBgDark: 'rgba(255,255,255,.06)' },
   { key: 'arquivado', label: 'Arquivado', short: 'Arquivado', color: '#b5afa3', pillBg: '#f1efea', colorDark: '#8e8a82', pillBgDark: 'rgba(255,255,255,.06)' },

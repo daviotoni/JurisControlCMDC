@@ -26,6 +26,29 @@ export interface Processo {
   prazoDias?: string;
   prazoContagem?: 'uteis' | 'corridos' | string;
   prazoRecesso?: string;
+  // Envios do termo de concordância ao gabinete (aba Termos do site; js/termos.js).
+  termos?: TermoEnvio[];
+}
+
+/** Envio da via da Análise Prévia + termo de concordância ao gabinete do vereador autor. */
+export interface TermoEnvio {
+  id: number;
+  desfecho: 'arquivamento' | 'conversao' | string;
+  fundamento?: string;
+  apNumero?: string;
+  apData?: string;
+  vereadorId?: string;
+  vereadorNome?: string;
+  dataEnvio: string; // YYYY-MM-DD
+  registradoEm: string; // ISO
+  registradoPor: string;
+  guiaNumero?: string;
+  recebidoPor?: string;
+  recebidoEm?: string;
+  obs?: string;
+  cobrancas?: { id: number; data: string; obs: string; registradoEm: string; registradoPor: string }[];
+  devolucao?: { data: string; resposta: 'concorda' | 'nao-concorda' | string; obs?: string; registradoEm: string; registradoPor: string } | null;
+  cancelamento?: { motivo: string; em: string; por: string } | null;
 }
 
 /** Anotação/pendência de um processo (mesmo formato do web: id, usuario, dt, texto). */
@@ -95,7 +118,13 @@ export type AcaoHistorico =
   | 'parecer-criado'
   | 'parecer-editado'
   | 'parecer-emitido'
-  | 'parecer-reaberto';
+  | 'parecer-reaberto'
+  | 'termo-enviado'
+  | 'termo-cobrado'
+  | 'termo-recebido'
+  | 'termo-devolvido'
+  | 'termo-editado'
+  | 'termo-cancelado';
 
 export interface HistoricoEntry {
   id: number;

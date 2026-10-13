@@ -37,7 +37,7 @@
             if (localStorage.getItem('jc-ui') !== 'classico') document.documentElement.classList.add('ui-v3');
         } catch (e) { document.documentElement.classList.add('ui-v3'); }
     </script>
-        <link rel="stylesheet" href="style.css?v=f6ee1db56e">
+        <link rel="stylesheet" href="style.css?v=d5407c60c4">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -155,6 +155,7 @@
                 <ul>
                     <li><a href="#" class="tab active" data-tab="dashboard" data-tooltip="Dashboard" aria-current="page"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg><span class="nav-label">Dashboard</span></a></li>
                     <li><a href="#" class="tab" data-tab="proc" data-tooltip="Processos"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><span class="nav-label">Processos</span></a></li>
+                    <li><a href="#" class="tab" data-tab="termos" data-tooltip="Termos de Concordância"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg><span class="nav-label">Termos</span></a></li>
                     <li><a href="#" class="tab" data-tab="cal" data-tooltip="Calendário"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="nav-label">Calendário</span></a></li>
                     <li class="nav-group" aria-hidden="true">Acervo</li>
                     <li><a href="#" class="tab" data-tab="docs" data-tooltip="Documentos"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="nav-label">Documentos</span></a></li>
@@ -395,6 +396,33 @@
                   <div id="kanban-container" class="kanban-board" style="display:none;"></div>
                 </section>
                 
+                <section id="secTermos" style="display:none;">
+                  <h2>Termos de Concordância</h2>
+                  <p class="cfg-note termos-intro">Envios ao gabinete do vereador autor da via da Análise Prévia com o termo de concordância (arquivamento ou conversão em indicação). O processo continua na Procuradoria; aqui fica registrado quando foi, para quem, quem recebeu e quando voltou.</p>
+                  <div id="termosAvisoVereadores" class="termos-aviso" hidden></div>
+                  <div id="termosResumo" class="termos-resumo"></div>
+                  <div class="termos-toolbar">
+                    <input id="termosBusca" class="input" placeholder="Buscar por processo, vereador, análise prévia ou guia…" aria-label="Buscar envios">
+                    <select id="termosSituacao" class="select" aria-label="Situação">
+                        <option value="">Em aberto e devolvidos</option>
+                        <option value="aguardando">Aguardando devolução</option>
+                        <option value="devolvido">Termo devolvido</option>
+                        <option value="cancelado">Cancelados</option>
+                    </select>
+                    <select id="termosVereador" class="select" aria-label="Vereador"><option value="">Todos os vereadores</option></select>
+                    <button type="button" id="btnNovoEnvio" class="btn primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Registrar envio
+                    </button>
+                  </div>
+                  <div class="table-wrap termos-wrap">
+                    <table class="termos-tabela">
+                      <thead><tr><th>Processo</th><th>Vereador</th><th>Desfecho proposto</th><th>Enviado</th><th>Guia</th><th>Situação</th></tr></thead>
+                      <tbody id="termosLista"></tbody>
+                    </table>
+                  </div>
+                </section>
+
                 <section id="secDoc" style="display:none">
                   <h2>Gestão de Documentos</h2>
                   <div class="two-col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem">
@@ -550,6 +578,16 @@
                         <div id="emissorList" class="list"></div>
                         <div style="margin-top: 1rem;"><button id="btnAddEmissor" class="btn primary">Adicionar Emissor</button></div>
                     </div>
+                    <div class="card cfg-vereadores">
+                        <h3>Vereadores</h3>
+                        <p class="cfg-note">Usados nos Termos de Concordância. Ao registrar um envio, o sistema sugere o vereador cujo nome aparece no campo “Interessado” do processo.</p>
+                        <ul id="vereadorList" class="vereador-lista"></ul>
+                        <div class="vereador-add">
+                            <input id="vereadorNome" class="input" placeholder="Nome do vereador" aria-label="Nome do vereador">
+                            <input id="vereadorGabinete" class="input" placeholder="Gabinete (opcional)" aria-label="Gabinete">
+                            <button type="button" id="btnAddVereador" class="btn secondary">Adicionar</button>
+                        </div>
+                    </div>
                     <div class="card">
                         <h3>Backup e Restauração</h3>
                          <div style="display:flex;flex-wrap:wrap;gap:0.75rem">
@@ -614,7 +652,7 @@
                                 <div class="form-group"><label for="fp_ent">Entrada</label><input id="fp_ent" name="ent" type="date" class="input" required></div>
                                 <div class="form-group"><label for="fp_prazo">Prazo Final</label><input id="fp_prazo" name="prazo" type="date" class="input"></div>
                                 <div class="form-group"><label for="fp_saida">Saída</label><input id="fp_saida" name="saida" type="date" class="input"></div>
-                                <div class="form-group"><label for="fp_stat">Status</label><select id="fp_stat" name="stat" class="select"><option value="pendente">Pendente</option><option value="em-analise">Em Análise</option><option value="aguardando-documentacao">Aguardando Documentação</option><option value="em-diligencia">Em Diligência</option><option value="finalizado">Finalizado</option><option value="arquivado">Arquivado</option></select></div>
+                                <div class="form-group"><label for="fp_stat">Status</label><select id="fp_stat" name="stat" class="select"><option value="pendente">Pendente</option><option value="em-analise">Em Análise</option><option value="aguardando-documentacao">Aguardando Documentação</option><option value="aguardando-gabinete">Aguardando gabinete</option><option value="em-diligencia">Em Diligência</option><option value="finalizado">Finalizado</option><option value="arquivado">Arquivado</option></select></div>
                                 <div class="form-group" style="grid-column: span 2;"><label for="fp_emissor">Emissor da Ficha</label><select id="fp_emissor" name="emissorId" class="select"><option value="">Usuário Logado</option></select></div>
                             </div>
                             <div class="prazo-calc" id="prazoCalc">
@@ -869,6 +907,105 @@
         </div>
     </div>
 
+    <div id="m_termo_view" class="modal">
+        <div class="dialog termo-dialog" style="max-width: 760px;">
+            <div class="dialog-header"><h3 id="m_termo_view_t">Envio ao gabinete</h3></div>
+            <div class="dialog-body"><div id="termoViewBody"></div></div>
+            <div class="dialog-footer">
+                <div class="termo-footer-esq">
+                    <button type="button" class="btn danger" id="btnTermoCancelar">Cancelar envio</button>
+                    <button type="button" class="btn secondary" id="btnTermoEditar">Corrigir dados</button>
+                </div>
+                <button type="button" class="btn secondary" id="btnTermoAbrirProc">Abrir processo</button>
+                <button type="button" class="btn secondary" id="btnTermoGuia">Imprimir guia</button>
+                <button type="button" class="btn secondary" data-close-termo-view>Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="m_termo" class="modal">
+        <div class="dialog" style="max-width: 720px;">
+            <div class="dialog-header"><h3 id="m_termo_t">Registrar envio ao gabinete</h3></div>
+            <form id="f_termo" autocomplete="off">
+                <div class="dialog-body">
+                    <p id="ft_aviso_edicao" class="cfg-note termo-nota" hidden>As correções ficam guardadas no envio (valor antigo, valor novo, quem mudou e quando). A data e a hora em que o envio foi registrado não mudam.</p>
+                    <div class="form-grid two-cols">
+                        <div class="form-group full-width" id="ft_proc_grupo">
+                            <label for="ft_proc">Processo</label>
+                            <input id="ft_proc" class="input" list="ft_proc_lista" placeholder="Digite o nº do processo" required>
+                            <datalist id="ft_proc_lista"></datalist>
+                            <p id="ft_proc_info" class="cfg-note termo-proc-info"></p>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="ft_ver">Vereador (autor)</label>
+                            <select id="ft_ver" class="select" required></select>
+                            <p id="ft_ver_dica" class="cfg-note termo-dica"></p>
+                            <input id="ft_ver_novo" class="input" placeholder="Nome do vereador a cadastrar" hidden>
+                        </div>
+                        <div class="form-group">
+                            <label for="ft_desfecho">Desfecho proposto</label>
+                            <select id="ft_desfecho" class="select" required>
+                                <option value="arquivamento">Arquivamento</option>
+                                <option value="conversao">Conversão em indicação</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ft_envio">Data do envio</label>
+                            <input id="ft_envio" type="date" class="input" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="ft_fund">Fundamento (opcional)</label>
+                            <input id="ft_fund" class="input" placeholder="Ex.: proposição anterior com o mesmo núcleo temático; LOM, art. 51, II e VI">
+                        </div>
+                        <div class="form-group">
+                            <label for="ft_ap">Nº da Análise Prévia</label>
+                            <input id="ft_ap" class="input" placeholder="Ex.: 122/APL/CMDC/2026">
+                        </div>
+                        <div class="form-group">
+                            <label for="ft_apdata">Data da Análise Prévia</label>
+                            <input id="ft_apdata" type="date" class="input">
+                        </div>
+                        <div class="form-group" data-so-edicao hidden>
+                            <label for="ft_receb">Recebido por</label>
+                            <input id="ft_receb" class="input" placeholder="Nome de quem assinou a guia">
+                        </div>
+                        <div class="form-group" data-so-edicao hidden>
+                            <label for="ft_recebem">Recebido em</label>
+                            <input id="ft_recebem" type="date" class="input">
+                        </div>
+                        <div class="form-group" data-so-devolucao hidden>
+                            <label for="ft_devdata">Data da devolução</label>
+                            <input id="ft_devdata" type="date" class="input">
+                        </div>
+                        <div class="form-group" data-so-devolucao hidden>
+                            <label for="ft_devresp">Resposta do vereador</label>
+                            <select id="ft_devresp" class="select">
+                                <option value="concorda">Concorda</option>
+                                <option value="nao-concorda">Não concorda</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width" data-so-devolucao hidden>
+                            <label for="ft_devobs">Observações da devolução</label>
+                            <textarea id="ft_devobs" class="input" rows="2"></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="ft_obs">Observações</label>
+                            <textarea id="ft_obs" class="input" rows="2" placeholder="Ex.: entregue em mãos à chefe de gabinete"></textarea>
+                        </div>
+                        <label class="cfg-switch full-width" for="ft_guia" id="ft_guia_grupo">
+                            <input type="checkbox" id="ft_guia" checked>
+                            Baixar a guia de remessa para imprimir ao salvar
+                        </label>
+                    </div>
+                </div>
+                <div class="dialog-footer">
+                    <button type="button" class="btn secondary" data-close-termo>Cancelar</button>
+                    <button type="submit" class="btn primary" id="ft_salvar">Registrar envio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="m_confirm" class="modal">
         <div class="dialog confirm-dialog" style="max-width: 440px;">
             <div class="dialog-header confirm-dialog-header">
@@ -916,11 +1053,12 @@
         <div class="busca-rodape"><span><kbd class="busca-kbd">↑</kbd><kbd class="busca-kbd">↓</kbd> navegar</span><span><kbd class="busca-kbd">Enter</kbd> abrir</span></div>
     </dialog>
     <script src="js/prazos.js?v=e5bae30bc2"></script>
-    <script src="js/utils.js?v=c65bffc7e8"></script>
+    <script src="js/utils.js?v=d6fe5716e8"></script>
+    <script src="js/termos.js?v=60bdba83c5"></script>
     <script src="js/assets.js?v=fcc6026ae0"></script>
     <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
     <script src="js/motion.js?v=0559776488"></script>
-    <script src="js/app.js?v=eeca3455a1"></script>
+    <script src="js/app.js?v=ef98c44c9e"></script>
 
 </body>
 </html>

@@ -10,13 +10,15 @@ import {
   bannerPrazos,
   computeAlertas,
   computeKpis,
+  diasDoTermo,
   generateNotifications,
   prazoColor,
   prazoInfo,
   saudacao,
+  termoAtivo,
   unreadCount,
 } from '../../mobile/src/lib/model';
-import type { EventoCal, Processo } from '../../mobile/src/lib/types';
+import type { EventoCal, Processo, TermoEnvio } from '../../mobile/src/lib/types';
 
 // Deslocamento em dias a partir de hoje, já em YYYY-MM-DD.
 const dia = (offset: number): string => ymd(addDays(todayUTC(), offset));
@@ -237,3 +239,21 @@ describe('bannerPrazos', () => {
     expect(b.imediatos).toBe(2); // dia(0) e dia(-3)
   });
 });
+
+describe('termos de concordância', () => {
+  const envio = (extra: Partial<TermoEnvio> = {}): TermoEnvio => ({
+    id: 1, desfecho: 'arquivamento', dataEnvio: '2026-09-28', registradoEm: '2026-09-28T12:00:00Z', registradoPor: 'Ana', ...extra,
+  });
+
+  it('termoAtivo pega o envio mais recente que não foi cancelado', () => {
+    const p = { termos: [envio({ id: 1 }), envio({ id: 2, cancelamento: { motivo: 'x', em: '', por: '' } })] } as Processo;
+    expect(termoAtivo(p)?.id).toBe(1);
+    expect(termoAtivo({} as Processo)).toBeNull();
+  });
+
+  it('diasDoTermo conta até hoje ou até a devolução', () => {
+    expect(diasDoTermo(envio(), new Date(Date.UTC(2026, 9, 13)))).toBe(15);
+    expect(diasDoTermo(envio({ devolucao: { data: '2026-10-03', resposta: 'concorda', registradoEm: '', registradoPor: '' } }))).toBe(5);
+  });
+});
+

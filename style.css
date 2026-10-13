@@ -789,7 +789,7 @@
         body[data-theme="dark"] tbody tr:hover { background-color: rgba(255,255,255,0.07); }
         .status { display: inline-block; padding: 0.1875rem 0.625rem; border-radius: 999px; font-weight: 700; font-size: 0.6875rem; }
         .status.em-analise{background:var(--warning-bg);color:var(--warning);} .status.pendente{background:var(--danger-bg);color:var(--danger);} .status.finalizado{background:var(--success-bg);color:var(--success);}
-        .status.aguardando-documentacao{background:var(--info-bg);color:var(--info);} .status.em-diligencia{background:var(--purple-bg);color:var(--purple);} .status.arquivado{background:#eef1f5;color:#5a6b82;}
+        .status.aguardando-documentacao{background:var(--info-bg);color:var(--info);} .status.em-diligencia{background:var(--purple-bg);color:var(--purple);} .status.aguardando-gabinete{background:#fbf3e4;color:#8a5a12;} .status.arquivado{background:#eef1f5;color:#5a6b82;}
         .status.rascunho{background:var(--warning-bg);color:var(--warning);} .status.emitido{background:var(--success-bg);color:var(--success);}
         .status.em-revisao{background:var(--info-bg);color:var(--info);}
         .parecer-materia-picker label{font-weight:600;}
@@ -800,6 +800,7 @@
         .parecer-checklist-nota{margin:0.5rem 0 0;font-size:0.75rem;color:var(--text-muted);font-style:italic;}
         .parecer-revisor-obs{margin-bottom:0.75rem;border:1px solid color-mix(in srgb, var(--warning) 35%, transparent);background:var(--warning-bg);padding:0.6rem 0.9rem;border-radius:6px;font-size:0.88rem;color:var(--text-secondary);}
         body[data-theme="dark"] .status.arquivado{background:rgba(255,255,255,0.08);color:var(--text-secondary-dark);}
+        body[data-theme="dark"] .status.aguardando-gabinete{background:rgba(217,164,90,0.14);color:#e3b874;}
 
         /* ===== Indicador de urgência de prazo (lista e cards) ===== */
         /* Vencido/vencendo: linha levemente tingida (o prazo já vem colorido e com ícone). */
@@ -1907,6 +1908,93 @@
         .jc-intro-landed { animation: none !important; }
 
         /* =====================================================================
+           TERMOS DE CONCORDÂNCIA (aba "Termos", ficha do processo, Configurações)
+           ===================================================================== */
+        .termos-intro { margin: 0 0 1.25rem; max-width: 72ch; }
+        .termos-aviso { margin: 0 0 1.25rem; padding: 0.75rem 1rem; border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent); background: var(--warning-bg); border-radius: 8px; color: var(--text-secondary); font-size: 0.9rem; }
+        .link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--brand-600); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+        .termos-resumo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .termos-kpi {
+            display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; text-align: left;
+            padding: 1rem 1.15rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg);
+            font: inherit; color: var(--text-primary); cursor: pointer;
+        }
+        .termos-kpi:hover:not([disabled]) { border-color: var(--brand-200); }
+        .termos-kpi[disabled] { cursor: default; }
+        .termos-kpi-label { font-size: 0.8125rem; font-weight: 600; color: var(--text-secondary); }
+        .termos-kpi-v { font-size: 1.875rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+        .termos-kpi-v small { font-size: 0.9rem; font-weight: 500; margin-left: 0.3rem; color: var(--text-muted); }
+        .termos-kpi-sub { font-size: 0.8125rem; color: var(--text-muted); }
+        .termos-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; }
+        .termos-toolbar #termosBusca { flex: 1 1 280px; min-width: 0; }
+        .termos-toolbar .select { flex: 0 1 220px; }
+        .termos-toolbar .btn.primary { margin-left: auto; display: inline-flex; align-items: center; gap: 0.4rem; }
+        .termos-wrap { overflow-x: auto; }
+        .termos-tabela { width: 100%; }
+        .termos-tabela td { vertical-align: top; }
+        .termo-row { cursor: pointer; }
+        .termo-row:focus-visible { outline: 2px solid var(--brand-500); outline-offset: -2px; }
+        .termo-proc-num { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+        .termo-proc-obj { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.15rem; max-width: 42ch; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .termo-sub { color: var(--text-muted); font-size: 0.8rem; margin-top: 0.15rem; }
+        .termo-dias { color: var(--text-secondary); font-weight: 600; }
+        .termo-sub-inline { color: var(--text-muted); font-size: 0.85em; }
+        .termo-sub-bloco { display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.1rem; }
+        .status.termo-aguardando, .status.termo-devolvido, .status.termo-cancelado { white-space: nowrap; }
+        .status.termo-aguardando { background: #fbf3e4; color: #8a5a12; }
+        .status.termo-devolvido { background: var(--success-bg); color: var(--success); }
+        .status.termo-cancelado { background: #eef1f5; color: #5a6b82; }
+        body[data-theme="dark"] .status.termo-aguardando { background: rgba(217,164,90,0.14); color: #e3b874; }
+        body[data-theme="dark"] .status.termo-cancelado { background: rgba(255,255,255,0.08); color: var(--text-secondary-dark); }
+
+        /* Janela do envio */
+        .termo-destaque { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.15rem; margin-bottom: 1rem; border-radius: 12px; background: var(--bg-color-only); border: 1px solid var(--border-color); }
+        .termo-destaque-n { font-size: 2.75rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+        .termo-destaque-t { display: flex; flex-direction: column; gap: 0.3rem; font-size: 1rem; color: var(--text-primary); font-weight: 600; }
+        .termo-destaque-t small { font-size: 0.85rem; font-weight: 400; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+        .termo-destaque.is-cancelado { border-color: var(--border-color); }
+        .termo-acoes { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+        .termo-acao-painel { border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem 1.15rem; margin-bottom: 1rem; background: var(--card-bg); }
+        .termo-acao-painel h4 { margin: 0 0 0.75rem; font-size: 1rem; }
+        .termo-acao-botoes { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.75rem; }
+        .termo-resposta { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+        .termo-resposta legend { font-weight: 600; font-size: 0.875rem; margin-bottom: 0.35rem; padding: 0; }
+        .termo-resposta label { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; cursor: pointer; }
+        .termo-resposta input { width: auto; margin: 0; }
+        .termo-dica, .termo-proc-info { margin: 0.35rem 0 0; font-size: 0.82rem; }
+        .termo-nota { margin: 0 0 1rem; }
+        #ft_proc_grupo.is-fixo #ft_proc { background: var(--bg-color-only); }
+        .termo-linha { list-style: none; margin: 0; padding: 0; }
+        .termo-linha li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border-color); }
+        .termo-linha li:last-child { border-bottom: 0; }
+        .termo-linha-data { color: var(--text-muted); font-size: 0.875rem; font-variant-numeric: tabular-nums; padding-top: 0.05rem; }
+        .termo-linha-corpo strong { display: block; font-weight: 600; color: var(--text-primary); }
+        .termo-linha-corpo p { margin: 0.2rem 0 0; color: var(--text-secondary); white-space: pre-wrap; }
+        .termo-linha-meta { display: block; font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+        .termo-correcoes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.9rem; }
+        .termo-correcoes s { color: var(--text-muted); }
+        .termo-footer-esq { margin-right: auto; display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+        /* Ficha do processo */
+        .termo-ficha-vazio { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+        .termo-ficha-vazio p { margin: 0; color: var(--text-muted); }
+        .termo-ficha-acoes { margin-top: 1rem; display: flex; justify-content: flex-end; }
+        .termo-ficha-nota { margin: 0.75rem 0 0; }
+
+        /* Configurações → Vereadores */
+        .vereador-lista { list-style: none; margin: 0 0 1rem; padding: 0; max-height: 320px; overflow-y: auto; }
+        .vereador-lista li { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0; border-bottom: 1px solid var(--border-color); }
+        .vereador-nome { flex: 1; min-width: 0; }
+        .vereador-gab { color: var(--text-muted); font-size: 0.85rem; }
+        .vereador-vazio { color: var(--text-muted); }
+        .vereador-add { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 0.5rem; }
+        @media (max-width: 700px) {
+            .termos-resumo { grid-template-columns: 1fr; }
+            .vereador-add { grid-template-columns: 1fr; }
+            .termo-linha li { grid-template-columns: 1fr; gap: 0.15rem; }
+        }
+
+        /* =====================================================================
            VISUAL NOVO — html.ui-v3  ("tinta")
            ---------------------------------------------------------------------
            Referência: o app do Harvey (plataforma jurídica) e o Mercury. O que
@@ -2192,6 +2280,7 @@
         .ui-v3 .status.em-analise, .ui-v3 .status.rascunho { --st: #c0892f; }
         .ui-v3 .status.aguardando-documentacao, .ui-v3 .status.em-revisao { --st: #5a7190; }
         .ui-v3 .status.em-diligencia { --st: #8a74a3; }
+        .ui-v3 .status.aguardando-gabinete { --st: #a8874f; }
         .ui-v3 .status.finalizado, .ui-v3 .status.emitido { --st: #5b8a68; }
         .ui-v3 .status.arquivado { --st: #b5afa3; }
 
@@ -2329,3 +2418,34 @@
         .ui-v3 body[data-theme="dark"] .kanban-card-num { color: var(--t-muted); font-weight: 600; letter-spacing: 0.01em; }
         .ui-v3 .kanban-card-int { font-weight: 600; color: var(--t-ink); }
         .ui-v3 .kanban-col-body.drag-over { background: var(--t-paper-2); outline-color: var(--t-ink-2); }
+
+        /* ---------- Termos de Concordância (tinta) ---------- */
+        .ui-v3 .termos-intro { color: var(--t-muted); }
+        .ui-v3 .termos-aviso { background: color-mix(in srgb, var(--t-warning) 7%, var(--t-canvas)); border-color: color-mix(in srgb, var(--t-warning) 28%, var(--t-line)); color: var(--t-ink); border-radius: 10px; }
+        .ui-v3 .link-btn { color: var(--t-ink); }
+        .ui-v3 .termos-kpi { background: var(--t-paper); border: 0; border-radius: 12px; padding: 1.15rem 1.2rem 1.05rem; }
+        .ui-v3 .termos-kpi:hover:not([disabled]) { background: var(--t-paper-2); }
+        .ui-v3 .termos-kpi-label { font-size: 0.875rem; font-weight: 400; color: var(--t-muted); }
+        .ui-v3 .termos-kpi-v { font-family: var(--t-serif); font-weight: 400; font-size: 2.75rem; letter-spacing: -0.02em; color: var(--t-ink); font-variant-numeric: lining-nums tabular-nums; }
+        .ui-v3 .termos-kpi-v small { font-family: var(--t-serif); font-size: 1.25rem; color: var(--t-muted); }
+        .ui-v3 .termos-kpi-sub { color: var(--t-muted); }
+        .ui-v3 .termo-proc-num { color: var(--t-ink); font-weight: 500; }
+        .ui-v3 .termo-proc-obj, .ui-v3 .termo-sub, .ui-v3 .termo-sub-inline, .ui-v3 .termo-sub-bloco { color: var(--t-muted); }
+        .ui-v3 .termo-dias { color: var(--t-ink-2); font-weight: 500; }
+        .ui-v3 .status.termo-aguardando { --st: #a8874f; }
+        .ui-v3 .status.termo-devolvido { --st: #5b8a68; }
+        .ui-v3 .status.termo-cancelado { --st: #b5afa3; }
+        .ui-v3 .termo-destaque { background: var(--t-paper); border: 0; }
+        .ui-v3 .termo-destaque-n { font-family: var(--t-serif); font-weight: 400; font-size: 3.25rem; color: var(--t-ink); font-variant-numeric: lining-nums tabular-nums; }
+        .ui-v3 .termo-destaque-t { font-weight: 500; color: var(--t-ink); }
+        .ui-v3 .termo-destaque-t small { color: var(--t-muted); }
+        .ui-v3 .termo-acao-painel { border-color: var(--t-line-strong); background: var(--t-canvas); }
+        .ui-v3 .termo-linha li, .ui-v3 .vereador-lista li { border-bottom-color: var(--t-line); }
+        .ui-v3 .termo-linha-data, .ui-v3 .termo-linha-meta, .ui-v3 .vereador-gab, .ui-v3 .vereador-vazio, .ui-v3 .termo-ficha-vazio p { color: var(--t-muted); }
+        .ui-v3 .termo-linha-corpo strong { font-weight: 500; color: var(--t-ink); }
+        .ui-v3 .termo-linha-corpo p { color: var(--t-ink-2); }
+        .ui-v3 .view-section.termo-section h4 { font-weight: 600; }
+        .ui-v3 #ft_proc_grupo.is-fixo #ft_proc { background: var(--t-paper); }
+        /* Sete cartões no Dashboard (o novo é "Aguardando gabinete"). */
+        @media (min-width: 1181px) { .ui-v3 .dash-kpis { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+        @media (min-width: 601px) and (max-width: 1180px) { .ui-v3 .dash-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

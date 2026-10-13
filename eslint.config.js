@@ -63,7 +63,7 @@ module.exports = [
     // utils.js expõe um bloco `module.exports` (guardado por typeof) para os
     // testes rodarem em Node/Vitest. `module` é global do CommonJS, não do
     // navegador — declará-lo aqui evita o no-undef sem afetar o runtime.
-    files: ['js/utils.js', 'js/prazos.js'],
+    files: ['js/utils.js', 'js/prazos.js', 'js/termos.js'],
     languageOptions: { globals: { module: 'readonly' } },
   },
   {
@@ -96,6 +96,7 @@ module.exports = [
         numeroCNJValido: 'readonly',
         tribunalDoCNJ: 'readonly',
         Prazos: 'readonly', // js/prazos.js
+        Termos: 'readonly', // js/termos.js
         normalizeParecerParaLista: 'readonly',
         combinarPareceres: 'readonly',
         versoesDoDocumento: 'readonly',

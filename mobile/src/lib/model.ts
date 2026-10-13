@@ -2,7 +2,7 @@
 // prazos, KPIs do dashboard, alertas inteligentes e notificações derivadas.
 import { KPI_VENCENDO_COLOR } from '../theme/tokens';
 import { diffDays, fmtBR, parseYMD, todayUTC } from './dates';
-import { EventoCal, MainCfg, Processo } from './types';
+import { EventoCal, MainCfg, Processo, TermoEnvio } from './types';
 
 const ativo = (p: Processo) => p.stat !== 'finalizado' && p.stat !== 'arquivado';
 
@@ -192,3 +192,20 @@ export const saudacao = (): string => {
   if (h < 18) return 'Boa tarde,';
   return 'Boa noite,';
 };
+
+// ----- Termos de Concordância (espelha js/termos.js do site) -----
+/** Envio ao gabinete que vale para o processo: o mais recente não cancelado. */
+export function termoAtivo(p: Processo): TermoEnvio | null {
+  const lista = p.termos ?? [];
+  for (let i = lista.length - 1; i >= 0; i--) if (!lista[i].cancelamento) return lista[i];
+  return null;
+}
+
+/** Dias corridos desde o envio (até a devolução, se já voltou). */
+export function diasDoTermo(t: TermoEnvio, hoje: Date = todayUTC()): number | null {
+  const ini = parseYMD(t.dataEnvio);
+  if (!ini) return null;
+  const fim = t.devolucao ? parseYMD(t.devolucao.data) : hoje;
+  return fim ? diffDays(ini, fim) : null;
+}
+

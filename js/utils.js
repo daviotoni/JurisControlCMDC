@@ -20,8 +20,8 @@ const sanitizeHTML = (str) => {
 };
 
 // Whitelists de valores válidos para classes CSS dinâmicas (evita injeção via Firestore).
-const VALID_STATS = new Set(['pendente', 'em-analise', 'aguardando-documentacao', 'em-diligencia', 'finalizado', 'arquivado']);
-const VALID_ACAO  = new Set(['criado', 'editado', 'excluido', 'parecer-criado', 'parecer-editado', 'parecer-emitido', 'parecer-reaberto', 'parecer-enviado-revisao', 'parecer-devolvido']);
+const VALID_STATS = new Set(['pendente', 'em-analise', 'aguardando-documentacao', 'aguardando-gabinete', 'em-diligencia', 'finalizado', 'arquivado']);
+const VALID_ACAO  = new Set(['criado', 'editado', 'excluido', 'parecer-criado', 'parecer-editado', 'parecer-emitido', 'parecer-reaberto', 'parecer-enviado-revisao', 'parecer-devolvido', 'termo-enviado', 'termo-cobrado', 'termo-recebido', 'termo-devolvido', 'termo-editado', 'termo-cancelado']);
 // Estados do fluxo de revisão do parecer (whitelist p/ classe CSS do badge).
 const VALID_PARECER_STATUS = new Set(['rascunho', 'em-revisao', 'emitido']);
 const VALID_CAT   = new Set(['g', 'a', 'r', 'p', 'u', 'e', 'o']);
