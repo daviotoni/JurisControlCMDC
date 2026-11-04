@@ -1297,6 +1297,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const quill = ensureParecerQuill();
       const alvo = String(trecho || '').trim();
       if (!alvo) return;
+      // O trecho pode ser da ementa (campo próprio, fora do editor).
+      const ementa = $('#pz_ementa');
+      const posEmenta = ementa ? ementa.value.toLowerCase().indexOf(alvo.toLowerCase()) : -1;
+      if (posEmenta >= 0) {
+          ementa.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          ementa.focus();
+          ementa.setSelectionRange(posEmenta, posEmenta + alvo.length);
+          return;
+      }
       const texto = quill.getText();
       let idx = texto.indexOf(alvo);
       if (idx < 0) idx = texto.toLowerCase().indexOf(alvo.toLowerCase());

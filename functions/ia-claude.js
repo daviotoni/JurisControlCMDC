@@ -321,9 +321,12 @@ const SISTEMA_EXTRACAO =
   'do cadastro. Regras: (1) Copie o número do processo exatamente como aparece ' +
   '(ex.: "1305/2026" ou o número CNJ completo de um processo judicial). (2) tipo é ' +
   '"judicial" quando há processo em tribunal (número CNJ, vara, intimação judicial); ' +
-  'senão "administrativo". (3) interessado é quem pede ou é parte principal (ex.: ' +
-  '"Vereador Fulano de Tal", "Secretaria Geral"). (4) objeto é um resumo objetivo, de ' +
-  'uma a duas frases, do que o processo trata. (5) setorOrigem deve ser UM dos ' +
+  'senão "administrativo". (3) interessado: em projeto de lei, indicação ou ' +
+  'requerimento de vereador, é o VEREADOR AUTOR (ex.: "Vereador Fulano de Tal"), mesmo ' +
+  'que o ofício venha de outro setor; nos demais casos, quem pede ou é a parte ' +
+  'principal. (4) objeto começa pela espécie e número do ato, quando houver (ex.: ' +
+  '"Projeto de Lei nº 77/2026"), seguido de uma frase curta sobre o que trata; não ' +
+  'repita "solicitação de parecer". (5) setorOrigem deve ser UM dos ' +
   'setores da lista fornecida, copiado exatamente, ou "" se nenhum couber. (6) ' +
   'prazoDias só quando o documento fixar um prazo em dias para a resposta; senão 0. ' +
   'prazoContagem: "uteis" ou "corridos" conforme o documento, "" se não disser. (7) ' +
