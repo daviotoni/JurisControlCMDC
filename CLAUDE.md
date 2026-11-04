@@ -75,6 +75,11 @@ Atualizar: `npx skills add <repo> --skill <nome> -a claude-code --copy -y`.
 App estático (HTML/CSS/JS puro) + Firebase (Auth, Firestore, Storage).
 Arquivos principais: `index.html`, `style.css`, `js/app.js`.
 
+Assistente IA: função `assistente` com dois fornecedores, Claude
+(`functions/ia-claude.js`, chave em `segredos/claude`) e Gemini; a escolha
+fica em `segredos/ia` (ver DEPLOY.md). Mudou a função? Precisa de
+`firebase deploy --only functions`, o push não basta.
+
 ### Camada de movimento (animações)
 
 Opcional e desligável — se falhar ou for desligada, o app fica igual ao de antes:

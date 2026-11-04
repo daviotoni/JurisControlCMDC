@@ -118,6 +118,44 @@ Notas:
   externas deve ser validada após o deploy (o sandbox de desenvolvimento não
   alcança lexml.gov.br / datajud.cnj.jus.br).
 
+## Assistente de IA (Cloud Function `assistente`)
+
+O botão **Assistente IA** do editor de parecer chama a função
+`functions/assistente`, que responde com o **Claude** (API da Anthropic,
+`functions/ia-claude.js`) ou com o **Gemini** (`functions/index.js`). O
+admin escolhe em **Configurações → Assistente de IA (Claude)**:
+
+- **Fornecedor:** Automático (Claude se houver chave, senão Gemini), Claude
+  ou Gemini. Fica em `segredos/ia` (`{ provedor, modelo }`).
+- **Modelo do Claude:** Opus 5.5 (padrão, melhor qualidade) ou Sonnet 5.5
+  (metade do preço por token).
+- **Chave:** `segredos/claude` (campo `token`). A chave do Gemini continua em
+  `segredos/gemini`. A coleção `segredos` é só de admin nas rules; a função
+  lê pelo Admin SDK.
+
+**Chave do Claude:** criar em platform.claude.com → API Keys, de preferência
+num workspace próprio (`JurisControl`) com **limite de gasto mensal**
+(Settings → Workspaces → Limits). Os créditos promocionais de API do plano Max
+são resgatados em claude.ai → Settings → Billing e aparecem em
+platform.claude.com → Settings → Billing. Gasto: platform.claude.com/cost.
+
+Detalhes do Claude: raciocínio com esforço `high` nos dois modos; copiloto com
+saída estruturada (JSON `{ mensagem, edicoes }` garantido pela API) e a
+ferramenta `buscar_jurisprudencia` (até 3 rodadas); recusa pelos filtros de
+segurança tenta de novo no servidor (`fallbacks: "default"`); erros 401, 402 /
+"credit balance", 429 e 5xx viram mensagens em português. A função tem
+`timeoutSeconds: 540`.
+
+> **Publicar** (a função NÃO sai com o push na `main`):
+> ```bash
+> cd functions && npm install && cd ..
+> firebase deploy --only functions --token "<TOKEN>" --project juriscontrolcmdc
+> ```
+> Pela rede da Câmara, definir antes as variáveis do proxy (seção abaixo).
+
+Testes offline (cliente falso, sem gastar crédito):
+`test/web/ia-claude.test.js`.
+
 ## Deploy no Firebase (manual)
 
 ```bash
