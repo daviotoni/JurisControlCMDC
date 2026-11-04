@@ -1268,6 +1268,192 @@ document.addEventListener('DOMContentLoaded', () => {
       if (el && IA_AVISOS[provedor]) el.innerHTML = IA_AVISOS[provedor];
   }
 
+  // Chamada à função `assistente` para os recursos fora do chat (cadastro de
+  // processo, revisão final). Devolve o JSON ou lança Error com a mensagem
+  // em português que a função mandou.
+  async function chamarFuncaoIA(corpo) {
+      const usuarioFb = window.auth?.currentUser;
+      if (!usuarioFb) throw new Error('Sessão expirada — entre novamente no sistema.');
+      const token = await usuarioFb.getIdToken();
+      let resp;
+      try {
+          resp = await fetch(IA_FUNCTION_URL, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(corpo),
+          });
+      } catch {
+          throw new Error('Não consegui falar com o servidor da IA. Confira a internet e tente de novo.');
+      }
+      const dados = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(dados.erro || `A IA não respondeu (erro ${resp.status}).`);
+      return dados;
+  }
+
+  // ===== Revisão final do parecer (botão no rodapé do editor) =====
+  // A IA lê o parecer inteiro e aponta o que corrigir antes de emitir. Não
+  // altera o texto; cada ponto com trecho leva o cursor até o lugar.
+  function localizarTrechoNoParecer(trecho) {
+      const quill = ensureParecerQuill();
+      const alvo = String(trecho || '').trim();
+      if (!alvo) return;
+      // O trecho pode ser da ementa (campo próprio, fora do editor).
+      const ementa = $('#pz_ementa');
+      const posEmenta = ementa ? ementa.value.toLowerCase().indexOf(alvo.toLowerCase()) : -1;
+      if (posEmenta >= 0) {
+          ementa.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          ementa.focus();
+          ementa.setSelectionRange(posEmenta, posEmenta + alvo.length);
+          return;
+      }
+      const texto = quill.getText();
+      let idx = texto.indexOf(alvo);
+      if (idx < 0) idx = texto.toLowerCase().indexOf(alvo.toLowerCase());
+      if (idx < 0) { showToast('Não achei esse trecho exato no texto — ele pode ter sido alterado.', 'info'); return; }
+      quill.setSelection(idx, alvo.length, 'user');
+      const linha = quill.getBounds(idx);
+      const mod = $('#m_parecer');
+      if (linha && mod) {
+          const topoEditor = quill.root.getBoundingClientRect().top + mod.scrollTop - mod.getBoundingClientRect().top;
+          mod.scrollTo({ top: Math.max(0, topoEditor + linha.top - 120), behavior: 'smooth' });
+      }
+  }
+
+  async function revisarParecerIA() {
+      const quill = ensureParecerQuill();
+      const texto = quill.getText().trim();
+      if (!texto) { showToast('O parecer está vazio — escreva antes de pedir a revisão.', 'info'); return; }
+      const btn = $('#btnRevisaoFinalIA');
+      toggleIaPanel(true);
+      renderIaMsg('user', 'Revisão final do parecer');
+      const aguarde = renderIaMsg('ia', '<em>Lendo o parecer inteiro… pode levar até um minuto.</em>');
+      if (btn) btn.disabled = true;
+      try {
+          const dados = await chamarFuncaoIA({
+              modo: 'revisar_parecer',
+              contexto: {
+                  processoNum: currentParecerProcesso?.num || currentParecerRecord?.processoNum || '',
+                  ementa: $('#pz_ementa')?.value || '',
+                  secoes: listarSecoesDoParecer().map(sec => sec.titulo),
+                  texto: quill.getText().slice(0, 60000),
+              },
+          });
+          atualizarAvisoIA(dados.provedor);
+          const pontos = dados.pontos || [];
+          const rotulo = { alta: 'Corrigir antes de emitir', media: 'Corrigir', baixa: 'Recomendação' };
+          let html = `<div class="ia-rev-resumo">${sanitizeHTML(dados.resumo || (pontos.length ? `${pontos.length} ponto(s) para conferir:` : 'Nenhum problema relevante encontrado.'))}</div>`;
+          pontos.forEach((p, i) => {
+              html += `<div class="ia-rev-item ia-rev-${sanitizeHTML(p.gravidade)}">` +
+                  `<div class="ia-rev-cab"><span class="ia-rev-grav">${sanitizeHTML(rotulo[p.gravidade] || p.gravidade)}</span>` +
+                  (p.secao ? `<span class="ia-rev-secao">${sanitizeHTML(p.secao)}</span>` : '') + `</div>` +
+                  `<div>${sanitizeHTML(p.problema)}</div>` +
+                  (p.sugestao ? `<div class="ia-rev-sug">${sanitizeHTML(p.sugestao)}</div>` : '') +
+                  (p.trecho ? `<button type="button" class="ia-rev-trecho" data-rev-idx="${i}">Mostrar no texto: “${sanitizeHTML(p.trecho)}”</button>` : '') +
+                  `</div>`;
+          });
+          const caixa = aguarde.querySelector('div');
+          caixa.innerHTML = html;
+          caixa.querySelectorAll('[data-rev-idx]').forEach(b => {
+              b.onclick = () => localizarTrechoNoParecer(pontos[Number(b.dataset.revIdx)].trecho);
+          });
+          // Entra no histórico para dar para pedir em seguida "corrija o ponto 2".
+          const resumoTxt = [dados.resumo || '', ...pontos.map((p, i) => `${i + 1}. [${p.gravidade}] ${p.secao ? p.secao + ': ' : ''}${p.problema} ${p.sugestao || ''}`)].join('\n').trim();
+          historicoIA.push({ papel: 'usuario', texto: 'Faça a revisão final do parecer.' }, { papel: 'ia', texto: resumoTxt });
+      } catch (e) {
+          console.warn('Revisão final indisponível:', e);
+          aguarde.querySelector('div').innerHTML = sanitizeHTML(e.message);
+      } finally {
+          if (btn) btn.disabled = false;
+          const chat = $('#iaChat'); if (chat) chat.scrollTop = chat.scrollHeight;
+      }
+  }
+
+  // ===== Cadastro de processo: preencher a partir do documento =====
+  // Lê o arquivo no navegador (PDF e foto vão em base64; Word vira texto pelo
+  // mammoth), manda para a IA e preenche só os campos VAZIOS do formulário.
+  const IA_ARQ_MAX = 10 * 1024 * 1024;
+  function lerArquivoBase64(arquivo) {
+      return new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(String(fr.result).split(',')[1] || '');
+          fr.onerror = () => reject(new Error('Não consegui ler o arquivo.'));
+          fr.readAsDataURL(arquivo);
+      });
+  }
+
+  async function prepararArquivoIA(arquivo) {
+      const nome = (arquivo.name || '').toLowerCase();
+      const mime = arquivo.type || '';
+      if (mime === 'application/pdf' || nome.endsWith('.pdf')) return { tipo: 'pdf', dados: await lerArquivoBase64(arquivo) };
+      if (['image/jpeg', 'image/png', 'image/webp'].includes(mime)) return { tipo: 'imagem', mime, dados: await lerArquivoBase64(arquivo) };
+      if (nome.endsWith('.docx')) {
+          if (!window.mammoth) throw new Error('O leitor de Word não carregou. Recarregue a página e tente de novo.');
+          const r = await mammoth.extractRawText({ arrayBuffer: await arquivo.arrayBuffer() });
+          return { tipo: 'texto', texto: r.value || '' };
+      }
+      if (nome.endsWith('.txt') || mime.startsWith('text/')) return { tipo: 'texto', texto: await arquivo.text() };
+      if (nome.endsWith('.doc')) throw new Error('Arquivo .doc antigo: salve como .docx ou PDF e envie de novo.');
+      throw new Error('Formato não aceito. Use PDF, Word (.docx), TXT ou foto (JPG/PNG).');
+  }
+
+  async function lerDocumentoProcessoIA() {
+      const input = $('#fp_arquivo'), status = $('#iaExtrairStatus'), btn = $('#btnLerDocumentoIA');
+      const arquivo = input?.files && input.files[0];
+      if (!arquivo) { showToast('Escolha o arquivo do documento primeiro.', 'info'); input?.focus(); return; }
+      if (arquivo.size > IA_ARQ_MAX) { showToast('Arquivo grande demais (máx. 10 MB). Envie só as páginas principais.', 'danger'); return; }
+      const form = $('#f_proc');
+      if (btn) { btn.disabled = true; btn.textContent = 'Lendo…'; }
+      if (status) status.textContent = 'Lendo o documento… costuma levar de 10 a 30 segundos.';
+      try {
+          const dados = (await chamarFuncaoIA({ modo: 'extrair_processo', arquivo: await prepararArquivoIA(arquivo), setores: SETORES })).dados || {};
+          const novo = !form.elements.id.value;
+          const preenchidos = [], mantidos = [];
+          const marcar = (el) => {
+              el.classList.add('ia-preenchido');
+              el.addEventListener('input', () => el.classList.remove('ia-preenchido'), { once: true });
+              el.addEventListener('change', () => el.classList.remove('ia-preenchido'), { once: true });
+          };
+          const preencher = (sel, valor, rotulo, sobrescrever = false) => {
+              const el = $(sel);
+              if (!el || valor === '' || valor == null || valor === 0) return;
+              if (String(el.value || '').trim() && !sobrescrever) {
+                  if (String(el.value).trim() !== String(valor).trim()) mantidos.push(rotulo);
+                  return;
+              }
+              el.value = valor;
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+              marcar(el);
+              preenchidos.push(rotulo);
+          };
+          preencher('#fp_num', dados.numero, 'Nº do processo');
+          // O tipo sempre tem um valor no formulário; num processo novo a IA decide.
+          preencher('#fp_tipo', dados.tipo, 'Tipo', novo);
+          preencher('#fp_int', dados.interessado, 'Interessado');
+          preencher('#fp_origem', dados.setorOrigem, 'Setor de origem');
+          preencher('#fp_obj', dados.objeto, 'Objeto');
+          if (dados.prazoDias) {
+              preencher('#fp_pdias', String(dados.prazoDias), 'Dias de prazo');
+              // A contagem é um select (sempre tem valor): só troca se a IA
+              // acabou de preencher os dias.
+              const diasDaIA = $('#fp_pdias')?.classList.contains('ia-preenchido');
+              if (dados.prazoContagem && diasDaIA) preencher('#fp_pcont', dados.prazoContagem, 'Contagem do prazo', true);
+          }
+          let msg = preenchidos.length
+              ? `Preenchi: ${preenchidos.join(', ')}. Os campos marcados vieram da IA — confira antes de salvar.`
+              : 'A IA não encontrou dados novos para os campos vazios.';
+          if (mantidos.length) msg += ` Mantive o que você já tinha digitado em: ${mantidos.join(', ')}.`;
+          if (dados.prazoDias) msg += ' Para calcular o prazo final, informe o início da contagem.';
+          if (dados.observacao) msg += ` Atenção: ${dados.observacao}`;
+          if (status) status.textContent = msg;
+      } catch (e) {
+          console.warn('Leitura do documento falhou:', e);
+          if (status) status.textContent = e.message;
+      } finally {
+          if (btn) { btn.disabled = false; btn.textContent = 'Ler documento'; }
+      }
+  }
+
   // Posição no editor onde o conteúdo dos painéis auxiliares (IA, jurisprudência)
   // será inserido — capturada AO ABRIR o painel (última posição do cursor no
   // editor; se não houver, o fim do documento). Evita que o texto caia no topo,
@@ -1713,6 +1899,10 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btnInserirCitacao').onclick = inserirCitacaoNoParecer;
   // Copiloto IA (painel lateral)
   $('#btnAssistenteIA').onclick = () => toggleIaPanel();
+  const btnRevisaoFinal = $('#btnRevisaoFinalIA');
+  if (btnRevisaoFinal) btnRevisaoFinal.onclick = revisarParecerIA;
+  const btnLerDoc = $('#btnLerDocumentoIA');
+  if (btnLerDoc) btnLerDoc.onclick = lerDocumentoProcessoIA;
   const btnFecharIa = $('#btnFecharIaPanel');
   if (btnFecharIa) btnFecharIa.onclick = () => toggleIaPanel(false);
   $('#btnGerarIA').onclick = enviarIA;
@@ -2951,6 +3141,9 @@ document.addEventListener('DOMContentLoaded', () => {
         del.style.display = 'none';
     }
     ligarCalculoPrazo(form, procAtual);
+    // Quadro "Preencher com IA": começa limpo a cada abertura.
+    const iaStatus = $('#iaExtrairStatus'); if (iaStatus) iaStatus.textContent = '';
+    form.querySelectorAll('.ia-preenchido').forEach(el => el.classList.remove('ia-preenchido'));
     
     form.onsubmit = async (e) => {
         e.preventDefault();
