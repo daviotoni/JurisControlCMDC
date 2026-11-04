@@ -607,6 +607,32 @@
                         <p id="jurisaiTokenStatus" class="cfg-note" style="margin-top:0.5rem;"></p>
                     </div>
                     <div class="card admin-only">
+                        <h3>Assistente de IA (Claude)</h3>
+                        <p class="cfg-note">Cole a chave da API da Anthropic (<code>sk-ant-...</code>), criada em <code>platform.claude.com</code> → API Keys, de preferência num workspace próprio com limite de gasto mensal. Ela fica guardada no banco (visível só para administradores) e nunca é exibida de novo.</p>
+                        <p class="cfg-note">Pelos termos comerciais da API, a Anthropic não usa o conteúdo enviado para treinar modelos. Mesmo assim, evite incluir dados pessoais que não sejam necessários ao parecer.</p>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                            <input id="claudeToken" type="password" class="input" placeholder="sk-ant-..." autocomplete="off" style="flex:1; min-width:200px;">
+                            <button id="btnSalvarClaudeToken" class="btn primary">Salvar chave</button>
+                        </div>
+                        <p id="claudeTokenStatus" class="cfg-note" style="margin-top:0.5rem;"></p>
+                        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end; margin-top:0.75rem;">
+                            <label class="cfg-note" style="display:flex; flex-direction:column; gap:0.25rem; margin:0;">Fornecedor
+                                <select id="iaProvedor" class="select">
+                                    <option value="auto">Automático (Claude se houver chave)</option>
+                                    <option value="claude">Claude</option>
+                                    <option value="gemini">Gemini</option>
+                                </select>
+                            </label>
+                            <label class="cfg-note" style="display:flex; flex-direction:column; gap:0.25rem; margin:0;">Modelo do Claude
+                                <select id="iaModelo" class="select">
+                                    <option value="claude-opus-5-5">Opus 5.5 — melhor qualidade</option>
+                                    <option value="claude-sonnet-5-5">Sonnet 5.5 — metade do custo</option>
+                                </select>
+                            </label>
+                            <button id="btnSalvarIaPreferencia" class="btn secondary">Salvar escolha</button>
+                        </div>
+                    </div>
+                    <div class="card admin-only">
                         <h3>Assistente de IA (Gemini)</h3>
                         <p class="cfg-note">Cole a chave da API do Gemini (<code>AQ....</code> ou <code>AIza...</code>). Crie uma <strong>gratuita</strong> em <code>aistudio.google.com/apikey</code>, escolhendo um <strong>projeto sem cobrança</strong> (para não gerar custo). Ela fica guardada no banco (visível só para administradores) e habilita o botão <strong>Assistente IA</strong> no editor de parecer.</p>
                         <p class="cfg-note cfg-aviso"><strong>Modo gratuito:</strong> o Google pode usar o conteúdo enviado para treinar seus modelos. <strong>Não envie dados sigilosos ou pessoais de processos</strong> (nomes, CPF, endereços). Use para temas, redação e revisão de texto.</p>
@@ -799,7 +825,7 @@
                     <span>Assistente IA</span>
                     <button type="button" class="icon-btn" id="btnFecharIaPanel" title="Fechar painel" aria-label="Fechar painel">✕</button>
                 </div>
-                <div class="ia-aviso ia-aviso-panel">O texto do parecer é enviado ao Gemini (modo gratuito — o Google pode usar o conteúdo para treinar). <strong>Evite dados sigilosos/pessoais.</strong> As alterações da IA podem ser desfeitas com Ctrl+Z.</div>
+                <div id="iaAvisoPanel" class="ia-aviso ia-aviso-panel">O texto do parecer é enviado ao serviço de IA escolhido em Configurações. <strong>Evite dados sigilosos/pessoais.</strong> As alterações da IA podem ser desfeitas com Ctrl+Z.</div>
                 <div id="iaChat" class="ia-chat"></div>
                 <div class="ia-chips">
                     <button type="button" class="btn secondary" data-ia-chip="Redija a seção II. DA ANÁLISE JURÍDICA com os fundamentos aplicáveis ao caso.">Redigir análise</button>
@@ -1058,7 +1084,7 @@
     <script src="js/assets.js?v=fcc6026ae0"></script>
     <script src="js/fonts-garamond.js?v=4d53f23d56"></script>
     <script src="js/motion.js?v=0559776488"></script>
-    <script src="js/app.js?v=ef98c44c9e"></script>
+    <script src="js/app.js?v=b7f4961cf8"></script>
 
 </body>
 </html>

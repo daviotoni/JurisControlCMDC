@@ -1246,10 +1246,27 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.textContent = clamped ? 'ver mais ▾' : 'ver menos ▴';
   }
 
-  // ===== Assistente de IA (Gemini) — apoio à redação =====
-  // Chama a Cloud Function `assistente` (proxy do Gemini). Degrada com mensagem
-  // amigável se a função não estiver publicada ou a chave não estiver configurada.
+  // ===== Assistente de IA (Claude ou Gemini) — apoio à redação =====
+  // Chama a Cloud Function `assistente`, que usa o fornecedor escolhido pelo
+  // admin em Configurações. Degrada com mensagem amigável se a função não
+  // estiver publicada ou a chave não estiver configurada.
   const IA_FUNCTION_URL = 'https://us-central1-juriscontrolcmdc.cloudfunctions.net/assistente';
+
+  // Aviso do painel conforme o fornecedor que respondeu por último (a função
+  // devolve `provedor`). Fica lembrado neste navegador só por conveniência.
+  const IA_AVISOS = {
+      claude: 'O texto do parecer é enviado ao Claude (Anthropic). Pelos termos comerciais da API, o conteúdo não é usado para treinar modelos; ainda assim, <strong>evite dados pessoais desnecessários.</strong> As alterações da IA podem ser desfeitas com Ctrl+Z.',
+      gemini: 'O texto do parecer é enviado ao Gemini (modo gratuito — o Google pode usar o conteúdo para treinar). <strong>Evite dados sigilosos/pessoais.</strong> As alterações da IA podem ser desfeitas com Ctrl+Z.',
+  };
+  function atualizarAvisoIA(provedor) {
+      if (!IA_AVISOS[provedor]) {
+          try { provedor = localStorage.getItem('jc-ia-provedor'); } catch { provedor = null; }
+      } else {
+          try { localStorage.setItem('jc-ia-provedor', provedor); } catch { /* sem armazenamento local */ }
+      }
+      const el = $('#iaAvisoPanel');
+      if (el && IA_AVISOS[provedor]) el.innerHTML = IA_AVISOS[provedor];
+  }
 
   // Posição no editor onde o conteúdo dos painéis auxiliares (IA, jurisprudência)
   // será inserido — capturada AO ABRIR o painel (última posição do cursor no
@@ -1313,6 +1330,7 @@ document.addEventListener('DOMContentLoaded', () => {
       panel.style.display = abrir ? '' : 'none';
       const dialog = $('#m_parecer .parecer-dialog');
       if (dialog) dialog.classList.toggle('com-ia', abrir);
+      if (abrir) atualizarAvisoIA();
       if (abrir) $('#ia_prompt')?.focus();
   }
 
@@ -1431,6 +1449,7 @@ document.addEventListener('DOMContentLoaded', () => {
               throw new Error(corpo.erro || `HTTP_${resp.status}`);
           }
           const dados = await resp.json();
+          atualizarAvisoIA(dados.provedor);
           historicoIA.push({ papel: 'usuario', texto: prompt }, { papel: 'ia', texto: dados.mensagem || '' });
 
           const feitos = [];
@@ -1455,7 +1474,7 @@ document.addEventListener('DOMContentLoaded', () => {
           console.warn('Copiloto indisponível:', e);
           const rede = !e.message || /failed to fetch|networkerror|load failed|HTTP_404/i.test(e.message);
           aguarde.querySelector('div').innerHTML = sanitizeHTML(rede
-              ? 'O Assistente IA ainda não está ativo (a função não foi publicada no Firebase ou a chave do Gemini não foi configurada). Um administrador precisa ativá-lo em Configurações.'
+              ? 'O Assistente IA ainda não está ativo (a função não foi publicada no Firebase ou a chave da IA não foi configurada). Um administrador precisa ativá-lo em Configurações.'
               : e.message);
       } finally {
           if (btn) btn.disabled = false;
@@ -1828,7 +1847,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(key==='leis') renderLeis();
     if(key==='juris') { initJurisAba(); $('#jr_tema_aba')?.focus(); }
-    if(key==='cfg') { renderUsers(); renderEmissores(); renderVereadoresCfg(); renderAuditoria(); renderJurisaiTokenCard(); renderGeminiTokenCard(); renderFeriadosCfg(); }
+    if(key==='cfg') { renderUsers(); renderEmissores(); renderVereadoresCfg(); renderAuditoria(); renderJurisaiTokenCard(); renderClaudeTokenCard(); renderGeminiTokenCard(); renderFeriadosCfg(); }
   }
 
   const statusMap = {'pendente':'Pendente','em-analise':'Em Análise','aguardando-documentacao':'Aguardando Documentação','aguardando-gabinete':'Aguardando gabinete','em-diligencia':'Em Diligência', 'finalizado':'Finalizado','arquivado':'Arquivado'};
@@ -4968,6 +4987,64 @@ ${corpo}
       showToast('Token salvo! A busca pelo Jurisprudências.ai já pode ser usada.');
   }
 
+  // ===== Cartão do Claude (Configurações, admin) =====
+  // A chave fica em segredos/claude e a escolha de fornecedor/modelo em
+  // segredos/ia (admin-only nas rules); a Cloud Function `assistente` lê ambos
+  // via Admin SDK. A chave nunca volta para a tela — só se diz se existe.
+  async function renderClaudeTokenCard() {
+      const statusEl = $('#claudeTokenStatus'); if (!statusEl) return;
+      if (!isAdminSession()) return;
+      try {
+          const [doc, cfg] = await Promise.all([dbHelper.get('segredos', 'claude'), dbHelper.get('segredos', 'ia')]);
+          const tem = !!(doc && doc.token);
+          const quando = tem && doc.atualizadoEm ? ` em ${new Date(doc.atualizadoEm).toLocaleDateString('pt-BR')}` : '';
+          statusEl.textContent = tem
+              ? `Chave configurada (salva${quando}). Cole uma nova para substituir.`
+              : 'Nenhuma chave configurada ainda. Sem ela, o Assistente IA usa o Gemini.';
+          const prov = $('#iaProvedor'), mod = $('#iaModelo');
+          if (prov) prov.value = (cfg && ['auto', 'claude', 'gemini'].includes(cfg.provedor)) ? cfg.provedor : 'auto';
+          if (mod) mod.value = (cfg && ['claude-opus-5-5', 'claude-sonnet-5-5'].includes(cfg.modelo)) ? cfg.modelo : 'claude-opus-5-5';
+      } catch (e) {
+          console.warn('Sem acesso à configuração do Claude:', e);
+          statusEl.textContent = 'Não foi possível verificar a chave (recurso de administrador).';
+      }
+  }
+
+  async function salvarClaudeToken() {
+      const input = $('#claudeToken'); if (!input) return;
+      const chave = input.value.trim();
+      if (!chave.startsWith('sk-ant-') || chave.length < 40) {
+          showToast('Chave inválida — cole a chave completa da API da Anthropic (começa com "sk-ant-"), criada em platform.claude.com → API Keys.', 'danger');
+          input.focus();
+          return;
+      }
+      try {
+          await dbHelper.put('segredos', { id: 'claude', token: chave, atualizadoEm: new Date().toISOString() });
+      } catch (e) {
+          console.error('Erro ao salvar chave do Claude:', e);
+          showToast('Sem permissão para salvar a chave (recurso de administrador).', 'danger');
+          return;
+      }
+      input.value = '';
+      await logAuditoria('integracoes', 'editado', 'Chave da API do Claude');
+      renderClaudeTokenCard();
+      showToast('Chave salva! O Assistente IA passa a usar o Claude (após o deploy da função).');
+  }
+
+  async function salvarIaPreferencia() {
+      const provedor = $('#iaProvedor')?.value || 'auto';
+      const modelo = $('#iaModelo')?.value || 'claude-opus-5-5';
+      try {
+          await dbHelper.put('segredos', { id: 'ia', provedor, modelo, atualizadoEm: new Date().toISOString() });
+      } catch (e) {
+          console.error('Erro ao salvar a escolha da IA:', e);
+          showToast('Sem permissão para salvar (recurso de administrador).', 'danger');
+          return;
+      }
+      await logAuditoria('integracoes', 'editado', `Assistente IA: ${provedor} / ${modelo}`);
+      showToast('Escolha salva. Vale a partir do próximo pedido ao Assistente IA.');
+  }
+
   // ===== Cartão da chave do Gemini (Configurações, admin) =====
   // A chave fica em segredos/gemini (admin-only nas rules); a Cloud Function
   // `assistente` a lê via Admin SDK para chamar a API do Gemini.
@@ -5732,6 +5809,10 @@ ${corpo}
     if (btnJurisaiTk) btnJurisaiTk.onclick = salvarJurisaiToken;
     const btnGeminiTk = $('#btnSalvarGeminiToken');
     if (btnGeminiTk) btnGeminiTk.onclick = salvarGeminiToken;
+    const btnClaudeTk = $('#btnSalvarClaudeToken');
+    if (btnClaudeTk) btnClaudeTk.onclick = salvarClaudeToken;
+    const btnIaPref = $('#btnSalvarIaPreferencia');
+    if (btnIaPref) btnIaPref.onclick = salvarIaPreferencia;
 
     setupEnhancedNav();
     ligarBuscaGlobal();

@@ -16,6 +16,10 @@ const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const { getFirestore } = require('firebase-admin/firestore');
 const { normalizarLexml, normalizarDatajud, normalizarDatajudMovimentos, normalizarJurisai } = require('./normalizadores');
+const {
+  escolherProvedor, montarContextoCopiloto, extrairJsonDaResposta, mapearErroClaude,
+  criarClienteClaude, claudeSimples, claudeCopiloto,
+} = require('./ia-claude');
 
 initializeApp();
 
@@ -193,7 +197,10 @@ exports.juris = onRequest(
   }
 );
 
-// ===== Assistente de IA (Gemini) — apoio à redação de pareceres ===============
+// ===== Assistente de IA (Claude ou Gemini) — apoio à redação de pareceres =====
+// O admin escolhe o fornecedor em Configurações (segredos/ia). O Claude fica em
+// functions/ia-claude.js; abaixo, o Gemini e o que é comum aos dois (prompts de
+// sistema, ferramenta de jurisprudência, travas de tamanho).
 // Proxy para a API do Gemini (Google). A chave fica em segredos/gemini (coleção
 // admin-only nas rules); o Admin SDK a lê direto. MODO GRATUITO recomendado:
 // crie a chave num projeto SEM cobrança em aistudio.google.com — nesse tier o
@@ -225,6 +232,19 @@ async function lerChaveGemini() {
     throw erroCliente(424, 'Chave da API do Gemini não configurada. Um administrador precisa colá-la em Configurações → Assistente de IA (Gemini).');
   }
   return chave;
+}
+
+// ----- Claude (Anthropic) — fornecedor alternativo, ver functions/ia-claude.js
+// Chave em segredos/claude (campo token); escolha do fornecedor e do modelo em
+// segredos/ia ({ provedor: 'auto'|'claude'|'gemini', modelo }). Ambos admin-only.
+async function lerChaveClaude() {
+  const doc = await getFirestore().collection('segredos').doc('claude').get();
+  return doc.exists ? String(doc.data().token || '').trim() : '';
+}
+
+async function lerConfigIA() {
+  const doc = await getFirestore().collection('segredos').doc('ia').get();
+  return doc.exists ? doc.data() : {};
 }
 
 async function chamarGemini(sistema, prompt) {
@@ -308,17 +328,6 @@ const IA_FERRAMENTAS = [{
   }],
 }];
 
-// Extrai o primeiro objeto JSON de um texto (tolerante a cercas ```json ... ```).
-function extrairJsonDaResposta(texto) {
-  const limpo = String(texto).replace(/```json/gi, '```').replace(/```/g, '').trim();
-  try { return JSON.parse(limpo); } catch (e) { /* tenta pelo recorte abaixo */ }
-  const ini = limpo.indexOf('{'), fim = limpo.lastIndexOf('}');
-  if (ini >= 0 && fim > ini) {
-    try { return JSON.parse(limpo.slice(ini, fim + 1)); } catch (e) { /* cai no fallback */ }
-  }
-  return null;
-}
-
 // Executa a ferramenta pedida pelo modelo. Nunca lança: devolve { erro } para o
 // modelo poder se explicar ao usuário (ex.: token não configurado, cota do dia).
 async function executarFerramentaIA(nome, args, fontes) {
@@ -379,13 +388,7 @@ async function chamarCopiloto(contexto, historico, prompt) {
   const chave = await lerChaveGemini();
   const fontes = [];
 
-  const secoes = (contexto.secoes || []).map(s => `- ${s}`).join('\n') || '(nenhuma seção identificada)';
-  const contextoTxt =
-    `CONTEXTO DO DOCUMENTO\n` +
-    `Processo: ${contexto.processoNum || '(sem número)'}\n` +
-    `Ementa atual: ${contexto.ementa || '(vazia)'}\n` +
-    `Seções do parecer:\n${secoes}\n\n` +
-    `TEXTO ATUAL DO PARECER:\n"""\n${String(contexto.texto || '').slice(0, IA_MAX_DOC)}\n"""`;
+  const contextoTxt = montarContextoCopiloto(contexto, IA_MAX_DOC);
 
   const contents = [];
   (historico || []).slice(-8).forEach(m => {
@@ -425,8 +428,10 @@ async function chamarCopiloto(contexto, historico, prompt) {
   return { mensagem: texto, edicoes: [], fontes };
 }
 
+// O Claude com raciocínio "high" e até 3 buscas de jurisprudência pode levar
+// alguns minutos; 540 s dá folga (o Gemini continua respondendo bem antes).
 exports.assistente = onRequest(
-  { region: 'us-central1', maxInstances: 2, timeoutSeconds: 120, memory: '256MiB' },
+  { region: 'us-central1', maxInstances: 2, timeoutSeconds: 540, memory: '256MiB' },
   async (req, res) => {
     aplicarCors(req, res);
     if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
@@ -449,22 +454,50 @@ exports.assistente = onRequest(
       return;
     }
 
+    let provedor = 'gemini';
     try {
-      // Modo copiloto (novo): o front envia o contexto do documento e recebe
+      const [cfg, chaveClaude] = await Promise.all([lerConfigIA(), lerChaveClaude()]);
+      const escolha = escolherProvedor(cfg, Boolean(chaveClaude));
+      provedor = escolha.provedor;
+      const ehCopiloto = Boolean(corpo.contexto && typeof corpo.contexto === 'object');
+
+      if (provedor === 'claude') {
+        if (!chaveClaude) {
+          throw erroCliente(424, 'Chave da API do Claude não configurada. Um administrador precisa colá-la em Configurações → Assistente de IA (Claude).');
+        }
+        const client = criarClienteClaude(chaveClaude);
+        if (ehCopiloto) {
+          const contextoTxt = montarContextoCopiloto(corpo.contexto, IA_MAX_DOC);
+          const resposta = await claudeCopiloto(client, escolha.modelo, IA_SISTEMA_COPILOTO,
+            contextoTxt, corpo.historico, prompt, executarFerramentaIA);
+          res.status(200).json({ ...resposta, provedor });
+          return;
+        }
+        const sistema = String(corpo.sistema || '').trim() || IA_SISTEMA_PADRAO;
+        res.status(200).json({ texto: await claudeSimples(client, escolha.modelo, sistema, prompt), provedor });
+        return;
+      }
+
+      // Gemini. Modo copiloto: o front envia o contexto do documento e recebe
       // { mensagem, edicoes[], fontes[] }. Sem contexto, mantém o modo simples
       // (retrocompatível): { texto }.
-      if (corpo.contexto && typeof corpo.contexto === 'object') {
+      if (ehCopiloto) {
         const resposta = await chamarCopiloto(corpo.contexto, corpo.historico, prompt);
-        res.status(200).json(resposta);
+        res.status(200).json({ ...resposta, provedor });
         return;
       }
       const sistema = String(corpo.sistema || '').trim() || IA_SISTEMA_PADRAO;
       const texto = await chamarGemini(sistema, prompt);
-      res.status(200).json({ texto });
+      res.status(200).json({ texto, provedor });
     } catch (e) {
-      console.error('Erro na IA:', e);
-      if (e.statusCliente) { res.status(e.statusCliente).json({ erro: e.message }); return; }
-      res.status(502).json({ erro: 'A IA não respondeu. Tente novamente em instantes.' });
+      console.error(`Erro na IA (${provedor}):`, e);
+      if (e.statusCliente) { res.status(e.statusCliente).json({ erro: e.message, provedor }); return; }
+      if (provedor === 'claude') {
+        const { status, msg } = mapearErroClaude(e);
+        res.status(status).json({ erro: msg, provedor });
+        return;
+      }
+      res.status(502).json({ erro: 'A IA não respondeu. Tente novamente em instantes.', provedor });
     }
   }
 );
