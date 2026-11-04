@@ -210,3 +210,95 @@ describe('claudeCopiloto', () => {
     expect(executou).toBe(false);
   });
 });
+
+// ===== Recursos fora do editor =====
+import {
+  claudeExtrairProcesso,
+  claudeRevisarParecer,
+  montarConteudoArquivo,
+  normalizarExtracao,
+  normalizarRevisao,
+  SCHEMA_EXTRACAO,
+  SCHEMA_REVISAO,
+} from '../../functions/ia-claude.js';
+
+describe('montarConteudoArquivo', () => {
+  it('PDF vira bloco document base64', () => {
+    expect(montarConteudoArquivo({ tipo: 'pdf', dados: 'JVBERi0x' })).toEqual({
+      type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'JVBERi0x' },
+    });
+  });
+  it('imagem exige formato aceito', () => {
+    expect(montarConteudoArquivo({ tipo: 'imagem', mime: 'image/png', dados: 'iVBO' }).type).toBe('image');
+    expect(() => montarConteudoArquivo({ tipo: 'imagem', mime: 'image/gif', dados: 'R0lG' })).toThrow(/formato/);
+  });
+  it('texto do Word vai como bloco de texto', () => {
+    const b = montarConteudoArquivo({ tipo: 'texto', texto: 'Ofício nº 12' });
+    expect(b.type).toBe('text');
+    expect(b.text).toContain('Ofício nº 12');
+  });
+  it('recusa vazio, corrompido, grande demais ou formato estranho (erro 400)', () => {
+    expect(() => montarConteudoArquivo({ tipo: 'pdf', dados: '' })).toThrow();
+    expect(() => montarConteudoArquivo({ tipo: 'pdf', dados: '<html>' })).toThrow(/corrompido/);
+    expect(() => montarConteudoArquivo({ tipo: 'pdf', dados: 'A'.repeat(15 * 1024 * 1024) })).toThrow(/10 MB/);
+    try { montarConteudoArquivo({ tipo: 'exe' }); } catch (e) { expect(e.statusCliente).toBe(400); }
+  });
+});
+
+describe('normalizarExtracao', () => {
+  const setores = ['Gabinete Vereador', 'Secretaria Geral'];
+  it('mantém o que é válido', () => {
+    const r = normalizarExtracao({ numero: ' 1305/2026 ', tipo: 'administrativo', interessado: 'Vereador X', objeto: 'Projeto de Lei', setorOrigem: 'Secretaria Geral', prazoDias: 15, prazoContagem: 'uteis', observacao: '' }, setores);
+    expect(r).toMatchObject({ numero: '1305/2026', setorOrigem: 'Secretaria Geral', prazoDias: 15, prazoContagem: 'uteis' });
+  });
+  it('setor fora da lista e prazo inválido são descartados', () => {
+    const r = normalizarExtracao({ tipo: 'outro', setorOrigem: 'Prefeitura', prazoDias: -3, prazoContagem: 'uteis' }, setores);
+    expect(r.tipo).toBe('administrativo');
+    expect(r.setorOrigem).toBe('');
+    expect(r.prazoDias).toBe(0);
+    expect(r.prazoContagem).toBe('');
+  });
+});
+
+describe('normalizarRevisao', () => {
+  it('ordena por gravidade, descarta inválidos e limita a 10', () => {
+    const pontos = [
+      { gravidade: 'baixa', secao: 'I', trecho: '', problema: 'b', sugestao: '' },
+      { gravidade: 'alta', secao: 'III', trecho: 'x', problema: 'a', sugestao: 's' },
+      { gravidade: 'urgente', problema: 'z' },
+      ...Array.from({ length: 12 }, () => ({ gravidade: 'media', secao: '', trecho: '', problema: 'm', sugestao: '' })),
+    ];
+    const r = normalizarRevisao({ resumo: 'ok', pontos });
+    expect(r.pontos).toHaveLength(10);
+    expect(r.pontos[0].gravidade).toBe('alta');
+    expect(r.pontos.some(p => p.gravidade === 'urgente')).toBe(false);
+  });
+  it('sem pontos, resumo padrão', () => {
+    expect(normalizarRevisao({ resumo: '', pontos: [] }).resumo).toMatch(/Nenhum problema/);
+  });
+});
+
+describe('extração e revisão com cliente falso', () => {
+  it('extração manda o arquivo, os setores e o esquema; esforço medium', async () => {
+    const resposta = { numero: '943/2026', tipo: 'administrativo', interessado: 'Vereador Y', objeto: 'Denomina rua.', setorOrigem: 'Secretaria Geral', prazoDias: 0, prazoContagem: '', observacao: '' };
+    const c = clienteFalso([{ stop_reason: 'end_turn', content: [texto(JSON.stringify(resposta))] }]);
+    const r = await claudeExtrairProcesso(c, 'claude-sonnet-5-5', { tipo: 'texto', texto: 'Ofício' }, ['Secretaria Geral']);
+    expect(r.numero).toBe('943/2026');
+    const p = c.pedidos[0];
+    expect(p.output_config).toEqual({ effort: 'medium', format: { type: 'json_schema', schema: SCHEMA_EXTRACAO } });
+    expect(p.messages[0].content[1].text).toContain('Secretaria Geral');
+    expect(p.tools).toBeUndefined();
+  });
+  it('revisão usa esforço high e devolve os pontos normalizados', async () => {
+    const resposta = { resumo: 'Dois pontos.', pontos: [{ gravidade: 'media', secao: 'EMENTA', trecho: '', problema: 'Ementa não bate.', sugestao: 'Ajuste.' }] };
+    const c = clienteFalso([{ stop_reason: 'end_turn', content: [texto(JSON.stringify(resposta))] }]);
+    const r = await claudeRevisarParecer(c, 'claude-opus-5-5', 'CTX');
+    expect(r.pontos).toHaveLength(1);
+    expect(c.pedidos[0].output_config.effort).toBe('high');
+    expect(c.pedidos[0].output_config.format.schema).toEqual(SCHEMA_REVISAO);
+  });
+  it('resposta cortada vira erro 422', async () => {
+    const c = clienteFalso([{ stop_reason: 'max_tokens', content: [texto('{"resumo":')] }]);
+    await expect(claudeRevisarParecer(c, 'm', 'CTX')).rejects.toMatchObject({ statusCliente: 422 });
+  });
+});

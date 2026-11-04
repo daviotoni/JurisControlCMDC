@@ -1296,6 +1296,26 @@
         .ia-undo { color: var(--text-muted); font-size: 0.7rem; margin-top: 0.15rem; }
         .ia-fontes { margin-top: 0.45rem; font-size: 0.76rem; color: var(--text-secondary); }
         .ia-fontes a { color: var(--brand-600); }
+        /* Revisão final do parecer (lista de pontos no painel da IA) */
+        .ia-rev-resumo { margin-bottom: 0.4rem; }
+        .ia-rev-item { border-top: 1px solid var(--border-color); padding: 0.45rem 0 0.35rem; }
+        .ia-rev-cab { display: flex; gap: 0.4rem; align-items: baseline; flex-wrap: wrap; }
+        .ia-rev-grav { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+        .ia-rev-alta .ia-rev-grav { color: var(--danger); }
+        .ia-rev-media .ia-rev-grav { color: var(--warning); }
+        .ia-rev-baixa .ia-rev-grav { color: var(--text-muted); }
+        .ia-rev-secao { font-weight: 600; font-size: 0.8rem; }
+        .ia-rev-sug { color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.15rem; }
+        .ia-rev-trecho { display: inline; padding: 0; margin-top: 0.15rem; border: 0; background: none; color: var(--brand-600); font: inherit; font-size: 0.76rem; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+        /* Cadastro de processo: preencher com IA a partir do documento */
+        .ia-extrair { border: 1px dashed var(--border-color); border-radius: 10px; padding: 0.8rem 1rem; margin-bottom: 1.25rem; }
+        .ia-extrair-titulo { font-weight: 600; margin: 0 0 0.2rem; }
+        .ia-extrair .cfg-note { margin: 0 0 0.6rem; }
+        .ia-extrair-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+        .ia-extrair-row .input { flex: 1; min-width: 200px; }
+        .ia-extrair-status { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary); }
+        .ia-extrair-status:empty { display: none; }
+        .ia-preenchido { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-600) 35%, transparent); }
         .ia-panel .ia-chips { margin-bottom: 0; }
         .ia-panel .ia-chips .btn { font-size: 0.75rem; padding: 0.3rem 0.55rem; }
         .ia-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }

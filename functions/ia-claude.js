@@ -286,6 +286,195 @@ async function claudeCopiloto(client, modelo, sistema, contextoTxt, historico, p
   return { ...interpretarRespostaCopiloto(texto), fontes };
 }
 
+// ===== Recursos fora do editor: só com o Claude ==============================
+
+function erro422(msg) {
+  const e = new Error(msg);
+  e.statusCliente = 422;
+  return e;
+}
+
+// Chamada única com saída estruturada (JSON garantido pelo esquema).
+async function claudeEstruturado(client, modelo, { sistema, content, schema, esforco }) {
+  const resposta = await client.beta.messages.stream({
+    ...paramsBase(modelo),
+    output_config: { effort: esforco, format: { type: 'json_schema', schema } },
+    system: sistema,
+    messages: [{ role: 'user', content }],
+  }).finalMessage();
+  checarRecusa(resposta);
+  if (resposta.stop_reason === 'max_tokens') throw erro422('A resposta da IA foi cortada no meio. Tente de novo.');
+  const json = extrairJsonDaResposta(textoDaResposta(resposta.content));
+  if (!json) throw erro422('A IA não devolveu uma resposta válida. Tente de novo.');
+  return json;
+}
+
+// ----- 1) Preencher o cadastro do processo a partir do documento -------------
+const ARQ_MAX_BASE64 = 14 * 1024 * 1024; // ~10 MB de arquivo
+const ARQ_MAX_TEXTO = 150000;            // caracteres (Word ou texto extraído)
+const MIME_IMAGEM = ['image/jpeg', 'image/png', 'image/webp'];
+
+const SISTEMA_EXTRACAO =
+  'Você auxilia o cadastro de processos na Procuradoria-Geral da Câmara Municipal de ' +
+  'Duque de Caxias (RJ). Recebe o documento que deu origem ao processo (ofício, ' +
+  'requerimento, capa de processo, projeto de lei, intimação etc.) e extrai os dados ' +
+  'do cadastro. Regras: (1) Copie o número do processo exatamente como aparece ' +
+  '(ex.: "1305/2026" ou o número CNJ completo de um processo judicial). (2) tipo é ' +
+  '"judicial" quando há processo em tribunal (número CNJ, vara, intimação judicial); ' +
+  'senão "administrativo". (3) interessado é quem pede ou é parte principal (ex.: ' +
+  '"Vereador Fulano de Tal", "Secretaria Geral"). (4) objeto é um resumo objetivo, de ' +
+  'uma a duas frases, do que o processo trata. (5) setorOrigem deve ser UM dos ' +
+  'setores da lista fornecida, copiado exatamente, ou "" se nenhum couber. (6) ' +
+  'prazoDias só quando o documento fixar um prazo em dias para a resposta; senão 0. ' +
+  'prazoContagem: "uteis" ou "corridos" conforme o documento, "" se não disser. (7) ' +
+  'NUNCA invente: campo que não estiver no documento fica "" (ou 0). (8) Em ' +
+  'observacao, diga em uma frase o que ficou incerto e precisa de conferência, ou "".';
+
+const SCHEMA_EXTRACAO = {
+  type: 'object',
+  properties: {
+    numero: { type: 'string' },
+    tipo: { type: 'string', enum: ['administrativo', 'judicial'] },
+    interessado: { type: 'string' },
+    objeto: { type: 'string' },
+    setorOrigem: { type: 'string' },
+    prazoDias: { type: 'integer' },
+    prazoContagem: { type: 'string', enum: ['uteis', 'corridos', ''] },
+    observacao: { type: 'string' },
+  },
+  required: ['numero', 'tipo', 'interessado', 'objeto', 'setorOrigem', 'prazoDias', 'prazoContagem', 'observacao'],
+  additionalProperties: false,
+};
+
+// Arquivo enviado pelo site -> blocos de conteúdo da API. Lança erro 400 em
+// português se o arquivo não servir. Formatos: { tipo: 'pdf', dados } |
+// { tipo: 'imagem', mime, dados } | { tipo: 'texto', texto } (Word já convertido no navegador).
+function montarConteudoArquivo(arquivo) {
+  const a = arquivo || {};
+  const falha = (msg) => { const e = new Error(msg); e.statusCliente = 400; return e; };
+  if (a.tipo === 'pdf' || a.tipo === 'imagem') {
+    const dados = String(a.dados || '');
+    if (!dados || !/^[A-Za-z0-9+/=\s]+$/.test(dados)) throw falha('Arquivo vazio ou corrompido.');
+    if (dados.length > ARQ_MAX_BASE64) throw falha('Arquivo grande demais (máx. 10 MB). Envie só as páginas principais.');
+    if (a.tipo === 'pdf') {
+      return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: dados.replace(/\s/g, '') } };
+    }
+    if (!MIME_IMAGEM.includes(a.mime)) throw falha('Imagem em formato não aceito (use JPG, PNG ou WEBP).');
+    return { type: 'image', source: { type: 'base64', media_type: a.mime, data: dados.replace(/\s/g, '') } };
+  }
+  if (a.tipo === 'texto') {
+    const texto = String(a.texto || '').trim();
+    if (!texto) throw falha('Não encontrei texto no arquivo.');
+    return { type: 'text', text: `DOCUMENTO:\n"""\n${texto.slice(0, ARQ_MAX_TEXTO)}\n"""` };
+  }
+  throw falha('Formato de arquivo não aceito. Use PDF, Word (.docx), TXT ou imagem.');
+}
+
+// Limpa a resposta da extração: setor fora da lista vira "", prazo fora da faixa vira 0.
+function normalizarExtracao(json, setores) {
+  const j = json || {};
+  const txt = (v, max) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, max);
+  const lista = Array.isArray(setores) ? setores : [];
+  const setor = txt(j.setorOrigem, 80);
+  const dias = Number.isInteger(j.prazoDias) && j.prazoDias > 0 && j.prazoDias <= 3650 ? j.prazoDias : 0;
+  return {
+    numero: txt(j.numero, 60),
+    tipo: j.tipo === 'judicial' ? 'judicial' : 'administrativo',
+    interessado: txt(j.interessado, 200),
+    objeto: txt(j.objeto, 1000),
+    setorOrigem: lista.includes(setor) ? setor : '',
+    prazoDias: dias,
+    prazoContagem: dias && ['uteis', 'corridos'].includes(j.prazoContagem) ? j.prazoContagem : '',
+    observacao: txt(j.observacao, 300),
+  };
+}
+
+async function claudeExtrairProcesso(client, modelo, arquivo, setores) {
+  const lista = (Array.isArray(setores) ? setores : []).map(s => String(s).slice(0, 60)).slice(0, 40);
+  const json = await claudeEstruturado(client, modelo, {
+    sistema: SISTEMA_EXTRACAO,
+    esforco: 'medium',
+    schema: SCHEMA_EXTRACAO,
+    content: [
+      montarConteudoArquivo(arquivo),
+      { type: 'text', text: `Setores possíveis: ${lista.join('; ') || '(nenhum)'}\nExtraia os dados do cadastro deste documento.` },
+    ],
+  });
+  return normalizarExtracao(json, lista);
+}
+
+// ----- 2) Revisão final do parecer -------------------------------------------
+const SISTEMA_REVISAO =
+  'Você é o revisor final dos pareceres da Procuradoria-Geral da Câmara Municipal de ' +
+  'Duque de Caxias (RJ). Recebe o parecer pronto para emissão e aponta APENAS problemas ' +
+  'concretos que o procurador deve corrigir antes de assinar. Verifique: (a) se a ' +
+  'ementa corresponde à conclusão (ex.: ementa diz "possibilidade" e a conclusão opina ' +
+  'pela inviabilidade); (b) seções vazias ou com marcadores a preencher ("[...]", ' +
+  '"[dia]", "[Nome]"); (c) contradições entre a análise e a conclusão; (d) conclusão ' +
+  'sem opinião clara (favorável, desfavorável ou com ressalvas); (e) citações de lei, ' +
+  'súmula ou julgado com número, ano ou órgão aparentemente errados ou incompletos — ' +
+  'nesse caso peça para CONFERIR, sem afirmar que está errado; (f) julgado citado sem ' +
+  'tribunal e número; (g) erros de português que comprometam o sentido. Não reescreva o ' +
+  'parecer, não opine sobre o mérito jurídico e não aponte questões de estilo. ' +
+  'gravidade: "alta" impede a emissão, "media" deve ser corrigida, "baixa" é ' +
+  'recomendação. No máximo 10 pontos, os mais importantes primeiro. Em "trecho", copie ' +
+  'até 15 palavras do texto onde está o problema (ou "" se for algo que falta). Se não ' +
+  'houver nada relevante, devolva "pontos": [] e diga isso no resumo.';
+
+const SCHEMA_REVISAO = {
+  type: 'object',
+  properties: {
+    resumo: { type: 'string' },
+    pontos: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          gravidade: { type: 'string', enum: ['alta', 'media', 'baixa'] },
+          secao: { type: 'string' },
+          trecho: { type: 'string' },
+          problema: { type: 'string' },
+          sugestao: { type: 'string' },
+        },
+        required: ['gravidade', 'secao', 'trecho', 'problema', 'sugestao'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['resumo', 'pontos'],
+  additionalProperties: false,
+};
+
+const ORDEM_GRAVIDADE = { alta: 0, media: 1, baixa: 2 };
+
+function normalizarRevisao(json) {
+  const j = json || {};
+  const txt = (v, max) => String(v || '').trim().slice(0, max);
+  const pontos = (Array.isArray(j.pontos) ? j.pontos : [])
+    .filter(p => p && ORDEM_GRAVIDADE[p.gravidade] !== undefined && txt(p.problema, 10))
+    .map(p => ({
+      gravidade: p.gravidade,
+      secao: txt(p.secao, 120),
+      trecho: txt(p.trecho, 200),
+      problema: txt(p.problema, 600),
+      sugestao: txt(p.sugestao, 600),
+    }))
+    .sort((a, b) => ORDEM_GRAVIDADE[a.gravidade] - ORDEM_GRAVIDADE[b.gravidade])
+    .slice(0, 10);
+  const resumo = txt(j.resumo, 600) || (pontos.length ? '' : 'Nenhum problema relevante encontrado.');
+  return { resumo, pontos };
+}
+
+async function claudeRevisarParecer(client, modelo, contextoTxt) {
+  const json = await claudeEstruturado(client, modelo, {
+    sistema: SISTEMA_REVISAO,
+    esforco: 'high',
+    schema: SCHEMA_REVISAO,
+    content: [{ type: 'text', text: `${contextoTxt}\n\nFaça a revisão final deste parecer.` }],
+  });
+  return normalizarRevisao(json);
+}
+
 module.exports = {
   MODELOS_CLAUDE,
   MODELO_CLAUDE_PADRAO,
@@ -304,4 +493,11 @@ module.exports = {
   criarClienteClaude,
   claudeSimples,
   claudeCopiloto,
+  SCHEMA_EXTRACAO,
+  SCHEMA_REVISAO,
+  montarConteudoArquivo,
+  normalizarExtracao,
+  normalizarRevisao,
+  claudeExtrairProcesso,
+  claudeRevisarParecer,
 };

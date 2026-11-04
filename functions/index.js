@@ -18,7 +18,7 @@ const { getFirestore } = require('firebase-admin/firestore');
 const { normalizarLexml, normalizarDatajud, normalizarDatajudMovimentos, normalizarJurisai } = require('./normalizadores');
 const {
   escolherProvedor, montarContextoCopiloto, extrairJsonDaResposta, mapearErroClaude,
-  criarClienteClaude, claudeSimples, claudeCopiloto,
+  criarClienteClaude, claudeSimples, claudeCopiloto, claudeExtrairProcesso, claudeRevisarParecer,
 } = require('./ia-claude');
 
 initializeApp();
@@ -290,6 +290,8 @@ async function chamarGemini(sistema, prompt) {
 // com o token já configurado) e responde num JSON com { mensagem, edicoes[] }.
 // As edições são aplicadas pelo front na seção certa do documento.
 const IA_MAX_DOC = 10000; // trava do tamanho do documento enviado como contexto
+// A revisão final precisa do parecer INTEIRO (senão aponta conclusão "faltando").
+const IA_MAX_DOC_REVISAO = 60000;
 
 const IA_SISTEMA_COPILOTO =
   'Você é o copiloto de redação da Procuradoria-Geral da Câmara Municipal de ' +
@@ -447,6 +449,37 @@ exports.assistente = onRequest(
     }
 
     const corpo = req.body || {};
+
+    // Recursos fora do editor (só com o Claude, mesmo que o admin tenha
+    // escolhido o Gemini para o editor): ler o documento do processo e
+    // revisar o parecer antes de emitir.
+    if (corpo.modo === 'extrair_processo' || corpo.modo === 'revisar_parecer') {
+      try {
+        const [cfg, chaveClaude] = await Promise.all([lerConfigIA(), lerChaveClaude()]);
+        if (!chaveClaude) {
+          throw erroCliente(424, 'Este recurso usa o Claude, e a chave ainda não foi configurada. Um administrador precisa colá-la em Configurações → Assistente de IA (Claude).');
+        }
+        const { modelo } = escolherProvedor({ ...cfg, provedor: 'claude' }, true);
+        const client = criarClienteClaude(chaveClaude);
+        if (corpo.modo === 'extrair_processo') {
+          const dados = await claudeExtrairProcesso(client, modelo, corpo.arquivo, corpo.setores);
+          res.status(200).json({ dados, provedor: 'claude' });
+          return;
+        }
+        if (!corpo.contexto || typeof corpo.contexto !== 'object' || !String(corpo.contexto.texto || '').trim()) {
+          throw erroCliente(400, 'O parecer está vazio — não há o que revisar.');
+        }
+        const revisao = await claudeRevisarParecer(client, modelo, montarContextoCopiloto(corpo.contexto, IA_MAX_DOC_REVISAO));
+        res.status(200).json({ ...revisao, provedor: 'claude' });
+      } catch (e) {
+        console.error(`Erro na IA (${corpo.modo}):`, e);
+        if (e.statusCliente) { res.status(e.statusCliente).json({ erro: e.message, provedor: 'claude' }); return; }
+        const { status, msg } = mapearErroClaude(e);
+        res.status(status).json({ erro: msg, provedor: 'claude' });
+      }
+      return;
+    }
+
     const prompt = String(corpo.prompt || '').trim();
     if (!prompt) { res.status(400).json({ erro: 'Informe o parâmetro prompt (o pedido para a IA).' }); return; }
     if (prompt.length > IA_MAX_ENTRADA) {
