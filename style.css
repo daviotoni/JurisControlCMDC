@@ -1149,6 +1149,12 @@
         .parecer-timbre-rodape { margin-top: 1rem; margin-bottom: 0; font-size: 0.75rem; color: var(--text-muted); }
         .parecer-body .ql-toolbar { border-color: var(--border-color); background-color: var(--bg-color-only); border-top-left-radius: 10px; border-top-right-radius: 10px; }
         .parecer-body .ql-container { border-color: var(--border-color); background-color: var(--card-bg); color: var(--text-primary); min-height: 320px; font-size: 1rem; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
+        /* O Quill fixa .ql-container { height: 100% }. Dentro da janela do
+           parecer (flex), o corpo é esticado a uma altura definida e esse 100%
+           passa a valer: o editor cresce além do espaço e o checklist e o
+           rodapé "Página 1" invadem os botões da janela. Altura automática
+           faz o editor acompanhar o texto. */
+        .parecer-body #parecerEditor.ql-container { height: auto; }
         .parecer-body .ql-editor.ql-blank::before { color: var(--text-muted); }
         /* Tipografia do documento no editor — espelha o modelo oficial da
            Procuradoria (Garamond, justificado, recuo de 1ª linha). */
