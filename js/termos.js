@@ -216,10 +216,29 @@
     return L;
   }
 
+  // Dados que vão para a IA redigir a mensagem de cobrança ao gabinete.
+  const brData = (s) => { const d = dataUTC(s); return d ? d.toISOString().slice(0, 10).split('-').reverse().join('/') : ''; };
+  function dadosCobranca(proc, envio, { gabinete = '', hojeISO = '', remetente = '' } = {}) {
+    return {
+      processo: (proc && proc.num) || '',
+      objeto: String((proc && proc.obj) || '').slice(0, 400),
+      vereador: envio.vereadorNome || '',
+      gabinete,
+      desfecho: DESFECHOS[envio.desfecho] || '',
+      analisePrevia: envio.apNumero ? `${envio.apNumero}${envio.apData ? `, de ${brData(envio.apData)}` : ''}` : '',
+      dataDoEnvio: brData(envio.dataEnvio),
+      diasDesdeOEnvio: diasEntre(envio.dataEnvio, hojeISO),
+      guiaDeRemessa: envio.guiaNumero || '',
+      recebidoPor: envio.recebidoPor ? `${envio.recebidoPor}${envio.recebidoEm ? `, em ${brData(envio.recebidoEm)}` : ''}` : '',
+      cobrancasAnteriores: (envio.cobrancas || []).map(c => ({ data: brData(c.data), comoFoi: String(c.obs || '').slice(0, 300) })),
+      remetente,
+    };
+  }
+
   const api = {
     DESFECHOS, RESPOSTAS, SITUACOES, CAMPOS_EDITAVEIS,
     diasEntre, normalizar, situacao, envioAtivo, listarEnvios, proximaGuia, itensDaGuia,
-    guiaReaproveitavel, sugerirVereador, sugerirStatusDevolucao, aplicarCorrecoes, resumo, filtrarEnvios,
+    guiaReaproveitavel, sugerirVereador, sugerirStatusDevolucao, aplicarCorrecoes, resumo, filtrarEnvios, dadosCobranca,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else raiz.Termos = api;

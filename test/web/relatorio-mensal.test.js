@@ -1,7 +1,7 @@
 // Testes do relatório mensal (relatorioMensal em js/utils.js).
 import utils from '../../js/utils.js';
 
-const { relatorioMensal } = utils;
+const { relatorioMensal, dadosRelatorioParaIA } = utils;
 const statusMap = { pendente: 'Pendente', 'em-analise': 'Em Análise', finalizado: 'Finalizado', arquivado: 'Arquivado' };
 const hoje = new Date(Date.UTC(2026, 9, 20)); // 20/10/2026
 
@@ -36,5 +36,25 @@ describe('relatorioMensal', () => {
   it('mostra a carteira atual por status', () => {
     expect(r.emAberto).toBe(2);
     expect(r.situacaoAtual.find((s) => s.stat === 'arquivado').n).toBe(1);
+  });
+});
+
+describe('dadosRelatorioParaIA', () => {
+  const r = relatorioMensal({ processos, pareceres, ano: 2026, mes: 9, hoje, statusMap });
+  const d = dadosRelatorioParaIA(r, { mesExtenso: 'outubro de 2026', mesEmAndamento: true, geradoEm: '20/10/2026' });
+  it('leva os números com rótulos legíveis', () => {
+    expect(d.mes).toBe('outubro de 2026');
+    expect(d.mesEmAndamento).toBe(true);
+    expect(d.entradas.total).toBe(r.entradas.total);
+    expect(d.saidas).toBe(r.saidas);
+    expect(d.prazosQueVenceramNoMes.total).toBe(r.prazos.total);
+    expect(d.prazosQueVenceramNoMes.cumpridosNoPrazo).toBe(r.prazos['no-prazo']);
+  });
+  it('não leva o nome do interessado', () => {
+    expect(JSON.stringify(d)).not.toMatch(/"int"|interessado/i);
+    d.processosQuePedemAtencao.forEach(a => expect(Object.keys(a)).toEqual(['processo', 'prazo', 'saida', 'situacao']));
+  });
+  it('omite status sem processo', () => {
+    expect(d.carteiraHojePorStatus.every(x => x.processos > 0)).toBe(true);
   });
 });

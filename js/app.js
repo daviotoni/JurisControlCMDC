@@ -2878,7 +2878,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <h4>Carteira hoje, por status</h4>
           <table class="rel-tabela"><tbody>${linhas(r.situacaoAtual.map(x => [x.rotulo, x.n]))}</tbody></table>`;
   }
-  async function generateRelatorioPDF(r) {
+  async function generateRelatorioPDF(r, sintese = '') {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
       const fonte = registrarFonteParecer(doc);
@@ -2930,6 +2930,11 @@ document.addEventListener('DOMContentLoaded', () => {
           y += 3;
       };
 
+      if (sintese) {
+          secao('Síntese');
+          sintese.split(/\n\s*\n/).map(t => t.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean).forEach(paragrafo);
+      }
+
       secao('Entradas');
       paragrafo(`${plural(r.entradas.total, 'processo', 'processos')}: ${plural(r.entradas.administrativo, 'administrativo', 'administrativos')} e ${plural(r.entradas.judicial, 'judicial', 'judiciais')}.`);
       if (r.entradas.porSetor.length) tabela([{ t: 'Setor de origem', w: 0.8 }, { t: 'Processos', w: 0.2, num: true }], r.entradas.porSetor.slice(0, 10).map(x => [x.setor, x.n]));
@@ -2954,20 +2959,58 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       doc.save(`relatorio-mensal_${r.ano}-${String(r.mes + 1).padStart(2, '0')}.pdf`);
   }
+  const REL_IA_DICA = 'A IA escreve dois ou três parágrafos com os números do mês, para abrir o relatório ou colar num ofício. Revise antes de usar.';
+  async function copiarTexto(texto, okMsg) {
+      if (!texto) { showToast('Não há texto para copiar.', 'info'); return; }
+      try { await navigator.clipboard.writeText(texto); showToast(okMsg); }
+      catch (e) { console.warn('Clipboard indisponível:', e); showToast('Não foi possível copiar automaticamente: selecione o texto e copie.', 'danger'); }
+  }
+  // Síntese do relatório escrita pelo Claude a partir dos números do mês.
+  async function gerarSinteseRelatorio(sel, atual) {
+      const btn = $('#relIaGerar'), status = $('#relIaStatus'), mesPedido = sel.value;
+      const r = atual(), hoje = todayUTC();
+      const dados = dadosRelatorioParaIA(r, {
+          mesExtenso: nomeMes(r.ano, r.mes).toLowerCase(),
+          mesEmAndamento: hoje.getUTCFullYear() === r.ano && hoje.getUTCMonth() === r.mes,
+          geradoEm: fmtBR(hoje),
+      });
+      btn.disabled = true; btn.textContent = 'Escrevendo…';
+      status.textContent = 'A IA está escrevendo a síntese. Leva uns 10 segundos.';
+      try {
+          const resp = await chamarFuncaoIA({ modo: 'texto_relatorio', dados });
+          if (sel.value !== mesPedido) return; // trocou de mês no meio
+          $('#relIaTexto').value = resp.texto || '';
+          $('#relIaResultado').hidden = false;
+          status.textContent = 'Texto pronto. Confira os números com o quadro abaixo; dá para editar aqui mesmo.';
+      } catch (e) {
+          if (sel.value === mesPedido) status.textContent = e.message;
+      } finally {
+          if (sel.value === mesPedido) { btn.disabled = false; btn.textContent = $('#relIaResultado').hidden ? 'Escrever com IA' : 'Escrever de novo'; }
+      }
+  }
   function openRelatorio() {
       const m = $('#m_relatorio'), sel = $('#relMes'); if (!m || !sel) return;
       const meses = ultimosMeses(todayUTC(), 12).reverse();
       sel.innerHTML = meses.map(x => `<option value="${x.chave}">${nomeMes(x.ano, x.mes)}</option>`).join('');
       const atual = () => { const [a, mm] = sel.value.split('-').map(Number); return dadosRelatorio(a, mm - 1); };
-      sel.onchange = () => renderRelatorioPreview(atual());
+      const iaReset = () => {
+          $('#relIaResultado').hidden = true; $('#relIaTexto').value = '';
+          $('#relIaStatus').textContent = REL_IA_DICA; $('#relIaGerar').disabled = false;
+          $('#relIaGerar').textContent = 'Escrever com IA';
+      };
+      sel.onchange = () => { renderRelatorioPreview(atual()); iaReset(); };
       renderRelatorioPreview(atual());
+      iaReset();
+      $('#relIaGerar').onclick = () => gerarSinteseRelatorio(sel, atual);
+      $('#relIaCopiar').onclick = () => copiarTexto($('#relIaTexto').value.trim(), 'Texto copiado.');
       m.style.display = 'flex';
       const fechar = () => { m.style.display = 'none'; };
       $$('[data-close-rel]').forEach(b => b.onclick = fechar);
       m.onclick = (e) => { if (e.target === m) fechar(); };
       $('#relPdf').onclick = async () => {
           const btn = $('#relPdf'); btn.disabled = true;
-          try { await generateRelatorioPDF(atual()); showToast('Relatório gerado.'); }
+          const sintese = !$('#relIaResultado').hidden && $('#relIaIncluir').checked ? $('#relIaTexto').value.trim() : '';
+          try { await generateRelatorioPDF(atual(), sintese); showToast('Relatório gerado.'); }
           catch (err) { console.error('Erro ao gerar relatório:', err); showToast('Não foi possível gerar o relatório.', 'danger'); }
           finally { btn.disabled = false; }
       };
@@ -3753,6 +3796,16 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="form-grid two-cols">
                   <div class="form-group"><label for="ta_data">Data</label><input id="ta_data" type="date" class="input" value="${hoje}" required></div>
                   <div class="form-group full-width"><label for="ta_obs">Como foi feita</label><textarea id="ta_obs" class="input" rows="2" placeholder="Ex.: liguei para o gabinete e falei com a assessora Maria; reenviei a via" required></textarea></div>
+              </div>
+              <div class="ia-extrair rel-ia termo-ia">
+                  <div class="ia-extrair-row"><p class="ia-extrair-titulo">Mensagem para o gabinete (opcional)</p><button type="button" class="btn secondary" id="ta_ia_gerar">Redigir com IA</button></div>
+                  <p id="ta_ia_status" class="cfg-note" aria-live="polite">A IA escreve a mensagem de cobrança (e-mail ou WhatsApp) com os dados deste envio${(envio.cobrancas || []).length ? ', lembrando a cobrança anterior' : ''}. Revise antes de mandar.</p>
+                  <div id="ta_ia_resultado" hidden>
+                      <div class="form-group"><label for="ta_ia_assunto">Assunto (para e-mail)</label><input id="ta_ia_assunto" class="input"></div>
+                      <label for="ta_ia_texto" class="sr-only">Mensagem</label>
+                      <textarea id="ta_ia_texto" class="input" rows="9"></textarea>
+                      <div class="ia-extrair-row ia-texto-acoes"><span class="cfg-note">Depois de mandar, registre a cobrança acima.</span><button type="button" class="btn secondary" id="ta_ia_copiar">Copiar mensagem</button></div>
+                  </div>
               </div>${rodape('Registrar cobrança')}`;
       } else if (acao === 'recebimento') {
           const outros = Termos.itensDaGuia(DB, envio.guiaNumero).length - 1;
@@ -3789,6 +3842,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       painel.innerHTML = `<form id="termoAcaoForm" data-acao="${acao}">${html}</form>`;
       painel.hidden = false;
+      if (acao === 'cobranca') {
+          $('#ta_ia_gerar').onclick = () => redigirCobrancaIA(proc, envio);
+          $('#ta_ia_copiar').onclick = () => copiarTexto($('#ta_ia_texto').value.trim(), 'Mensagem copiada.');
+      }
       if (acao === 'devolucao') {
           const atualizarSugestao = () => {
               const resp = painel.querySelector('input[name="ta_resp"]:checked').value;
@@ -3801,6 +3858,28 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       painel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       painel.querySelector('input:not([type=radio]), textarea')?.focus();
+  }
+
+  // Mensagem de cobrança escrita pelo Claude com os dados do envio.
+  async function redigirCobrancaIA(proc, envio) {
+      const btn = $('#ta_ia_gerar'), status = $('#ta_ia_status');
+      const ver = vereadorPorId(envio.vereadorId);
+      const dados = Termos.dadosCobranca(proc, envio, { gabinete: (ver && ver.gabinete) || '', hojeISO: hojeISO(), remetente: currentUserName() });
+      btn.disabled = true; btn.textContent = 'Redigindo…';
+      status.textContent = 'A IA está escrevendo a mensagem. Leva uns 5 segundos.';
+      try {
+          const resp = await chamarFuncaoIA({ modo: 'mensagem_cobranca', dados });
+          if (!document.body.contains(btn)) return; // fechou a janela no meio
+          $('#ta_ia_assunto').value = resp.assunto || '';
+          $('#ta_ia_texto').value = resp.mensagem || '';
+          $('#ta_ia_resultado').hidden = false;
+          status.textContent = 'Mensagem pronta. Confira nomes e datas; dá para editar aqui mesmo.';
+          btn.textContent = 'Redigir de novo';
+      } catch (e) {
+          if (document.body.contains(btn)) { status.textContent = e.message; btn.textContent = 'Redigir com IA'; }
+      } finally {
+          btn.disabled = false;
+      }
   }
 
   async function executarAcaoTermo(form) {

@@ -7,7 +7,10 @@ import {
   MODELO_CLAUDE_PADRAO,
   SCHEMA_COPILOTO,
   claudeCopiloto,
+  claudeMensagemCobranca,
   claudeSimples,
+  claudeTextoRelatorio,
+  serializarDados,
   escolherProvedor,
   filtrarEdicoes,
   interpretarRespostaCopiloto,
@@ -300,5 +303,38 @@ describe('extração e revisão com cliente falso', () => {
   it('resposta cortada vira erro 422', async () => {
     const c = clienteFalso([{ stop_reason: 'max_tokens', content: [texto('{"resumo":')] }]);
     await expect(claudeRevisarParecer(c, 'm', 'CTX')).rejects.toMatchObject({ statusCliente: 422 });
+  });
+});
+
+describe('síntese do relatório e cobrança ao gabinete', () => {
+  it('serializarDados recusa ausência e excesso', () => {
+    expect(() => serializarDados(null, 'x')).toThrow();
+    expect(() => serializarDados([], 'x')).toThrow();
+    expect(() => serializarDados({ a: 'x'.repeat(30000) }, 'x')).toThrow();
+    expect(serializarDados({ a: 1 }, 'x')).toBe('{"a":1}');
+  });
+  it('texto do relatório: esforço baixo, esquema e números no pedido', async () => {
+    const c = clienteFalso([{ stop_reason: 'end_turn', content: [texto('{"texto":"  No mês de outubro...  "}')] }]);
+    const r = await claudeTextoRelatorio(c, 'claude-opus-5-5', { mes: 'outubro de 2026', saidas: 7 });
+    expect(r).toEqual({ texto: 'No mês de outubro...' });
+    const p = c.pedidos[0];
+    expect(p.output_config.effort).toBe('low');
+    expect(p.output_config.format.schema.required).toEqual(['texto']);
+    expect(p.messages[0].content[0].text).toContain('"saidas":7');
+  });
+  it('texto vazio vira 422', async () => {
+    const c = clienteFalso([{ stop_reason: 'end_turn', content: [texto('{"texto":" "}')] }]);
+    await expect(claudeTextoRelatorio(c, 'm', { a: 1 })).rejects.toMatchObject({ statusCliente: 422 });
+  });
+  it('sem dados vira 400 sem chamar a API', async () => {
+    const c = clienteFalso([]);
+    await expect(claudeMensagemCobranca(c, 'm', undefined)).rejects.toMatchObject({ statusCliente: 400 });
+    expect(c.pedidos).toHaveLength(0);
+  });
+  it('mensagem de cobrança devolve assunto e mensagem', async () => {
+    const c = clienteFalso([{ stop_reason: 'end_turn', content: [texto('{"assunto":"Termo pendente","mensagem":"Prezados(as), ..."}')] }]);
+    const r = await claudeMensagemCobranca(c, 'm', { processo: '123/2026', cobrancasAnteriores: [] });
+    expect(r).toEqual({ assunto: 'Termo pendente', mensagem: 'Prezados(as), ...' });
+    expect(c.pedidos[0].system).toContain('sem deduzir gênero');
   });
 });

@@ -5,7 +5,7 @@ import Termos from '../../js/termos.js';
 
 const {
   diasEntre, situacao, envioAtivo, proximaGuia, itensDaGuia, guiaReaproveitavel,
-  sugerirVereador, sugerirStatusDevolucao, aplicarCorrecoes, resumo, filtrarEnvios, listarEnvios,
+  sugerirVereador, sugerirStatusDevolucao, aplicarCorrecoes, resumo, filtrarEnvios, listarEnvios, dadosCobranca,
 } = Termos;
 
 const envio = (extra = {}) => ({
@@ -148,5 +148,25 @@ describe('resumo e filtrarEnvios', () => {
     expect(filtrarEnvios(itens, { situacao: 'cancelado' }).map(({ proc }) => proc.id)).toEqual([5]);
     expect(filtrarEnvios(itens, { vereadorId: 'v2' }).map(({ proc }) => proc.id)).toEqual([2, 3]);
     expect(filtrarEnvios(itens, { busca: '300/2026' }).map(({ proc }) => proc.id)).toEqual([3]);
+  });
+});
+
+describe('dadosCobranca', () => {
+  it('monta os dados do envio para a IA, com datas em DD/MM/AAAA', () => {
+    const e = envio({ apNumero: '45/2026', apData: '2026-09-28', guiaNumero: '0003/2026', recebidoPor: 'Ana', recebidoEm: '2026-10-02',
+      cobrancas: [{ data: '2026-10-20', obs: 'liguei' }] });
+    const d = dadosCobranca({ num: '1234/2026', obj: 'PL 10/2026' }, e, { gabinete: 'Gab. 12', hojeISO: '2026-11-04', remetente: 'Davi' });
+    expect(d).toMatchObject({
+      processo: '1234/2026', vereador: 'Saulo', gabinete: 'Gab. 12', desfecho: 'Arquivamento',
+      analisePrevia: '45/2026, de 28/09/2026', dataDoEnvio: '01/10/2026', diasDesdeOEnvio: 34,
+      recebidoPor: 'Ana, em 02/10/2026', remetente: 'Davi',
+    });
+    expect(d.cobrancasAnteriores).toEqual([{ data: '20/10/2026', comoFoi: 'liguei' }]);
+  });
+  it('campos ausentes ficam vazios', () => {
+    const d = dadosCobranca({ num: '1' }, envio());
+    expect(d.analisePrevia).toBe('');
+    expect(d.recebidoPor).toBe('');
+    expect(d.cobrancasAnteriores).toEqual([]);
   });
 });

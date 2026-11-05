@@ -478,6 +478,93 @@ async function claudeRevisarParecer(client, modelo, contextoTxt) {
   return normalizarRevisao(json);
 }
 
+// ----- 3) Texto do relatório mensal e 4) mensagem de cobrança ao gabinete ----
+// Os dois recebem um objeto pequeno, já montado no navegador, e devolvem texto
+// para o usuário revisar. Nada é gravado pelo servidor.
+const DADOS_MAX = 20000; // caracteres do JSON enviado
+
+function serializarDados(dados, oQue) {
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) {
+    const e = new Error(`Faltam os dados ${oQue}.`); e.statusCliente = 400; throw e;
+  }
+  const json = JSON.stringify(dados);
+  if (json.length > DADOS_MAX) {
+    const e = new Error(`Os dados ${oQue} passaram do limite. Tente de novo.`); e.statusCliente = 413; throw e;
+  }
+  return json;
+}
+
+const SISTEMA_RELATORIO =
+  'Você redige a síntese que abre o relatório mensal de atividades da Procuradoria-Geral ' +
+  'da Câmara Municipal de Duque de Caxias (RJ), dirigido à chefia. Recebe em JSON os ' +
+  'números do mês, já calculados pelo sistema. Escreva de 2 a 3 parágrafos em português ' +
+  'formal, impessoal, na terceira pessoa ("No mês de ..., a Procuradoria-Geral recebeu ..."). ' +
+  'Regras: use somente os números do JSON; não invente números, causas, nomes nem ' +
+  'avaliações; o único cálculo permitido é percentual simples, arredondado para inteiro, ' +
+  'quando os dois números estiverem no JSON; escreva os números como no JSON. Cubra, nesta ' +
+  'ordem e só quando houver dado: entradas (total, administrativos, judiciais e setores ' +
+  'que mais enviaram), saídas e pareceres emitidos, tempo de tramitação, prazos que ' +
+  'venceram no mês (cumpridos, fora do prazo, vencidos sem saída) citando pelo número os ' +
+  'processos que pedem atenção, e a carteira em aberto hoje. Se "mesEmAndamento" for ' +
+  'true, diga logo no início que os números são parciais, até a data de "geradoEm". Sem ' +
+  'título, sem listas, sem markdown, sem saudação e sem assinatura. No máximo 230 palavras.';
+
+const SCHEMA_TEXTO = {
+  type: 'object',
+  properties: { texto: { type: 'string' } },
+  required: ['texto'],
+  additionalProperties: false,
+};
+
+async function claudeTextoRelatorio(client, modelo, dados) {
+  const json = await claudeEstruturado(client, modelo, {
+    sistema: SISTEMA_RELATORIO,
+    esforco: 'low',
+    schema: SCHEMA_TEXTO,
+    content: [{ type: 'text', text: `Números do mês (JSON):\n${serializarDados(dados, 'do relatório')}\n\nEscreva a síntese.` }],
+  });
+  const texto = String(json.texto || '').trim().slice(0, 4000);
+  if (!texto) throw erro422('A IA devolveu um texto vazio. Tente de novo.');
+  return { texto };
+}
+
+const SISTEMA_COBRANCA =
+  'Você redige, em nome da Procuradoria-Geral da Câmara Municipal de Duque de Caxias ' +
+  '(RJ), uma mensagem curta ao gabinete de um vereador pedindo a devolução do termo de ' +
+  'concordância assinado. Contexto: a Procuradoria enviou ao gabinete a via da Análise ' +
+  'Prévia de um anteprojeto do vereador, com um termo em que ele diz se concorda com o ' +
+  'desfecho proposto ("arquivamento" do anteprojeto ou "conversão em indicação"); o ' +
+  'processo fica parado até o termo voltar. Recebe os dados em JSON. Regras: use só os ' +
+  'dados do JSON, sem inventar datas, números, nomes, prazos ou consequências; cite o ' +
+  'processo, a Análise Prévia (se houver número), a data do envio e quem recebeu a guia ' +
+  '(se houver); explique em uma frase o que o termo decide, conforme o desfecho; tom ' +
+  'cordial e institucional; se "cobrancasAnteriores" tiver itens, mencione o contato ' +
+  'anterior e seja um pouco mais firme, sem ameaçar. Dirija-se a "Prezados(as)" no ' +
+  'gabinete; ao citar o vereador, use "Vereador(a)" seguido do nome exatamente como veio, ' +
+  'sem deduzir gênero. Serve para e-mail ou WhatsApp: sem markdown, até 130 palavras. ' +
+  'Termine com "Atenciosamente," e, na linha seguinte, o nome de "remetente" (se houver) ' +
+  'e "Procuradoria-Geral da Câmara Municipal de Duque de Caxias". Em "assunto", uma ' +
+  'linha curta para o e-mail.';
+
+const SCHEMA_COBRANCA = {
+  type: 'object',
+  properties: { assunto: { type: 'string' }, mensagem: { type: 'string' } },
+  required: ['assunto', 'mensagem'],
+  additionalProperties: false,
+};
+
+async function claudeMensagemCobranca(client, modelo, dados) {
+  const json = await claudeEstruturado(client, modelo, {
+    sistema: SISTEMA_COBRANCA,
+    esforco: 'low',
+    schema: SCHEMA_COBRANCA,
+    content: [{ type: 'text', text: `Dados do envio (JSON):\n${serializarDados(dados, 'do envio')}\n\nRedija a mensagem de cobrança.` }],
+  });
+  const mensagem = String(json.mensagem || '').trim().slice(0, 3000);
+  if (!mensagem) throw erro422('A IA devolveu uma mensagem vazia. Tente de novo.');
+  return { assunto: String(json.assunto || '').trim().slice(0, 200), mensagem };
+}
+
 module.exports = {
   MODELOS_CLAUDE,
   MODELO_CLAUDE_PADRAO,
@@ -503,4 +590,9 @@ module.exports = {
   normalizarRevisao,
   claudeExtrairProcesso,
   claudeRevisarParecer,
+  SCHEMA_TEXTO,
+  SCHEMA_COBRANCA,
+  serializarDados,
+  claudeTextoRelatorio,
+  claudeMensagemCobranca,
 };

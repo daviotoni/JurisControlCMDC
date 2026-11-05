@@ -1070,6 +1070,21 @@
                     <label for="relMes">Mês</label>
                     <select id="relMes" class="select"></select>
                 </div>
+                <div class="ia-extrair rel-ia">
+                    <div class="ia-extrair-row">
+                        <p class="ia-extrair-titulo">Síntese em texto</p>
+                        <button type="button" id="relIaGerar" class="btn secondary">Escrever com IA</button>
+                    </div>
+                    <p id="relIaStatus" class="cfg-note" aria-live="polite">A IA escreve dois ou três parágrafos com os números do mês, para abrir o relatório ou colar num ofício. Revise antes de usar.</p>
+                    <div id="relIaResultado" hidden>
+                        <label for="relIaTexto" class="sr-only">Síntese do mês</label>
+                        <textarea id="relIaTexto" class="input" rows="8"></textarea>
+                        <div class="ia-extrair-row ia-texto-acoes">
+                            <label class="ia-check"><input type="checkbox" id="relIaIncluir" checked> Incluir no PDF</label>
+                            <button type="button" id="relIaCopiar" class="btn secondary">Copiar texto</button>
+                        </div>
+                    </div>
+                </div>
                 <div id="relPreview" class="rel-preview" aria-live="polite"></div>
             </div>
             <div class="dialog-footer">

@@ -19,6 +19,7 @@ const { normalizarLexml, normalizarDatajud, normalizarDatajudMovimentos, normali
 const {
   escolherProvedor, montarContextoCopiloto, extrairJsonDaResposta, mapearErroClaude,
   criarClienteClaude, claudeSimples, claudeCopiloto, claudeExtrairProcesso, claudeRevisarParecer,
+  claudeTextoRelatorio, claudeMensagemCobranca,
 } = require('./ia-claude');
 
 initializeApp();
@@ -452,8 +453,9 @@ exports.assistente = onRequest(
 
     // Recursos fora do editor (só com o Claude, mesmo que o admin tenha
     // escolhido o Gemini para o editor): ler o documento do processo e
-    // revisar o parecer antes de emitir.
-    if (corpo.modo === 'extrair_processo' || corpo.modo === 'revisar_parecer') {
+    // revisar o parecer antes de emitir, escrever a síntese do relatório
+    // mensal e redigir a cobrança ao gabinete.
+    if (['extrair_processo', 'revisar_parecer', 'texto_relatorio', 'mensagem_cobranca'].includes(corpo.modo)) {
       try {
         const [cfg, chaveClaude] = await Promise.all([lerConfigIA(), lerChaveClaude()]);
         if (!chaveClaude) {
@@ -464,6 +466,14 @@ exports.assistente = onRequest(
         if (corpo.modo === 'extrair_processo') {
           const dados = await claudeExtrairProcesso(client, modelo, corpo.arquivo, corpo.setores);
           res.status(200).json({ dados, provedor: 'claude' });
+          return;
+        }
+        if (corpo.modo === 'texto_relatorio') {
+          res.status(200).json({ ...(await claudeTextoRelatorio(client, modelo, corpo.dados)), provedor: 'claude' });
+          return;
+        }
+        if (corpo.modo === 'mensagem_cobranca') {
+          res.status(200).json({ ...(await claudeMensagemCobranca(client, modelo, corpo.dados)), provedor: 'claude' });
           return;
         }
         if (!corpo.contexto || typeof corpo.contexto !== 'object' || !String(corpo.contexto.texto || '').trim()) {

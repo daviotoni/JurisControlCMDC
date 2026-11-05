@@ -1315,6 +1315,14 @@
         .ia-extrair-row .input { flex: 1; min-width: 200px; }
         .ia-extrair-status { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary); }
         .ia-extrair-status:empty { display: none; }
+        /* Relatório mensal e cobrança ao gabinete: texto escrito pela IA */
+        .rel-ia { margin: 0.25rem 0 1rem; }
+        .rel-ia .ia-extrair-row { justify-content: space-between; }
+        .rel-ia .ia-extrair-titulo { margin: 0; }
+        .rel-ia .cfg-note { margin: 0.4rem 0 0; }
+        .rel-ia textarea { width: 100%; margin-top: 0.6rem; resize: vertical; font-family: inherit; line-height: 1.5; }
+        .ia-texto-acoes { margin-top: 0.5rem; }
+        .ia-check { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; }
         .ia-preenchido { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-600) 35%, transparent); }
         .ia-panel .ia-chips { margin-bottom: 0; }
         .ia-panel .ia-chips .btn { font-size: 0.75rem; padding: 0.3rem 0.55rem; }

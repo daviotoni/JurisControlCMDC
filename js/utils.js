@@ -366,6 +366,43 @@ function relatorioMensal({ processos = [], pareceres = [], ano, mes, hoje, statu
   };
 }
 
+// Dados que vão para a IA escrever a síntese do relatório: só números e
+// números de processo (sem nome de interessado), com rótulos legíveis.
+function dadosRelatorioParaIA(r, { mesExtenso = '', mesEmAndamento = false, geradoEm = '' } = {}) {
+  const p = r.prazos || {};
+  const t = r.tramitacao || {};
+  return {
+    mes: mesExtenso,
+    mesEmAndamento: !!mesEmAndamento,
+    geradoEm,
+    entradas: {
+      total: r.entradas.total,
+      administrativos: r.entradas.administrativo,
+      judiciais: r.entradas.judicial,
+      porSetorDeOrigem: (r.entradas.porSetor || []).slice(0, 8).map(x => ({ setor: x.setor, processos: x.n })),
+    },
+    saidas: r.saidas,
+    pareceresEmitidos: r.pareceresEmitidos,
+    tramitacaoDosQueSairam: t.n ? { processos: t.n, mediaDias: t.media, medianaDias: t.mediana } : null,
+    prazosQueVenceramNoMes: {
+      total: p.total || 0,
+      cumpridosNoPrazo: p['no-prazo'] || 0,
+      cumpridosForaDoPrazo: p['fora-do-prazo'] || 0,
+      vencidosSemSaida: p.vencido || 0,
+      aindaAVencer: p['a-vencer'] || 0,
+      concluidosSemDataDeSaida: p['sem-data'] || 0,
+    },
+    processosQuePedemAtencao: (p.atencao || []).slice(0, 15).map(a => ({
+      processo: a.num,
+      prazo: fmtBR(a.prazo),
+      saida: a.saida ? fmtBR(a.saida) : 'sem saída',
+      situacao: a.situacao === 'vencido' ? 'vencido sem saída' : 'cumprido fora do prazo',
+    })),
+    emAbertoHoje: r.emAberto,
+    carteiraHojePorStatus: (r.situacaoAtual || []).filter(x => x.n).map(x => ({ status: x.rotulo, processos: x.n })),
+  };
+}
+
 // ----- Número CNJ → tribunal no Datajud -----
 // NNNNNNN-DD.AAAA.J.TR.OOOO (Res. CNJ 65/2008). Confere o dígito verificador
 // (módulo 97) e devolve o índice do Datajud ('tjrj', 'trf2', 'trt1', 'stj'…),
@@ -408,7 +445,7 @@ function ultimosMeses(hoje, n = 12) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     fmtBR, parse, todayUTC, diffDays, ymd, sanitizeHTML, safeCSSClass, getChanges, TRACK_FIELDS,
-    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, ultimosMeses, buscarGlobal, buscaNormalizar, relatorioMensal, numeroCNJValido, tribunalDoCNJ,
+    base64ToArrayBuffer, getMimeType, filtrarOrdenarProcessos, ultimosMeses, buscarGlobal, buscaNormalizar, relatorioMensal, dadosRelatorioParaIA, numeroCNJValido, tribunalDoCNJ,
     normalizeParecerParaLista, combinarPareceres, versoesDoDocumento, versaoAtual, versoesDoParecer, inferirParecerInfo,
     normalizarConsultaJuris, expandirConsultaJuris, filtrarOrdenarResultadosJuris,
     VALID_STATS, VALID_ACAO, VALID_CAT, VALID_PARECER_STATUS,
