@@ -2972,7 +2972,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const dados = dadosRelatorioParaIA(r, {
           mesExtenso: nomeMes(r.ano, r.mes).toLowerCase(),
           mesEmAndamento: hoje.getUTCFullYear() === r.ano && hoje.getUTCMonth() === r.mes,
-          geradoEm: fmtBR(hoje),
+          geradoEm: new Date().toLocaleDateString('pt-BR'),
       });
       btn.disabled = true; btn.textContent = 'Escrevendo…';
       status.textContent = 'A IA está escrevendo a síntese. Leva uns 10 segundos.';

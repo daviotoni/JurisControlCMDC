@@ -505,7 +505,8 @@ const SISTEMA_RELATORIO =
   'ordem e só quando houver dado: entradas (total, administrativos, judiciais e setores ' +
   'que mais enviaram), saídas e pareceres emitidos, tempo de tramitação, prazos que ' +
   'venceram no mês (cumpridos, fora do prazo, vencidos sem saída) citando pelo número os ' +
-  'processos que pedem atenção, e a carteira em aberto hoje. Se "mesEmAndamento" for ' +
+  'processos que pedem atenção, e a carteira em aberto hoje. Não comente o que é zero ' +
+  '(se não houve entradas nem saídas, diga isso numa frase só). Se "mesEmAndamento" for ' +
   'true, diga logo no início que os números são parciais, até a data de "geradoEm". Sem ' +
   'título, sem listas, sem markdown, sem saudação e sem assinatura. No máximo 230 palavras.';
 
@@ -541,7 +542,8 @@ const SISTEMA_COBRANCA =
   'cordial e institucional; se "cobrancasAnteriores" tiver itens, mencione o contato ' +
   'anterior e seja um pouco mais firme, sem ameaçar. Dirija-se a "Prezados(as)" no ' +
   'gabinete; ao citar o vereador, use "Vereador(a)" seguido do nome exatamente como veio, ' +
-  'sem deduzir gênero. Serve para e-mail ou WhatsApp: sem markdown, até 130 palavras. ' +
+  'sem deduzir gênero, e evite outras palavras com gênero para ele (prefira "o gabinete" ' +
+  'ou "o(a) parlamentar"). Serve para e-mail ou WhatsApp: sem markdown, até 130 palavras. ' +
   'Termine com "Atenciosamente," e, na linha seguinte, o nome de "remetente" (se houver) ' +
   'e "Procuradoria-Geral da Câmara Municipal de Duque de Caxias". Em "assunto", uma ' +
   'linha curta para o e-mail.';
